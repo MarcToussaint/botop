@@ -2,6 +2,8 @@
 
 ## Quick Start
 
+I usually set `export MAKEFLAGS=-j4 -k`
+
 ```
 git clone git@github.com:MarcToussaint/LGP-execution.git
 cd LGP-execution
@@ -9,10 +11,18 @@ cd LGP-execution
 git submodule init
 git submodule update
 
-make -j1 initUbuntuPackages  # calls sudo apt-get install; you can always interrupt
+#ensure you got the Ubuntu packages installed, e.g.:
+make -C rai -j1 printUbuntu
 
-cd src/Sim; make
-cd 01-simulator; make; ./x.exe
-cd 02-rndPolicy; make; ./x.exe
+make -C src/Sim
+roscore
+cd 01-simulator; make && ./x.exe &
+cd ../02-rndPolicy; make && ./x.exe
 ```
+
+To test rai only:
+```
+cd rai; make runTests
+```
+
 
