@@ -11,6 +11,12 @@ inline arr conv_arr2arr(const rai_msgs::arr& x){
   return y;
 }
 
+inline std_msgs::Float64 conv_double2Float64(const double& x){
+  std_msgs::Float64 y;
+  y.data = x;
+  return y;
+}
+
 //=============================================================================
 
 arr computeNextFeasibleConfiguration(rai::KinematicWorld& K, arr q_ref, StringA& jointsInLimit, StringA& collisionPairs){
@@ -105,6 +111,9 @@ Simulator::Simulator(const char *modelFile, double dt)
     K_disp(K), K_ref(K),
     gl("SIM"),
     ref("MotionReference"),
+    command("command"),
+    currentQ("currentQ"),
+    timeToGo("timeToGo"),
     dt(dt){
 
   //K.swift().deactivate(K["coll_pedestal"], K["coll_box_bottom"]);
@@ -117,7 +126,10 @@ Simulator::Simulator(const char *modelFile, double dt)
   gl.update();
 
   //setup ros communication
-  subRef = ROS.subscribe(ref);
+  sub_ref = ROS.subscribe(ref);
+  sub_command = ROS.subscribe(command);
+  pub_timeToGo = ROS.publish(timeToGo);
+  pub_currentQ = ROS.publish(currentQ);
 }
 
 void Simulator::step(){
@@ -153,12 +165,15 @@ void Simulator::step(){
   }
 
   //-- when reference is given, compute movement
+  double maxPhase = 0.;
   if(reference.points.N){
     //read out the new reference
     phase += dt;
-    if(phase>reference.times.last()) phase=reference.times.last();
+    maxPhase = reference.times.last();
+    if(phase>maxPhase) phase=maxPhase;
     arr q_ref = reference.eval(phase);
     K_ref.setJointState(q_ref); //for display only
+    timeToGo.set() = conv_double2Float64(maxPhase-phase);
 
     //compute feasible q_next (collision & limits)
     StringA jointsInLimit, collisionPairs;
@@ -172,7 +187,7 @@ void Simulator::step(){
   }
 
   if(!(stepCount%10))
-    gl.update(STRING("step=" <<stepCount <<" phase=" <<phase <<" #ref=" <<reference.points.d0));
+    gl.update(STRING("step=" <<stepCount <<" phase=" <<phase <<" timeToGo=" <<maxPhase-phase <<" #ref=" <<reference.points.d0));
 
   stepCount++;
 }
