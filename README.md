@@ -15,7 +15,7 @@ git submodule update
 make -C rai -j1 printUbuntu
 
 make -C src/Sim
-roscore
+roscore &
 cd 01-simulator; make && ./x.exe &
 cd ../02-rndPolicy; make && ./x.exe
 ```
