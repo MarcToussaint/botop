@@ -1,18 +1,14 @@
 BASE = rai
 
-DEPEND = KOMO Core Algo Geo Kin Gui Optim
+DEPEND = KOMO Core Algo Geo Kin Gui Optim Exec Sim
 
-test_paths = $(shell find test -maxdepth 3 -name 'Makefile' -printf "%h ")
-
-build: $(DEPEND:%=inPath_makeLib/%) $(test_paths:%=inPath_make/%)
+build: $(DEPEND:%=inPath_makeLib/%)
 
 initUbuntuPackages: $(DEPEND:%=inPath_installUbuntu/%)
 
 printUbuntu: $(DEPEND:%=inPath_printUbuntuPackages/%) printUbuntuPackages
 
-clean: $(DEPEND:%=inPath_clean/%) $(test_paths:%=inPath_clean/%)$
-
-runTests: $(test_paths:%=inPath_make/%) $(test_paths:%=inPath_run/%)
+clean: $(DEPEND:%=inPath_clean/%)
 
 include $(BASE)/build/generic.mk
 
