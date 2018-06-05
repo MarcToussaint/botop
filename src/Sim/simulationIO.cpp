@@ -2,7 +2,7 @@
 #include <RosCom/roscom.h>
 #include "simulationIO_self.h"
 
-SimulationIO_self::SimulationIO_self(const char *modelFile, double dt)
+SimulationIO_self::SimulationIO_self(bool pubSubToROS, const char *modelFile, double dt)
     : ROS("simulator"),
       SIM(modelFile, dt),
       dt(dt),
@@ -13,7 +13,7 @@ SimulationIO_self::SimulationIO_self(const char *modelFile, double dt)
       objectNames("objectNames"),
       timeToGo("timeToGo"){
 
-    if(rai::getParameter<bool>("useRos", true)){
+    if(pubSubToROS){
         //setup ros communication
         sub_ref = ROS.subscribe(ref);
         sub_command = ROS.subscribe(command);
@@ -24,9 +24,9 @@ SimulationIO_self::SimulationIO_self(const char *modelFile, double dt)
     }
 }
 
-SimulationIO::SimulationIO(const char *modelFile, double dt)
+SimulationIO::SimulationIO(bool pubSubToROS, const char *modelFile, double dt)
   : Thread("SimulationIO", dt){
-  self = new SimulationIO_self(modelFile, dt);
+  self = new SimulationIO_self(pubSubToROS, modelFile, dt);
 }
 
 SimulationIO::~SimulationIO(){
@@ -38,13 +38,14 @@ void SimulationIO::step(){
   //check for inputs:
   if(self->ref.hasNewRevision()){
     self->ref.readAccess();
-    //StringA joints = ref->joints; //is ignored for now!!!
+    StringA joints = conv_stdStringVec2StringA(self->ref->joints); //is ignored for now!!!
     arr t = conv_arr2arr(self->ref->t);
     arr x = conv_arr2arr(self->ref->x);
     bool append = self->ref->append;
     cout <<"MotionReference revision=" <<self->ref.getRevision() <<' ' <<self->ref->revision <<endl;
     self->ref.deAccess();
 
+    self->SIM.setUsedRobotJoints(joints);
     self->SIM.exec(x, t, append);
   }
 

@@ -55,6 +55,7 @@ struct Simulation : GLDrawer{
 
   //-- the narrow action interface
   StringA getRobotJoints(); //info on the joints; the plan needs to have same dimensionality
+  void setUsedRobotJoints(const StringA& joints);
   void exec(const Plan& plan, bool append=true);
   void exec(const arr& robot_joint_path, const arr& tau, bool append=true);
   void exec(const StringA& command);

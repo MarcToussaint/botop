@@ -24,5 +24,5 @@ struct SimulationIO_self{
   std::shared_ptr<Publisher<rai_msgs::StringA>> pub_objectNames;
   std::shared_ptr<Publisher<std_msgs::Float64>> pub_timeToGo;
 
-  SimulationIO_self(const char *modelFile, double dt);
+  SimulationIO_self(bool pubSubToROS, const char *modelFile, double dt);
 };

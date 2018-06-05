@@ -4,19 +4,6 @@
 #include <Kin/frame.h>
 #include <Kin/proxy.h>
 
-inline arr conv_arr2arr(const rai_msgs::arr& x){
-  arr y;
-  y = conv_stdvec2arr(x.data);
-  y.reshape(conv_stdvec2arr(x.dim));
-  return y;
-}
-
-inline std_msgs::Float64 conv_double2Float64(const double& x){
-  std_msgs::Float64 y;
-  y.data = x;
-  return y;
-}
-
 //=============================================================================
 
 arr computeNextFeasibleConfiguration(rai::KinematicWorld& K, arr q_ref, StringA& jointsInLimit, StringA& collisionPairs){

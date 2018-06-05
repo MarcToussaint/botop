@@ -20,6 +20,7 @@ struct Simulation_self{
   rai::KinematicWorld K_compute;
   OpenGL gl;
 
+  StringA currentlyUsedJoints; //the joints that the spline refers to
   rai::Spline refSpline; // reference spline constructed from ref
   arr refPoints, refTimes; // the knot points and times of the spline
   double phase=0.; // current phase in the spline
@@ -30,13 +31,14 @@ struct Simulation_self{
 Simulation::Simulation(const char *modelFile, double dt)
   : K(modelFile){
   self = new Simulation_self;
+  self->currentlyUsedJoints = K.getJointNames();
   self->dt = dt;
 
   self->gl.title = "Simulation";
   self->gl.camera.setDefault();
   self->gl.add(glStandardScene);
   self->gl.add(K);
-  self->gl.update();
+//  self->gl.update();
 
   self->K_compute = K;
   self->K_compute.swift().deactivate(K["table1"], K["iiwa_link_0_0"]);
@@ -54,8 +56,11 @@ void Simulation::stepKin(){
     //read out the new reference
     self->phase += self->dt;
     maxPhase = self->refSpline.times.last();
-    if(self->phase>maxPhase) self->phase=maxPhase;
     arr q_ref = self->refSpline.eval(self->phase);
+    if(self->phase>maxPhase){ //clear spline buffer
+      q_ref = self->refPoints[-1];
+      stop(true);
+    }
 //    self->K_ref.setJointState(q_ref); //for display only
 //    timeToGo.set() = conv_double2Float64(maxPhase-phase);
 
@@ -65,7 +70,8 @@ void Simulation::stepKin(){
     //    set the simulation's joint state
     //    K.setJointState(q_next);
 
-    setJointStateSafe(q_ref, jointsInLimit, collisionPairs);
+//    setJointStateSafe(q_ref, jointsInLimit, collisionPairs);
+    setJointState(self->currentlyUsedJoints, q_ref);
 //    if(jointsInLimit.N)
 //      cout <<"LIMITS:" <<jointsInLimit <<endl;
     if(collisionPairs.N)  cout <<"COLLISIONS:" <<collisionPairs <<endl;
@@ -87,9 +93,9 @@ void Simulation::setJointState(const StringA &joints, const arr &q_ref){
 
 void Simulation::setJointStateSafe(arr q_ref, StringA &jointsInLimit, StringA &collisionPairs){
   arr q = q_ref;
-  arr q0 = K.getJointState();
+  arr q0 = K.getJointState(self->currentlyUsedJoints);
 
-  self->K_compute.setJointState(q0);
+  self->K_compute.setJointState(q0, self->currentlyUsedJoints);
   rai::KinematicWorld& KK = self->K_compute;
 
   jointsInLimit.clear();
@@ -115,7 +121,7 @@ void Simulation::setJointStateSafe(arr q_ref, StringA &jointsInLimit, StringA &c
   q_ref = q;
 
   //-- optimize s.t. collisions
-  KK.setJointState(q);
+  KK.setJointState(q, self->currentlyUsedJoints);
   KK.stepSwift();
 
 //  KK.kinematicsPenetrations(y);
@@ -135,7 +141,7 @@ void Simulation::setJointStateSafe(arr q_ref, StringA &jointsInLimit, StringA &c
 
     //simple IK to find config closest to q_ref in nullspace of contact
     arr y, J, JJ, invJ, I=eye(KK.q.N);
-    KK.setJointState(q);
+    KK.setJointState(q, self->currentlyUsedJoints);
     KK.stepSwift();
     KK.kinematicsProxyCost(y, J, margin);
 
@@ -155,7 +161,7 @@ void Simulation::setJointStateSafe(arr q_ref, StringA &jointsInLimit, StringA &c
 
       q += qstep;
 
-      KK.setJointState(q);
+      KK.setJointState(q, self->currentlyUsedJoints);
       KK.stepSwift();
       KK.kinematicsProxyCost(y, J, margin);
     }
@@ -163,7 +169,7 @@ void Simulation::setJointStateSafe(arr q_ref, StringA &jointsInLimit, StringA &c
     if(y.scalar()>1.){
       //failed -> back to old config
       q=q0;
-      KK.setJointState(q);
+      KK.setJointState(q, self->currentlyUsedJoints);
       KK.stepSwift();
       KK.kinematicsProxyCost(y, J, margin);
     }
@@ -173,33 +179,42 @@ void Simulation::setJointStateSafe(arr q_ref, StringA &jointsInLimit, StringA &c
     }
   }
 
-  K.setJointState(q);
+  K.setJointState(q, self->currentlyUsedJoints);
+}
+
+void Simulation::setUsedRobotJoints(const StringA& joints){
+  if(self->currentlyUsedJoints!=joints){
+    if(self->refPoints.N){
+      LOG(-1) <<"you changed the robot joints before the spline was done -- killing spline execution";
+      stop(true);
+    }
+    self->currentlyUsedJoints=joints;
+  }
 }
 
 
 void Simulation::exec(const arr &x, const arr &t, bool append){
   if(!self->refTimes.N) append=false;
 
-  if(x.d1 != K.q.N){
-    LOG(0) <<"you're sending me a motion reference of wrong dimension!"
+  if(x.d1 != self->currentlyUsedJoints.N){
+    LOG(-1) <<"you're sending me a motion reference of wrong dimension!"
           <<"\n  I'm ignoring this"
-         <<"\n  my dimension=" <<K.q.N <<"  your message=" <<x.d1
-        <<"\n  my joints=" <<K.getJointNames();
+         <<"\n  my dimension=" <<self->currentlyUsedJoints.N <<"  your message=" <<x.d1
+        <<"\n  my joints=" <<self->currentlyUsedJoints;
+    return;
   }
 
   if(append){
     self->refPoints.append(x);
     double last = self->refTimes.last();
-    for(double tau:t) self->refTimes.append(last += tau);
+    self->refTimes.append(t+last);
     self->refSpline.set(2, self->refPoints, self->refTimes);
   }else{
     self->refPoints = x;
-    self->refTimes.clear();
-    double last = 0.;
-    for(double tau:t) self->refTimes.append(last += tau);
+    self->refTimes = t;
     if(self->refTimes(0)>0.){ //the given reference does not have a knot for NOW -> copy the current joint state
       self->refTimes.prepend(0.);
-      self->refPoints.prepend(K.q);
+      self->refPoints.prepend(K.getJointState(self->currentlyUsedJoints));
     }
     self->refSpline.set(2, self->refPoints, self->refTimes);
     self->phase=0.;
@@ -219,6 +234,13 @@ void Simulation::exec(const StringA& command){
   }
 }
 
+void Simulation::stop(bool hard){
+  self->phase=0.;
+  self->refPoints.clear();
+  self->refTimes.clear();
+  self->refSpline.clear();
+}
+
 double Simulation::getTimeToGo(){
   double maxPhase = 0.;
   if(self->refSpline.points.N) maxPhase = self->refSpline.times.last();
@@ -226,7 +248,7 @@ double Simulation::getTimeToGo(){
 }
 
 arr Simulation::getJointState(){
-  return K.getJointState();
+  return K.getJointState(self->currentlyUsedJoints);
 }
 
 arr Simulation::getObjectPoses(const StringA &objects){
