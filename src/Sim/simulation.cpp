@@ -81,8 +81,8 @@ void Simulation::stepKin(){
 
 }
 
-void Simulation::setJointState(arr q_ref){
-    K.setJointState(q_ref);
+void Simulation::setJointState(const StringA &joints, const arr &q_ref){
+    K.setJointState(q_ref, joints);
 }
 
 void Simulation::setJointStateSafe(arr q_ref, StringA &jointsInLimit, StringA &collisionPairs){

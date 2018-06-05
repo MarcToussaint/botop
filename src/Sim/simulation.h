@@ -46,7 +46,7 @@ struct Simulation : GLDrawer{
   void stepKin();
 
   //--
-  void setJointState(arr q_ref);
+  void setJointState(const StringA& joints, const arr& q_ref);
   void setJointStateSafe(arr q_ref, StringA& jointsInLimit, StringA& collisionPairs);
 
   //-- store and restore simulator state
