@@ -81,6 +81,10 @@ void Simulation::stepKin(){
 
 }
 
+void Simulation::setJointState(arr q_ref){
+    K.setJointState(q_ref);
+}
+
 void Simulation::setJointStateSafe(arr q_ref, StringA &jointsInLimit, StringA &collisionPairs){
   arr q = q_ref;
   arr q0 = K.getJointState();
@@ -351,3 +355,4 @@ arr computeNextFeasibleConfiguration(rai::KinematicWorld& K, arr q_ref, StringA&
   return q;
 }
 #endif
+
