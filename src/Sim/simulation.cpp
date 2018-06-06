@@ -17,6 +17,8 @@ struct Sensor{
 struct Simulation_self{
   rai::Array<Sensor> sensors;
 
+  Mutex threadLock;
+
   rai::KinematicWorld K_compute;
   OpenGL gl;
 
@@ -51,6 +53,8 @@ Simulation::~Simulation(){
 }
 
 void Simulation::stepKin(){
+  auto lock = self->threadLock();
+
   double maxPhase = 0.;
   if(self->refSpline.points.N){
     //read out the new reference
@@ -88,10 +92,14 @@ void Simulation::stepKin(){
 }
 
 void Simulation::setJointState(const StringA &joints, const arr &q_ref){
-    K.setJointState(q_ref, joints);
+  auto lock = self->threadLock();
+
+  K.setJointState(q_ref, joints);
 }
 
 void Simulation::setJointStateSafe(arr q_ref, StringA &jointsInLimit, StringA &collisionPairs){
+  auto lock = self->threadLock();
+
   arr q = q_ref;
   arr q0 = K.getJointState(self->currentlyUsedJoints);
 
@@ -183,6 +191,8 @@ void Simulation::setJointStateSafe(arr q_ref, StringA &jointsInLimit, StringA &c
 }
 
 void Simulation::setUsedRobotJoints(const StringA& joints){
+  auto lock = self->threadLock();
+
   if(self->currentlyUsedJoints!=joints){
     if(self->refPoints.N){
       LOG(-1) <<"you changed the robot joints before the spline was done -- killing spline execution";
@@ -194,6 +204,8 @@ void Simulation::setUsedRobotJoints(const StringA& joints){
 
 
 void Simulation::exec(const arr &x, const arr &t, bool append){
+  auto lock = self->threadLock();
+
   if(!self->refTimes.N) append=false;
 
   if(x.d1 != self->currentlyUsedJoints.N){
@@ -222,6 +234,8 @@ void Simulation::exec(const arr &x, const arr &t, bool append){
 }
 
 void Simulation::exec(const StringA& command){
+  auto lock = self->threadLock();
+
   LOG(0) <<"CMD = " <<command <<endl;
   if(command(0)=="attach"){
     rai::Frame *a = K.getFrameByName(command(1));
@@ -235,6 +249,8 @@ void Simulation::exec(const StringA& command){
 }
 
 void Simulation::stop(bool hard){
+  auto lock = self->threadLock();
+
   self->phase=0.;
   self->refPoints.clear();
   self->refTimes.clear();
@@ -242,16 +258,22 @@ void Simulation::stop(bool hard){
 }
 
 double Simulation::getTimeToGo(){
+  auto lock = self->threadLock();
+
   double maxPhase = 0.;
   if(self->refSpline.points.N) maxPhase = self->refSpline.times.last();
   return maxPhase - self->phase;
 }
 
 arr Simulation::getJointState(){
+  auto lock = self->threadLock();
+
   return K.getJointState(self->currentlyUsedJoints);
 }
 
 arr Simulation::getObjectPoses(const StringA &objects){
+  auto lock = self->threadLock();
+
   FrameL objs;
   if(objects.N){
     for(const rai::String& s:objects) objs.append(K[s]);
@@ -267,10 +289,14 @@ arr Simulation::getObjectPoses(const StringA &objects){
 }
 
 StringA Simulation::getJointNames(){
+  auto lock = self->threadLock();
+
   return K.getJointNames();
 }
 
 StringA Simulation::getObjectNames(){
+  auto lock = self->threadLock();
+
   StringA objs;
   for(rai::Frame *a:K.frames){
     if(a->ats["percept"]) objs.append(a->name);
