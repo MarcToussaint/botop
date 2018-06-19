@@ -1,4 +1,5 @@
 BASE = ../../rai
+BASE2 = ..
 NAME   = $(shell basename `pwd`)
 OUTPUT = lib$(NAME).so
 
