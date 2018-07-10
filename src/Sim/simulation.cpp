@@ -240,6 +240,7 @@ void Simulation::exec(const StringA& command){
   if(command(0)=="attach"){
     rai::Frame *a = K.getFrameByName(command(1));
     rai::Frame *b = K.getFrameByName(command(2));
+    b = b->getUpwardLink();
 
     if(b->parent) b->unLink();
     b->linkFrom(a, true);
