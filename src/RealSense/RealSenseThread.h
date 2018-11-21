@@ -6,8 +6,9 @@
 namespace rs2 { class pipeline; }
 
 struct RealSenseThread : Thread {
-  std::shared_ptr<rs2::pipeline> pipe;
-  Var<arr> depth;
+  struct sRealSenseThread *s=0;
+  Var<floatA> depth;
+  Var<arr> points;
   Var<byteA> color;
 
   RealSenseThread();
