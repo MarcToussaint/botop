@@ -27,22 +27,57 @@ void RealSenseThread::open(){
   rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
   s->pipe = std::make_shared<rs2::pipeline>();
   s->pipe->start();
-
   rs2::pipeline_profile profile = s->pipe->get_active_profile();
 
-  s->depth_scale = get_depth_scale(profile.get_device());
-
-  for (rs2::stream_profile sp : profile.get_streams()){
-
-    LOG(1) <<"stream '" <<sp.stream_name() <<"' idx:" <<sp.stream_index() <<" type:" <<sp.stream_type() <<" format:" <<sp.format() <<" fps" <<sp.fps() <<" id:" <<sp.unique_id();
-
-    rs2_intrinsics intrinsics;
-    rs2_get_video_stream_intrinsics(sp.get(), &intrinsics, NULL);
-    LOG(1) <<"intrinsics: " <<intrinsics.width <<' ' <<intrinsics.height <<' ' <<intrinsics.ppx <<' ' <<intrinsics.ppy <<' ' <<intrinsics.fx <<' ' <<intrinsics.fy;
-    if(sp.stream_type()==RS2_STREAM_DEPTH) rs2_get_video_stream_intrinsics(sp.get(), &s->depth_intrinsics, NULL);
+  //-- info on all sensors of the device
+  rs2::device dev = profile.get_device();
+  for (rs2::sensor& sensor:dev.query_sensors()){
+    LOG(1) <<"sensor " <<sensor.get_info(RS2_CAMERA_INFO_NAME);
+    for (int i = 0; i < static_cast<int>(RS2_OPTION_COUNT); i++)  {
+      rs2_option option_type = static_cast<rs2_option>(i);
+      if (sensor.supports(option_type)){
+        LOG(1) <<"  option " <<option_type <<'=' <<sensor.get_option(option_type) <<"  (" <<sensor.get_option_description(option_type) <<")  [" <<sensor.get_option_range(option_type).min <<',' <<sensor.get_option_range(option_type).max<<']';
+      }
+    }
+    if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"RGB Camera")){
+      if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
+        sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
+        sensor.set_option(RS2_OPTION_EXPOSURE, 2000.);
+        LOG(1) <<"  I disabled auto exposure and set to 2000";
+      }
+      if(sensor.supports(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE)){
+        sensor.set_option(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, 0);
+        sensor.set_option(RS2_OPTION_WHITE_BALANCE, 6000.);
+        LOG(1) <<"  I disabled auto white balance and set to 6000";
+      }
+    }
+    if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")){
+      if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
+        sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
+        sensor.set_option(RS2_OPTION_EXPOSURE, 3000.);
+        LOG(1) <<"  I disabled auto exposure and set to 2000";
+      }
+    }
   }
+
+  //-- info on all streams
+  for (rs2::stream_profile sp : profile.get_streams()){
+    LOG(1) <<"stream '" <<sp.stream_name() <<"' idx:" <<sp.stream_index() <<" type:" <<sp.stream_type() <<" format:" <<sp.format() <<" fps" <<sp.fps() <<" id:" <<sp.unique_id();
+    rs2::video_stream_profile vsp = sp.as<rs2::video_stream_profile>();
+    if(vsp){
+      rs2_intrinsics intrinsics = vsp.get_intrinsics();
+      LOG(1) <<"  is video: w=" <<intrinsics.width <<" h=" <<intrinsics.height <<" px=" <<intrinsics.ppx << " py=" <<intrinsics.ppy <<" fx=" <<intrinsics.fx <<" fy=" <<intrinsics.fy <<" distorsion=" <<intrinsics.model <<floatA(intrinsics.coeffs, 5);
+    }
+
+    if(sp.stream_type()==RS2_STREAM_COLOR) rs2_get_video_stream_intrinsics(sp.get(), &s->depth_intrinsics, NULL);
+  }
+
+  //-- depth scale of the camera (
+  s->depth_scale = get_depth_scale(profile.get_device());
   LOG(1) <<"depth scale: " <<s->depth_scale;
-  s->align = std::make_shared<rs2::align>(RS2_STREAM_DEPTH); //RS2_STREAM_COLOR
+
+  //-- align with depth or color?
+  s->align = std::make_shared<rs2::align>(RS2_STREAM_COLOR); //RS2_STREAM_DEPTH); //RS2_STREAM_COLOR
 }
 
 void RealSenseThread::close(){
@@ -57,10 +92,6 @@ void RealSenseThread::step(){
 
   rs2::depth_frame rs_depth = processed.get_depth_frame(); // Find and colorize the depth data
   rs2::video_frame rs_color = processed.get_color_frame();            // Find the color data
-
-//  // Trying to get both color and aligned depth frames
-//  rs2::video_frame other_frame = processed.first_or_default(align_to);
-//  rs2::depth_frame aligned_depth_frame = processed.get_depth_frame();
 
 
   float pixel[2];
