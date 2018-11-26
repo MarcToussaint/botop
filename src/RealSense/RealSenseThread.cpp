@@ -11,10 +11,13 @@ struct sRealSenseThread{
   std::shared_ptr<rs2::align> align;
   float depth_scale;
   rs2_intrinsics depth_intrinsics;
+
+  rs2::temporal_filter temp_filter;
+  rs2::hole_filling_filter hole_filter;
 };
 
 RealSenseThread::RealSenseThread()
-  : Thread("RealSense"){
+  : Thread("RealSenseThread"){
   threadLoop();
 }
 
@@ -42,20 +45,20 @@ void RealSenseThread::open(){
     if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"RGB Camera")){
       if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
         sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
-        sensor.set_option(RS2_OPTION_EXPOSURE, 2000.);
-        LOG(1) <<"  I disabled auto exposure and set to 2000";
+        sensor.set_option(RS2_OPTION_EXPOSURE, 500.);
+        LOG(1) <<"  I disabled auto exposure";
       }
       if(sensor.supports(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE)){
         sensor.set_option(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, 0);
-        sensor.set_option(RS2_OPTION_WHITE_BALANCE, 6000.);
-        LOG(1) <<"  I disabled auto white balance and set to 6000";
+        sensor.set_option(RS2_OPTION_WHITE_BALANCE, 4000.);
+        LOG(1) <<"  I disabled auto white balance";
       }
     }
     if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")){
       if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
         sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
-        sensor.set_option(RS2_OPTION_EXPOSURE, 3000.);
-        LOG(1) <<"  I disabled auto exposure and set to 2000";
+        sensor.set_option(RS2_OPTION_EXPOSURE, 6000.);
+        LOG(1) <<"  I disabled auto exposure";
       }
     }
   }
@@ -67,6 +70,8 @@ void RealSenseThread::open(){
     if(vsp){
       rs2_intrinsics intrinsics = vsp.get_intrinsics();
       LOG(1) <<"  is video: w=" <<intrinsics.width <<" h=" <<intrinsics.height <<" px=" <<intrinsics.ppx << " py=" <<intrinsics.ppy <<" fx=" <<intrinsics.fx <<" fy=" <<intrinsics.fy <<" distorsion=" <<intrinsics.model <<floatA(intrinsics.coeffs, 5);
+      if(sp.stream_type()==RS2_STREAM_DEPTH) depth_fxypxy = ARR(intrinsics.fx, intrinsics.fy, intrinsics.ppx, intrinsics.ppy);
+      if(sp.stream_type()==RS2_STREAM_COLOR) color_fxypxy = ARR(intrinsics.fx, intrinsics.fy, intrinsics.ppx, intrinsics.ppy);
     }
 
     if(sp.stream_type()==RS2_STREAM_COLOR) rs2_get_video_stream_intrinsics(sp.get(), &s->depth_intrinsics, NULL);
@@ -77,7 +82,7 @@ void RealSenseThread::open(){
   LOG(1) <<"depth scale: " <<s->depth_scale;
 
   //-- align with depth or color?
-  s->align = std::make_shared<rs2::align>(RS2_STREAM_COLOR); //RS2_STREAM_DEPTH); //RS2_STREAM_COLOR
+  s->align = std::make_shared<rs2::align>(RS2_STREAM_DEPTH); //RS2_STREAM_COLOR
 }
 
 void RealSenseThread::close(){
@@ -86,7 +91,13 @@ void RealSenseThread::close(){
 }
 
 void RealSenseThread::step(){
-  rs2::frameset data = s->pipe->wait_for_frames(); // Wait for next set of frames from the camera
+  rs2::frameset data;
+  try {
+    data = s->pipe->wait_for_frames(); // Wait for next set of frames from the camera
+  } catch (rs2::error& err) {
+    LOG(-1) <<"Can't get frames from RealSense: " <<err.what();
+    return;
+  }
 
   rs2::frameset processed = s->align->process(data);
 
@@ -94,6 +105,20 @@ void RealSenseThread::step(){
   rs2::video_frame rs_color = processed.get_color_frame();            // Find the color data
 
 
+  rs2::depth_frame rs_depth2 = s->temp_filter.process(rs_depth);
+  rs_depth = s->hole_filter.process(rs_depth2);
+
+#if 1
+  {
+    auto depthSet = depth.set();
+    depthSet->resize(rs_depth.get_height(), rs_depth.get_width());
+    for(uint y=0;y<depthSet->d0;y++) for(uint x=0;x<depthSet->d1;x++){
+      float d = rs_depth.get_distance(x,y);
+      if(d>1.) d=1.;
+      depthSet->operator()(y,x) = d;
+    }
+  }
+#else //also compute point cloud
   float pixel[2];
   float point[3];
   {
@@ -101,6 +126,7 @@ void RealSenseThread::step(){
     auto pointsSet = points.set();
     depthSet->resize(rs_depth.get_height(), rs_depth.get_width());
     pointsSet->resize(rs_depth.get_height(), rs_depth.get_width(), 3);
+    depth2
     for(uint y=0;y<depthSet->d0;y++) for(uint x=0;x<depthSet->d1;x++){
       float d = rs_depth.get_distance(x,y);
       if(d>1.) d=1.;
@@ -111,6 +137,7 @@ void RealSenseThread::step(){
       for(uint i=0;i<3;i++) pointsSet()(y,x,i) = point[i];
     }
   }
+#endif
   {
     auto colorSet = color.set();
     colorSet->resize(rs_color.get_height(), rs_color.get_width(), 3);
