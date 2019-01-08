@@ -3,12 +3,13 @@
 #include <franka/model.h>
 #include <franka/robot.h>
 
-FrankaThread::FrankaThread(Var<FrankaControlMessage>& _ctrl, Var<FrankaFeedbackMessage>& _state)
+FrankaThread::FrankaThread(Var<CtrlMsg>& _ctrl, Var<CtrlMsg>& _state)
   : Thread("FrankaThread"),
     ctrl(_ctrl),
     state(_state) {
   threadStep();  //this is not looping! The step method passes a callback to robot.control, which is blocking until stop becomes true
   state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
+  ctrl.set()->q = state.get()->q;
 }
 
 FrankaThread::~FrankaThread(){
@@ -53,12 +54,12 @@ void FrankaThread::step(){
     //publish state
     {
       auto stateset = state.set();
-      stateset->qreal = q;
-      stateset->qdotreal = qdot;
+      stateset->q = q;
+      stateset->qdot = qdot;
     }
 
     //-- get current ctrl
-    arr q_ref = ctrl.get()->qref;
+    arr q_ref = ctrl.get()->q;
     arr qdd_des = zeros(7);
 
     //check for correct ctrl otherwise do something...

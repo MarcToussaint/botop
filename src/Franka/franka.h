@@ -2,21 +2,14 @@
 
 #include <Core/array.h>
 #include <Core/thread.h>
-
-struct FrankaControlMessage{
-  arr qref;
-
-};
-struct FrankaFeedbackMessage{
-  arr qreal, qdotreal;
-};
+#include <Control/ctrlMsg.h>
 
 struct FrankaThread : Thread{
-  Var<FrankaControlMessage> ctrl;
-  Var<FrankaFeedbackMessage> state;
+  Var<CtrlMsg> ctrl;
+  Var<CtrlMsg> state;
   bool stop=false;
 
-  FrankaThread(Var<FrankaControlMessage>& _ctrl, Var<FrankaFeedbackMessage>& _state);
+  FrankaThread(Var<CtrlMsg>& _ctrl, Var<CtrlMsg>& _state);
   ~FrankaThread();
 
   void open(){}
