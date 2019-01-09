@@ -3,6 +3,8 @@
 #include <franka/model.h>
 #include <franka/robot.h>
 
+void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
+
 FrankaThread::FrankaThread(Var<CtrlMsg>& _ctrl, Var<CtrlMsg>& _state)
   : Thread("FrankaThread"),
     ctrl(_ctrl),
@@ -59,27 +61,43 @@ void FrankaThread::step(){
     }
 
     //-- get current ctrl
-    arr q_ref = ctrl.get()->q;
-    arr qdd_des = zeros(7);
+    arr q_ref, qdd_des, P_compliance;
+    {
+      auto ref = ctrl.get();
+      q_ref = ref->q;
+      P_compliance = ref->P_compliance;
+      qdd_des = zeros(7);
+    }
 
     //check for correct ctrl otherwise do something...
     if(q_ref.N!=7){
-      cerr <<"FRANKA: inconsistent ctrl message" <<endl;
+      cerr <<"FRANKA: inconsistent ctrl q_ref message" <<endl;
       return std::array<double, 7>({0., 0., 0., 0., 0., 0., 0.});
+    }
+    if(P_compliance.N){
+      if(!(P_compliance.nd==2 && P_compliance.d0==7 && P_compliance.d1==7)){
+        cerr <<"FRANKA: inconsistent ctrl P_compliance message" <<endl;
+        P_compliance.clear();
+      }
     }
 
     //-- compute desired torques
-    double k_p=20., k_d=5.;
+    double k_p=50., k_d=3.;
+    naturalGains(k_p, k_d, .2, .8);
 
     if(q_ref.N==7){
       qdd_des += k_p * (q_ref - q) - k_d * qdot;
     }
+
+    if(P_compliance.N) qdd_des = P_compliance * qdd_des;
 
     arr M;
     M.setCarray(model.mass(robot_state).begin(), 49);
     M.reshape(7,7);
 
     arr u = M * qdd_des;
+
+    if(P_compliance.N) u = P_compliance * u;
 
     std::array<double, 7> u_array = {0., 0., 0., 0., 0., 0., 0.};
     std::copy(u.begin(), u.end(), u_array.begin());
