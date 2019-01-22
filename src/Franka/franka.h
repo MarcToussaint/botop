@@ -12,7 +12,6 @@ struct FrankaThread : Thread{
   FrankaThread(Var<CtrlMsg>& _ctrl, Var<CtrlMsg>& _state);
   ~FrankaThread();
 
-  void open(){}
+private:
   void step();
-  void close(){}
 };

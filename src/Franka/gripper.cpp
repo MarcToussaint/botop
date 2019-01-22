@@ -16,7 +16,7 @@ void FrankaGripper::homing(){
   LOG(0) <<"gripper max width:" <<maxWidth;
 }
 
-bool FrankaGripper::move(double width, double speed){
+bool FrankaGripper::open(double width, double speed){
   if(width>maxWidth){
     LOG(-1) <<"width " <<width <<" is too large (max:" <<maxWidth <<')';
     width = maxWidth - .001;
@@ -26,7 +26,7 @@ bool FrankaGripper::move(double width, double speed){
   return ret;
 }
 
-bool FrankaGripper::grasp(double force, double width, double speed){
+bool FrankaGripper::close(double force, double width, double speed){
   if(width>maxWidth){
     LOG(-1) <<"width " <<width <<" is too large (max:" <<maxWidth <<')';
     width = maxWidth - .001;

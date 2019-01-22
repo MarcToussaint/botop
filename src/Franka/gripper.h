@@ -14,10 +14,10 @@ struct FrankaGripper {
 
   void homing();
 
-  bool move(double width=.075, //which is 7.5cm
+  bool open(double width=.075, //which is 7.5cm
             double speed=.2);
 
-  bool grasp(double force=10,  //which is 1kg
+  bool close(double force=10,  //which is 1kg
              double width=.05, //which is 5cm
              double speed=.1);
 
