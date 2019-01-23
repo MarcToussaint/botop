@@ -36,12 +36,14 @@ void RealSenseThread::open(){
   rs2::device dev = profile.get_device();
   for (rs2::sensor& sensor:dev.query_sensors()){
     LOG(1) <<"sensor " <<sensor.get_info(RS2_CAMERA_INFO_NAME);
+#if 0 //crashes with long cable
     for (int i = 0; i < static_cast<int>(RS2_OPTION_COUNT); i++)  {
       rs2_option option_type = static_cast<rs2_option>(i);
       if (sensor.supports(option_type)){
         LOG(1) <<"  option " <<option_type <<'=' <<sensor.get_option(option_type) <<"  (" <<sensor.get_option_description(option_type) <<")  [" <<sensor.get_option_range(option_type).min <<',' <<sensor.get_option_range(option_type).max<<']';
       }
     }
+#endif
     if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"RGB Camera")){
       if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
         sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
@@ -50,10 +52,11 @@ void RealSenseThread::open(){
       }
       if(sensor.supports(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE)){
         sensor.set_option(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, 0);
-        sensor.set_option(RS2_OPTION_WHITE_BALANCE, 4000.);
+        sensor.set_option(RS2_OPTION_WHITE_BALANCE, 8000.);
         LOG(1) <<"  I disabled auto white balance";
       }
     }
+#if 0 //crashes with long cable
     if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")){
       if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
         sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
@@ -61,6 +64,7 @@ void RealSenseThread::open(){
         LOG(1) <<"  I disabled auto exposure";
       }
     }
+#endif
   }
 
   //-- info on all streams
@@ -100,6 +104,7 @@ void RealSenseThread::step(){
   }
 
   rs2::frameset processed = s->align->process(data);
+//  rs2::frameset processed = data;
 
   rs2::depth_frame rs_depth = processed.get_depth_frame(); // Find and colorize the depth data
   rs2::video_frame rs_color = processed.get_color_frame();            // Find the color data
@@ -114,7 +119,7 @@ void RealSenseThread::step(){
     depthSet->resize(rs_depth.get_height(), rs_depth.get_width());
     for(uint y=0;y<depthSet->d0;y++) for(uint x=0;x<depthSet->d1;x++){
       float d = rs_depth.get_distance(x,y);
-      if(d>1.) d=1.;
+      if(d>2.) d=2.;
       depthSet->operator()(y,x) = d;
     }
   }
