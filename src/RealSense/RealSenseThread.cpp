@@ -111,7 +111,8 @@ void RealSenseThread::step(){
 
 
   rs2::depth_frame rs_depth2 = s->temp_filter.process(rs_depth);
-  rs_depth = s->hole_filter.process(rs_depth2);
+  rs_depth = rs_depth2;
+//  rs_depth = s->hole_filter.process(rs_depth2);
 
 #if 1
   {
