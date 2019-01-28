@@ -17,4 +17,6 @@ struct RealSenseThread : Thread {
   void open();
   void close();
   void step();
+
+  arr getFxypxy(){ return depth_fxypxy; }
 };
