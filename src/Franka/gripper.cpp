@@ -1,12 +1,19 @@
 #include <franka/gripper.h>
 #include "gripper.h"
 
-FrankaGripper::FrankaGripper(){
-  gripper = make_shared<franka::Gripper>("172.16.0.2");
+const char *gripperIpAddresses[2] = {"172.16.0.2", "172.17.0.2"};
+
+FrankaGripper::FrankaGripper(uint whichRobot){
+  //-- choose robot/ipAddress
+  CHECK_LE(whichRobot, 1, "");
+  gripper = make_shared<franka::Gripper>(gripperIpAddresses[whichRobot]);
   franka::GripperState gripper_state = gripper->readOnce();
   maxWidth = gripper_state.max_width;
   LOG(0) <<"gripper max width:" <<maxWidth;
-  if(maxWidth<.05) homing();
+  if(maxWidth<.05){
+    LOG(0) <<" -- no reasonable value -> homing gripper";
+    homing();
+  }
 }
 
 void FrankaGripper::homing(){

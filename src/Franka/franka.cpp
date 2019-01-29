@@ -5,13 +5,30 @@
 
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
-FrankaThread::FrankaThread(Var<CtrlMsg>& _ctrl, Var<CtrlMsg>& _state)
+const char *frankaIpAddresses[2] = {"172.16.0.2", "172.17.0.2"};
+
+FrankaThread::FrankaThread(Var<CtrlMsg>& _ctrl, Var<CtrlMsg>& _state, uint whichRobot, const uintA& _qIndices)
   : Thread("FrankaThread"),
     ctrl(_ctrl),
-    state(_state) {
+    state(_state),
+    qIndices(_qIndices){
+  if(qIndices.N){
+    CHECK_EQ(qIndices.N, 7, "");
+    qIndices_max = qIndices.max();
+  }
+
+  //-- basic Kp Kd settings
+  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", ARR(15., 10., 8., 10., 40., 30., 60.));
+  Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", ARR(.7, .7, .5, .5, .3, .3, .0));
+  LOG(0) <<"FRANKA: Kp_freq=" <<Kp_freq <<" Kd_ratio=" <<Kd_ratio;
+
+  //-- choose robot/ipAddress
+  CHECK_LE(whichRobot, 1, "");
+  ipAddress = frankaIpAddresses[whichRobot];
+
+  //-- start thread and wait for first state signal
   threadStep();  //this is not looping! The step method passes a callback to robot.control, which is blocking until stop becomes true
-  state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
-  ctrl.set()->q = state.get()->q;
+  while(firstTime) rai::wait(.01);
 }
 
 FrankaThread::~FrankaThread(){
@@ -22,7 +39,7 @@ FrankaThread::~FrankaThread(){
 
 void FrankaThread::step(){
   // connect to robot
-  franka::Robot robot("172.16.0.2");
+  franka::Robot robot(ipAddress);
 
   //setDefaultBehavior:
   robot.setCollisionBehavior(
@@ -56,15 +73,46 @@ void FrankaThread::step(){
     //publish state
     {
       auto stateset = state.set();
-      stateset->q = q;
-      stateset->qdot = qdot;
+      if(!qIndices.N){
+        stateset->q = q;
+        stateset->qdot = qdot;
+      }else{
+        while(stateset->q.N<=qIndices_max) stateset->q.append(0.);
+        while(stateset->qdot.N<=qIndices_max) stateset->qdot.append(0.);
+        for(uint i=0;i<7;i++){
+          stateset->q(qIndices(i)) = q(i);
+          stateset->qdot(qIndices(i)) = qdot(i);
+        }
+      }
+    }
+
+    //in the very first loop, only set the refernce equal to state, nothing else
+    if(firstTime){
+      auto ref = ctrl.set();
+      if(!qIndices.N){
+        ref->q = q;
+      }else{
+        while(ref->q.N<=qIndices_max) ref->q.append(0.);
+        for(uint i=0;i<7;i++){
+          ref->q(qIndices(i)) = q(i);
+        }
+      }
+      firstTime=false;
+      return std::array<double, 7>({0., 0., 0., 0., 0., 0., 0.});
     }
 
     //-- get current ctrl
     arr q_ref, qdd_des, P_compliance;
     {
       auto ref = ctrl.get();
-      q_ref = ref->q;
+      if(!qIndices.N){
+        q_ref = ref->q;
+      }else{
+        if(q_ref.N!=7) q_ref.resize(7);
+        for(uint i=0;i<7;i++){
+          q_ref(i) = ref->q(qIndices(i));
+        }
+      }
       P_compliance = ref->P_compliance;
       qdd_des = zeros(7);
     }
@@ -82,11 +130,19 @@ void FrankaThread::step(){
     }
 
     //-- compute desired torques
-    double k_p=50., k_d=3.;
-    naturalGains(k_p, k_d, .2, .8);
+    arr Kp(7), Kd(7);
+    CHECK_EQ(Kp.N, 7,"");
+    CHECK_EQ(Kd.N, 7,"");
+    CHECK_EQ(Kp_freq.N, 7,"");
+    CHECK_EQ(Kd_ratio.N, 7,"");
+    for(uint i=0;i<7;i++){
+      double freq = Kp_freq(i);
+      Kp(i) = freq*freq;
+      Kd(i) = 2.*Kd_ratio(i)*freq;
+    }
 
     if(q_ref.N==7){
-      qdd_des += k_p * (q_ref - q) - k_d * qdot;
+      qdd_des += Kp % (q_ref - q) - Kd % qdot;
     }
 
     if(P_compliance.N) qdd_des = P_compliance * qdd_des;

@@ -10,7 +10,7 @@ struct FrankaGripper {
   ptr<franka::Gripper> gripper;
   double maxWidth;
 
-  FrankaGripper();
+  FrankaGripper(uint whichRobot=0);
 
   void homing();
 
