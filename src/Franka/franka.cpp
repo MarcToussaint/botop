@@ -18,8 +18,8 @@ FrankaThread::FrankaThread(Var<CtrlMsg>& _ctrl, Var<CtrlMsg>& _state, uint which
   }
 
   //-- basic Kp Kd settings
-  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", ARR(15., 10., 8., 10., 40., 30., 60.));
-  Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", ARR(.7, .7, .5, .5, .3, .3, .0));
+  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", ARR(15., 15., 15., 10., 5., 5., 3.));
+  Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", ARR(.8, .8, .7, .7, .1, .1, .1));
   LOG(0) <<"FRANKA: Kp_freq=" <<Kp_freq <<" Kd_ratio=" <<Kd_ratio;
 
   //-- choose robot/ipAddress
@@ -41,18 +41,8 @@ void FrankaThread::step(){
   // connect to robot
   franka::Robot robot(ipAddress);
 
-  //setDefaultBehavior:
-  robot.setCollisionBehavior(
-  {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-  {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 10.0}},
-  {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}}, {{20.0, 20.0, 20.0, 20.0, 20.0, 20.0}},
-  {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}}, {{10.0, 10.0, 10.0, 10.0, 10.0, 10.0}});
-  robot.setJointImpedance({{3000, 3000, 3000, 2500, 2500, 2000, 2000}});
-  robot.setCartesianImpedance({{3000, 3000, 3000, 300, 300, 300}});
-
   // load the kinematics and dynamics model
   franka::Model model = robot.loadModel();
-  //    franka::RobotState initial_state = robot.readOnce();
 
   // set collision behavior
   robot.setCollisionBehavior({{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
@@ -60,10 +50,36 @@ void FrankaThread::step(){
   {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
   {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
+  // initialize state and ctrl with first state
+  {
+    franka::RobotState initial_state = robot.readOnce();
+    arr q, qdot;
+    q.setCarray(initial_state.q.begin(), initial_state.q.size());
+    qdot.setCarray(initial_state.dq.begin(), initial_state.dq.size());
+
+    auto stateset = state.set();
+    auto ref = ctrl.set();
+    if(!qIndices.N){
+      stateset->q = q;
+      stateset->qdot = qdot;
+      ref->q = q;
+    }else{
+      while(stateset->q.N<=qIndices_max) stateset->q.append(0.);
+      while(stateset->qdot.N<=qIndices_max) stateset->qdot.append(0.);
+      while(ref->q.N<=qIndices_max) ref->q.append(0.);
+      for(uint i=0;i<7;i++){
+        stateset->q(qIndices(i)) = q(i);
+        stateset->qdot(qIndices(i)) = qdot(i);
+        ref->q(qIndices(i)) = q(i);
+      }
+    }
+  }
+
+
 
   // define callback for the torque control loop
   std::function<franka::Torques(const franka::RobotState&, franka::Duration)>
-      impedance_control_callback = [&](const franka::RobotState& robot_state,
+      torque_control_callback = [&](const franka::RobotState& robot_state,
                                    franka::Duration /*duration*/) -> franka::Torques {
 
     //-- get current state
@@ -77,28 +93,11 @@ void FrankaThread::step(){
         stateset->q = q;
         stateset->qdot = qdot;
       }else{
-        while(stateset->q.N<=qIndices_max) stateset->q.append(0.);
-        while(stateset->qdot.N<=qIndices_max) stateset->qdot.append(0.);
         for(uint i=0;i<7;i++){
           stateset->q(qIndices(i)) = q(i);
           stateset->qdot(qIndices(i)) = qdot(i);
         }
       }
-    }
-
-    //in the very first loop, only set the refernce equal to state, nothing else
-    if(firstTime){
-      auto ref = ctrl.set();
-      if(!qIndices.N){
-        ref->q = q;
-      }else{
-        while(ref->q.N<=qIndices_max) ref->q.append(0.);
-        for(uint i=0;i<7;i++){
-          ref->q(qIndices(i)) = q(i);
-        }
-      }
-      firstTime=false;
-      return std::array<double, 7>({0., 0., 0., 0., 0., 0., 0.});
     }
 
     //-- get current ctrl
@@ -116,6 +115,8 @@ void FrankaThread::step(){
       P_compliance = ref->P_compliance;
       qdd_des = zeros(7);
     }
+
+    firstTime=false;
 
     //check for correct ctrl otherwise do something...
     if(q_ref.N!=7){
@@ -147,11 +148,15 @@ void FrankaThread::step(){
 
     if(P_compliance.N) qdd_des = P_compliance * qdd_des;
 
+#if 0
     arr M;
     M.setCarray(model.mass(robot_state).begin(), 49);
     M.reshape(7,7);
 
     arr u = M * qdd_des;
+#else
+    arr u = qdd_des;
+#endif
 
     if(P_compliance.N) u = P_compliance * u;
 
@@ -163,5 +168,5 @@ void FrankaThread::step(){
   };
 
   // start real-time control loop
-  robot.control(impedance_control_callback);
+  robot.control(torque_control_callback);
 }
