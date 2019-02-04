@@ -1,12 +1,13 @@
 #pragma once
 
 #include <Core/util.h>
+#include <Core/thread.h>
 
 namespace franka{
   class Gripper;
 }
 
-struct FrankaGripper {
+struct FrankaGripper : Thread{
   ptr<franka::Gripper> gripper;
   double maxWidth;
 

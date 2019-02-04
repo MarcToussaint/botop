@@ -25,12 +25,12 @@ private:
 
 
 
-struct GripperEmulator {
-    double q;
+struct GripperEmulator : Thread{
+  double q;
 
-    GripperEmulator() : q(.02) {}
+  GripperEmulator() : Thread("GripperEmulator"), q(.02) {}
 
-    void calibrate() {}
+  void calibrate() {}
 
   bool open(double width=.075, //which is 7.5cm
             double speed=.2) { q=width;  return true; }
