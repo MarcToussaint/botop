@@ -13,9 +13,14 @@ inline byteA franka_getFrameMaskMap(const rai::KinematicWorld& K){
   byteA frameMaskMap(K.frames.N); //map each frame in the image to a mask byte (here just 0 or 0xff)
   frameMaskMap.setZero();
   for(rai::Frame *f:K.frames){
-    if(f->shape && f->shape->visual && f->name!="table"){
-      frameMaskMap(f->ID)=0xff;
-      cout <<f->ID <<' ' <<f->name <<endl;
+    if(f->shape && f->shape->visual){
+      if(f->getUpwardLink()->name.startsWith("L_")){
+        frameMaskMap(f->ID)=0x80;
+      }
+      if(f->getUpwardLink()->name.startsWith("R_")){
+        frameMaskMap(f->ID)=0x8f;
+      }
+      cout <<f->ID <<' ' <<f->name <<' ' <<frameMaskMap(f->ID) <<endl;
     }
   }
   return frameMaskMap;

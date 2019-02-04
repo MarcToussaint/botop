@@ -16,8 +16,10 @@ struct sRealSenseThread{
   rs2::hole_filling_filter hole_filter;
 };
 
-RealSenseThread::RealSenseThread()
-  : Thread("RealSenseThread"){
+RealSenseThread::RealSenseThread(const Var<byteA>& _color, const Var<floatA>& _depth)
+  : Thread("RealSenseThread"),
+    color(this, _color),
+    depth(this, _depth){
   threadLoop();
 }
 
@@ -47,12 +49,12 @@ void RealSenseThread::open(){
     if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"RGB Camera")){
       if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
         sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
-        sensor.set_option(RS2_OPTION_EXPOSURE, 500.);
+        sensor.set_option(RS2_OPTION_EXPOSURE, 100.);
         LOG(1) <<"  I disabled auto exposure";
       }
       if(sensor.supports(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE)){
         sensor.set_option(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, 0);
-        sensor.set_option(RS2_OPTION_WHITE_BALANCE, 8000.);
+        sensor.set_option(RS2_OPTION_WHITE_BALANCE, 4500.);
         LOG(1) <<"  I disabled auto white balance";
       }
     }

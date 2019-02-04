@@ -12,6 +12,8 @@
 #include <Franka/gripper.h>
 #include <Franka/help.h>
 
+#include <RealSense/RealSenseThread.h>
+
 #include <Perception/perceptViewer.h>
 #include <Perception/perceptSyncer.h>
 
@@ -22,6 +24,7 @@ LGPop::LGPop(bool _simulationMode)
 
   rawModel.addFile("../../model/pandaStation.g");
   rawModel.optimizeTree();
+  q_home = rawModel.getJointState();
 
   ctrl_config.set() = rawModel;
 
@@ -52,29 +55,33 @@ void LGPop::runRobotControllers(){
   }
 }
 
-void LGPop::runTaskController(bool views){
+void LGPop::runTaskController(int verbose){
   ptr<Thread> TC = make_shared<TaskControlThread>(ctrl_config, ctrl_ref, ctrl_state, ctrl_tasks);
   processes.append(TC);
-  if(views){
+  if(verbose){
     ptr<Thread> view = make_shared<KinViewer>(ctrl_config, .1);
     processes.append(view);
   }
 }
 
-void LGPop::runCamera(bool views){
+void LGPop::runCamera(int verbose){
   if(!simulationMode){
-    NIY;
+    auto cam = make_shared<RealSenseThread>(cam_color, cam_depth);
+    cam_depth.waitForNextRevision();
+    cam_Fxypxy.set() = cam->depth_fxypxy;
+    processes.append(std::dynamic_pointer_cast<Thread>(cam));
   }else{
     auto cam = make_shared<rai::Sim_CameraView>(ctrl_config, cam_color, cam_depth, .05, "camera");
     auto sen = cam->C.currentSensor;
     cam_Fxypxy.set() = ARR(sen->cam.focalLength*sen->height, sen->cam.focalLength*sen->height, .5*sen->width, .5*sen->height);
     processes.append(std::dynamic_pointer_cast<Thread>(cam));
   }
-  if(views){
+  if(verbose){
     cam_color.name() = "cam_color";
-    ptr<Thread> view = make_shared<ImageViewer>(cam_color, .1);
-//    ptr<Thread> view = make_shared<ImageViewer>(cam_depth, .1);
-    processes.append(view);
+    ptr<Thread> view1 = make_shared<ImageViewer>(cam_color, .1);
+    cam_depth.name() = "cam_depth";
+    ptr<Thread> view2 = make_shared<ImageViewerFloat>(cam_depth, .1, 128.f);
+    processes.append({view1, view2});
   }
 }
 
@@ -96,9 +103,11 @@ void LGPop::runPerception(int verbose){
   //-- percept filter and integration in model
   ptr<Thread> filter = make_shared<SyncFiltered> (percepts, ctrl_config);
   filter->name="syncer";
-  ptr<Thread> view = make_shared<PerceptViewer>(percepts, ctrl_config);
-  ptr<Thread> view2 = make_shared<KinViewer>(ctrl_config);
-  processes.append({filter, view, view2});
+  if(verbose){
+    ptr<Thread> view = make_shared<PerceptViewer>(percepts, ctrl_config);
+    ptr<Thread> view2 = make_shared<KinViewer>(ctrl_config);
+    processes.append({filter, view, view2});
+  }
 }
 
 void LGPop::pauseProcess(const char* name, bool resume){

@@ -11,6 +11,7 @@
 struct LGPop{
   bool simulationMode;
   rai::KinematicWorld rawModel;
+  arr q_home;
 
   //-- Variables
   Var<rai::KinematicWorld> ctrl_config; //real-synced configuration
@@ -40,8 +41,8 @@ struct LGPop{
 
   //-- running processes
   void runRobotControllers();
-  void runTaskController(bool views=false);
-  void runCamera(bool views=true);
+  void runTaskController(int verbose=1);
+  void runCamera(int verbose=1);
   void runPerception(int verbose=0);
   void runCalibration();
 

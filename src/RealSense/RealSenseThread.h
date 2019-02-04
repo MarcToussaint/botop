@@ -7,12 +7,11 @@ namespace rs2 { class pipeline; }
 
 struct RealSenseThread : Thread {
   struct sRealSenseThread *s=0;
-  Var<floatA> depth;
-//  Var<arr> points;
   Var<byteA> color;
+  Var<floatA> depth;
   arr depth_fxypxy, color_fxypxy;
 
-  RealSenseThread();
+  RealSenseThread(const Var<byteA>& _color, const Var<floatA>& _depth);
   ~RealSenseThread();
   void open();
   void close();
