@@ -10,7 +10,7 @@ const char *frankaIpAddresses[2] = {"172.16.0.2", "172.17.0.2"};
 FrankaThread::FrankaThread(Var<CtrlMsg>& _ctrl, Var<CtrlMsg>& _state, uint whichRobot, const uintA& _qIndices)
   : Thread("FrankaThread"),
     ctrl(_ctrl),
-    state(_state),
+    ctrl_state(_state),
     qIndices(_qIndices){
   if(qIndices.N){
     CHECK_EQ(qIndices.N, 7, "");
@@ -57,20 +57,23 @@ void FrankaThread::step(){
     q.setCarray(initial_state.q.begin(), initial_state.q.size());
     qdot.setCarray(initial_state.dq.begin(), initial_state.dq.size());
 
-    auto stateset = state.set();
+    auto stateset = ctrl_state.set();
     auto ref = ctrl.set();
     if(!qIndices.N){
       stateset->q = q;
       stateset->qdot = qdot;
       ref->q = q;
+      ref->qdot = zeros(q.N);
     }else{
       while(stateset->q.N<=qIndices_max) stateset->q.append(0.);
       while(stateset->qdot.N<=qIndices_max) stateset->qdot.append(0.);
       while(ref->q.N<=qIndices_max) ref->q.append(0.);
+      while(ref->qdot.N<=qIndices_max) ref->qdot.append(0.);
       for(uint i=0;i<7;i++){
         stateset->q(qIndices(i)) = q(i);
         stateset->qdot(qIndices(i)) = qdot(i);
         ref->q(qIndices(i)) = q(i);
+        ref->qdot(qIndices(i)) = 0.;
       }
     }
   }
@@ -82,34 +85,42 @@ void FrankaThread::step(){
       torque_control_callback = [&](const franka::RobotState& robot_state,
                                    franka::Duration /*duration*/) -> franka::Torques {
 
+    steps++;
+
     //-- get current state
-    arr q, qdot;
+    arr q, qdot, torques;
     q.setCarray(robot_state.q.begin(), robot_state.q.size());
     qdot.setCarray(robot_state.dq.begin(), robot_state.dq.size());
+    torques.setCarray(robot_state.tau_ext_hat_filtered.begin(), robot_state.tau_ext_hat_filtered.size());
     //publish state
     {
-      auto stateset = state.set();
+      auto stateset = ctrl_state.set();
       if(!qIndices.N){
         stateset->q = q;
         stateset->qdot = qdot;
+        stateset->u_bias = torques;
       }else{
         for(uint i=0;i<7;i++){
           stateset->q(qIndices(i)) = q(i);
           stateset->qdot(qIndices(i)) = qdot(i);
+          stateset->u_bias(qIndices(i)) = torques(i);
         }
       }
     }
 
     //-- get current ctrl
-    arr q_ref, qdd_des, P_compliance;
+    arr q_ref, qdot_ref, qdd_des, P_compliance;
     {
       auto ref = ctrl.get();
       if(!qIndices.N){
         q_ref = ref->q;
+        qdot_ref = ref->qdot;
       }else{
         if(q_ref.N!=7) q_ref.resize(7);
+        if(qdot_ref.N!=7) qdot_ref.resize(7);
         for(uint i=0;i<7;i++){
           q_ref(i) = ref->q(qIndices(i));
+          qdot_ref(i) = ref->qdot(qIndices(i));
         }
       }
       P_compliance = ref->P_compliance;
@@ -142,11 +153,16 @@ void FrankaThread::step(){
       Kd(i) = 2.*Kd_ratio(i)*freq;
     }
 
-    if(q_ref.N==7){
-      qdd_des += Kp % (q_ref - q) - Kd % qdot;
+    if(P_compliance.N){
+      Kp = P_compliance * (Kp % P_compliance);
+    }else{
+      Kp = diag(Kp);
     }
 
-    if(P_compliance.N) qdd_des = P_compliance * qdd_des;
+    if(q_ref.N==7){
+      qdd_des += Kp * (q_ref - q) + Kd % (qdot_ref - qdot);
+//      if(!(steps%50)) cout <<"dot_ref" <<qdot_ref <<endl;
+    }
 
 #if 0
     arr M;
@@ -158,7 +174,7 @@ void FrankaThread::step(){
     arr u = qdd_des;
 #endif
 
-    if(P_compliance.N) u = P_compliance * u;
+//    if(P_compliance.N) u = P_compliance * u;
 
     std::array<double, 7> u_array = {0., 0., 0., 0., 0., 0., 0.};
     std::copy(u.begin(), u.end(), u_array.begin());

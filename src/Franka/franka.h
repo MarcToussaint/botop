@@ -6,12 +6,13 @@
 
 struct FrankaThread : Thread{
   Var<CtrlMsg> ctrl;
-  Var<CtrlMsg> state;
+  Var<CtrlMsg> ctrl_state;
   bool stop=false, firstTime=true;
   arr Kp_freq, Kd_ratio;
   const char* ipAddress;
   uintA qIndices;
   uint qIndices_max=0;
+  uint steps=0;
 
   FrankaThread(Var<CtrlMsg>& _ctrl, Var<CtrlMsg>& _state, uint whichRobot=0, const uintA& _qIndices={});
   ~FrankaThread();
