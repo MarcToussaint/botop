@@ -20,7 +20,7 @@ inline byteA franka_getFrameMaskMap(const rai::KinematicWorld& K){
       if(f->getUpwardLink()->name.startsWith("R_")){
         frameMaskMap(f->ID)=0x8f;
       }
-      cout <<f->ID <<' ' <<f->name <<' ' <<frameMaskMap(f->ID) <<endl;
+//      cout <<f->ID <<' ' <<f->name <<' ' <<frameMaskMap(f->ID) <<endl;
     }
   }
   return frameMaskMap;

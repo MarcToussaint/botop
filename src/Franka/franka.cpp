@@ -67,11 +67,13 @@ void FrankaThread::step(){
     }else{
       while(stateset->q.N<=qIndices_max) stateset->q.append(0.);
       while(stateset->qdot.N<=qIndices_max) stateset->qdot.append(0.);
+      while(stateset->u_bias.N<=qIndices_max) stateset->u_bias.append(0.);
       while(ref->q.N<=qIndices_max) ref->q.append(0.);
       while(ref->qdot.N<=qIndices_max) ref->qdot.append(0.);
       for(uint i=0;i<7;i++){
         stateset->q(qIndices(i)) = q(i);
         stateset->qdot(qIndices(i)) = qdot(i);
+        stateset->u_bias(qIndices(i)) = 0.;
         ref->q(qIndices(i)) = q(i);
         ref->qdot(qIndices(i)) = 0.;
       }

@@ -69,6 +69,8 @@ void LGPop::runCamera(int verbose){
     auto cam = make_shared<RealSenseThread>(cam_color, cam_depth);
     cam_depth.waitForNextRevision();
     cam_Fxypxy.set() = cam->depth_fxypxy;
+    cout <<"RS calib=" <<cam_Fxypxy.get()() <<endl;
+    cam_Fxypxy.set() = ARR(914.905, 914.905, 322.497, 227.815);
     processes.append(std::dynamic_pointer_cast<Thread>(cam));
   }else{
     auto cam = make_shared<rai::Sim_CameraView>(ctrl_config, cam_color, cam_depth, .05, "camera");
@@ -96,18 +98,18 @@ void LGPop::runPerception(int verbose){
 
   //-- big OpenCV process that generates basic percepts
   ptr<Thread> opencv =
-      make_shared<CV_BackgroundSubstraction_Thread>(percepts, cam_color, cam_depth, model_segments, cam_pose, cam_Fxypxy, verbose);
+      make_shared<CV_BackgroundSubstraction_Thread>(filter_depth, percepts, cam_color, cam_depth, model_segments, cam_pose, cam_Fxypxy, verbose);
   opencv->name="name";
   processes.append(opencv);
 
   //-- percept filter and integration in model
-  ptr<Thread> filter = make_shared<SyncFiltered> (percepts, ctrl_config);
-  filter->name="syncer";
-  if(verbose){
-    ptr<Thread> view = make_shared<PerceptViewer>(percepts, ctrl_config);
-    ptr<Thread> view2 = make_shared<KinViewer>(ctrl_config);
-    processes.append({filter, view, view2});
-  }
+//  ptr<Thread> filter = make_shared<SyncFiltered> (percepts, ctrl_config);
+//  filter->name="syncer";
+//  if(verbose){
+//    ptr<Thread> view = make_shared<PerceptViewer>(percepts, ctrl_config);
+//    ptr<Thread> view2 = make_shared<KinViewer>(ctrl_config);
+//    processes.append({filter, view, view2});
+//  }
 }
 
 void LGPop::pauseProcess(const char* name, bool resume){

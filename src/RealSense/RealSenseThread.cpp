@@ -7,6 +7,7 @@ float get_depth_scale(rs2::device dev);
 rs2_stream find_stream_to_align(const std::vector<rs2::stream_profile>& streams);
 
 struct sRealSenseThread{
+  std::shared_ptr<rs2::config> cfg;
   std::shared_ptr<rs2::pipeline> pipe;
   std::shared_ptr<rs2::align> align;
   float depth_scale;
@@ -29,9 +30,14 @@ RealSenseThread::~RealSenseThread(){
 
 void RealSenseThread::open(){
   s = new sRealSenseThread;
+
+  s->cfg = std::make_shared<rs2::config>();
+  s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 424, 240, rs2_format::RS2_FORMAT_RGB8, 0);
+  s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 480, 270, rs2_format::RS2_FORMAT_Z16, 15);
+
   rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
   s->pipe = std::make_shared<rs2::pipeline>();
-  s->pipe->start();
+  s->pipe->start(*s->cfg);
   rs2::pipeline_profile profile = s->pipe->get_active_profile();
 
   //-- info on all sensors of the device

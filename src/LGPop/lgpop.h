@@ -27,6 +27,7 @@ struct LGPop{
   Var<byteA> model_segments; //output of model camera (segment IDs)
   Var<floatA> model_depth;   //output of model camera (segment IDs)
 
+  Var<floatA> filter_depth; //background filtered depth
   Var<PerceptL> percepts; //percepts
 
 
