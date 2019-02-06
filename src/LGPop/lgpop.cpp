@@ -25,10 +25,14 @@ LGPop::LGPop(bool _simulationMode)
   rawModel.addFile("../../model/pandaStation.g");
   rawModel.optimizeTree();
   q_home = rawModel.getJointState();
+  Q0_leftArm = rawModel["L_panda_link0"]->Q;
+  Q0_rightArm = rawModel["R_panda_link0"]->Q;
 
   ctrl_config.set() = rawModel;
 
   cam_pose.set() = rawModel["camera"]->X.getArr7d();
+
+  armPoseCalib.set() = zeros(2,6);
 
   {
     auto set = ctrl_state.set();
@@ -124,5 +128,25 @@ void LGPop::reportCycleTimes(){
   cout <<"Cycle times for all Threads (msec):" <<endl;
   for(ptr<Thread>& thread: processes) {
     cout <<std::setw(30) <<thread->name <<" : " <<thread->timer.report() <<endl;
+  }
+}
+
+void LGPop::updateArmPoseCalibInModel(){
+  arr calib = armPoseCalib.get();
+
+  {
+    cout <<"HERE" <<calib <<endl;
+    auto Kset = ctrl_config.set();
+    rai::Frame *f = Kset->getFrameByName("L_panda_link0");
+//    f->Q = Q0_leftArm;
+//    cout <<"X before:" <<f->X <<endl;
+    f->Q.pos.x += calib(0,0);
+    f->Q.pos.y += calib(0,1);
+    f->Q.pos.z += calib(0,2);
+    Kset->calc_fwdPropagateFrames();
+//    cout <<"X after:" <<f->X <<endl;
+//  Q0_rightArm = rawModel["R_panda_link0"]->Q;
+
+//    FILE("z.KIN") <<Kset();
   }
 }

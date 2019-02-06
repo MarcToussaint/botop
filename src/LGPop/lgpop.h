@@ -12,6 +12,7 @@ struct LGPop{
   bool simulationMode;
   rai::KinematicWorld rawModel;
   arr q_home;
+  rai::Transformation Q0_leftArm, Q0_rightArm;
 
   //-- Variables
   Var<rai::KinematicWorld> ctrl_config; //real-synced configuration
@@ -26,6 +27,8 @@ struct LGPop{
 
   Var<byteA> model_segments; //output of model camera (segment IDs)
   Var<floatA> model_depth;   //output of model camera (segment IDs)
+
+  Var<arr> armPoseCalib; //(2x6 matrix: (dx,dy,dz, rx,ry,rz) (with trans and infinitesimal rot; for both arms)
 
   Var<floatA> filter_depth; //background filtered depth
   Var<PerceptL> percepts; //percepts
@@ -51,6 +54,8 @@ struct LGPop{
 
 
   void reportCycleTimes();
+
+  void updateArmPoseCalibInModel();
 
 };
 
