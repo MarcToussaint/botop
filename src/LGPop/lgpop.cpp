@@ -18,6 +18,7 @@
 #include <Perception/perceptSyncer.h>
 
 #include <BackgroundSubtraction/cv_depth_backgroundSubstraction.h>
+#include <BackgroundSubtraction/explainPixels.h>
 
 LGPop::LGPop(bool _simulationMode)
   : simulationMode(_simulationMode){
@@ -63,6 +64,7 @@ void LGPop::runTaskController(int verbose){
   ptr<Thread> TC = make_shared<TaskControlThread>(ctrl_config, ctrl_ref, ctrl_state, ctrl_tasks);
   processes.append(TC);
   if(verbose){
+    ctrl_config.name() = "ctrl_config";
     ptr<Thread> view = make_shared<KinViewer>(ctrl_config, .1);
     processes.append(view);
   }
@@ -77,7 +79,7 @@ void LGPop::runCamera(int verbose){
     cam_Fxypxy.set() = ARR(914.905, 914.905, 322.497, 227.815);
     processes.append(std::dynamic_pointer_cast<Thread>(cam));
   }else{
-    auto cam = make_shared<rai::Sim_CameraView>(ctrl_config, cam_color, cam_depth, .05, "camera");
+    auto cam = make_shared<rai::Sim_CameraView>(ctrl_config, cam_color, cam_depth, .1, "camera");
     auto sen = cam->C.currentSensor;
     cam_Fxypxy.set() = ARR(sen->cam.focalLength*sen->height, sen->cam.focalLength*sen->height, .5*sen->width, .5*sen->height);
     processes.append(std::dynamic_pointer_cast<Thread>(cam));
@@ -96,15 +98,25 @@ void LGPop::runPerception(int verbose){
   byteA frameIDmap = franka_getFrameMaskMap(rawModel);
   ptr<Thread> masker = make_shared<rai::Sim_CameraView>(ctrl_config, model_segments, model_depth,
                                                         .05, "camera", true, frameIDmap);
-  model_segments.name()="model_segments";
-  ptr<Thread> viewer = make_shared<ImageViewer>(model_segments);
-  processes.append({masker, viewer});
+  processes.append(masker);
+  if(verbose>0){
+    model_segments.name()="model_segments";
+    ptr<Thread> viewer = make_shared<ImageViewer>(model_segments);
+    processes.append(viewer);
+  }
 
   //-- big OpenCV process that generates basic percepts
+#if 0
   ptr<Thread> opencv =
-      make_shared<CV_BackgroundSubstraction_Thread>(filter_depth, percepts, cam_color, cam_depth, model_segments, cam_pose, cam_Fxypxy, verbose);
-  opencv->name="name";
+      make_shared<CV_BackgroundSubstraction_Thread>(percepts, cam_color, cam_depth, model_segments, cam_pose, cam_Fxypxy, verbose);
+  opencv->name="opencv";
   processes.append(opencv);
+#else
+  ptr<Thread> explainPixels =
+      make_shared<ExplainPixelsThread>(percepts, cam_color, cam_depth, model_segments, model_depth, cam_pose, cam_Fxypxy, verbose);
+  explainPixels->name="explainPixels";
+  processes.append(explainPixels);
+#endif
 
   //-- percept filter and integration in model
 //  ptr<Thread> filter = make_shared<SyncFiltered> (percepts, ctrl_config);

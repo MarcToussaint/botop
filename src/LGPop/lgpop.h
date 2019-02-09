@@ -30,7 +30,6 @@ struct LGPop{
 
   Var<arr> armPoseCalib; //(2x6 matrix: (dx,dy,dz, rx,ry,rz) (with trans and infinitesimal rot; for both arms)
 
-  Var<floatA> filter_depth; //background filtered depth
   Var<PerceptL> percepts; //percepts
 
 

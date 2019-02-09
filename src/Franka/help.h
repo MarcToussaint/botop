@@ -1,4 +1,5 @@
 #include <Kin/kin.h>
+#include <BackgroundSubtraction/explainPixels.h>
 
 inline uintA franka_getJointIndices(const rai::KinematicWorld& K, char L_or_R){
   StringA joints;
@@ -15,10 +16,10 @@ inline byteA franka_getFrameMaskMap(const rai::KinematicWorld& K){
   for(rai::Frame *f:K.frames){
     if(f->shape && f->shape->visual){
       if(f->getUpwardLink()->name.startsWith("L_")){
-        frameMaskMap(f->ID)=0x80;
+        frameMaskMap(f->ID)=PL_robot;
       }
       if(f->getUpwardLink()->name.startsWith("R_")){
-        frameMaskMap(f->ID)=0x8f;
+        frameMaskMap(f->ID)=PL_robot+1;
       }
 //      cout <<f->ID <<' ' <<f->name <<' ' <<frameMaskMap(f->ID) <<endl;
     }
