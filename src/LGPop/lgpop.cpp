@@ -17,8 +17,7 @@
 #include <Perception/perceptViewer.h>
 #include <Perception/perceptSyncer.h>
 
-#include <BackgroundSubtraction/cv_depth_backgroundSubstraction.h>
-#include <BackgroundSubtraction/explainPixels.h>
+#include <ExplainPixels/explainPixels.h>
 
 LGPop::LGPop(bool _simulationMode)
   : simulationMode(_simulationMode){
@@ -99,7 +98,7 @@ void LGPop::runPerception(int verbose){
   ptr<Thread> masker = make_shared<rai::Sim_CameraView>(ctrl_config, model_segments, model_depth,
                                                         .05, "camera", true, frameIDmap);
   processes.append(masker);
-  if(verbose>0){
+  if(verbose>1  ){
     model_segments.name()="model_segments";
     ptr<Thread> viewer = make_shared<ImageViewer>(model_segments);
     processes.append(viewer);
@@ -119,13 +118,13 @@ void LGPop::runPerception(int verbose){
 #endif
 
   //-- percept filter and integration in model
-//  ptr<Thread> filter = make_shared<SyncFiltered> (percepts, ctrl_config);
-//  filter->name="syncer";
-//  if(verbose){
-//    ptr<Thread> view = make_shared<PerceptViewer>(percepts, ctrl_config);
-//    ptr<Thread> view2 = make_shared<KinViewer>(ctrl_config);
-//    processes.append({filter, view, view2});
-//  }
+  ptr<Thread> filter = make_shared<SyncFiltered> (percepts, ctrl_config);
+  filter->name="syncer";
+  if(verbose){
+    ptr<Thread> view = make_shared<PerceptViewer>(percepts, ctrl_config);
+    ptr<Thread> view2 = make_shared<KinViewer>(ctrl_config);
+    processes.append({filter, view, view2});
+  }
 }
 
 void LGPop::pauseProcess(const char* name, bool resume){

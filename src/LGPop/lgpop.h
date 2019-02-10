@@ -44,8 +44,8 @@ struct LGPop{
 
   //-- running processes
   void runRobotControllers();
-  void runTaskController(int verbose=1);
-  void runCamera(int verbose=1);
+  void runTaskController(int verbose=0);
+  void runCamera(int verbose=0);
   void runPerception(int verbose=0);
   void runCalibration();
 

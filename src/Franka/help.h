@@ -1,5 +1,5 @@
 #include <Kin/kin.h>
-#include <BackgroundSubtraction/explainPixels.h>
+#include <ExplainPixels/labels;.h>
 
 inline uintA franka_getJointIndices(const rai::KinematicWorld& K, char L_or_R){
   StringA joints;
