@@ -1,5 +1,5 @@
 #include <Kin/kin.h>
-#include <ExplainPixels/labels;.h>
+#include <ExplainPixels/labels.h>
 
 inline uintA franka_getJointIndices(const rai::KinematicWorld& K, char L_or_R){
   StringA joints;
@@ -21,8 +21,27 @@ inline byteA franka_getFrameMaskMap(const rai::KinematicWorld& K){
       if(f->getUpwardLink()->name.startsWith("R_")){
         frameMaskMap(f->ID)=PL_robot+1;
       }
+      if(f->getUpwardLink()->name.startsWith("perc_")){
+        int id;
+        f->getUpwardLink()->name >>"perc_" >>id;
+        frameMaskMap(f->ID)=PixelLabel(PL_robot+id);
+      }
 //      cout <<f->ID <<' ' <<f->name <<' ' <<frameMaskMap(f->ID) <<endl;
     }
   }
   return frameMaskMap;
 }
+
+inline void franka_setFrameMaskMapLabels(rai::KinematicWorld& K){
+  for(rai::Frame *f:K.frames){
+    if(f->shape && f->shape->visual){
+      if(f->getUpwardLink()->name.startsWith("L_")){
+        f->ats.getNew<int>("label") = PL_robot;
+      }
+      if(f->getUpwardLink()->name.startsWith("R_")){
+        f->ats.getNew<int>("label") = PL_robot+1;
+      }
+    }
+  }
+}
+

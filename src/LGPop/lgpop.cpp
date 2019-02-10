@@ -79,8 +79,7 @@ void LGPop::runCamera(int verbose){
     processes.append(std::dynamic_pointer_cast<Thread>(cam));
   }else{
     auto cam = make_shared<rai::Sim_CameraView>(ctrl_config, cam_color, cam_depth, .1, "camera");
-    auto sen = cam->C.currentSensor;
-    cam_Fxypxy.set() = ARR(sen->cam.focalLength*sen->height, sen->cam.focalLength*sen->height, .5*sen->width, .5*sen->height);
+    cam_Fxypxy.set() = cam->getFxypxy();
     processes.append(std::dynamic_pointer_cast<Thread>(cam));
   }
   if(verbose){
@@ -94,14 +93,18 @@ void LGPop::runCamera(int verbose){
 
 void LGPop::runPerception(int verbose){
   //-- compute model view with robot mask and depth
-  byteA frameIDmap = franka_getFrameMaskMap(rawModel);
+  franka_setFrameMaskMapLabels(ctrl_config.set());
   ptr<Thread> masker = make_shared<rai::Sim_CameraView>(ctrl_config, model_segments, model_depth,
-                                                        .05, "camera", true, frameIDmap);
+                                                        .05, "camera", true);
   processes.append(masker);
-  if(verbose>1  ){
+  if(verbose>1){
     model_segments.name()="model_segments";
     ptr<Thread> viewer = make_shared<ImageViewer>(model_segments);
     processes.append(viewer);
+
+//    model_depth.name()="model_depth";
+//    ptr<Thread> viewer2 = make_shared<ImageViewerFloat>(model_depth);
+//    processes.append(viewer2);
   }
 
   //-- big OpenCV process that generates basic percepts
@@ -120,10 +123,11 @@ void LGPop::runPerception(int verbose){
   //-- percept filter and integration in model
   ptr<Thread> filter = make_shared<SyncFiltered> (percepts, ctrl_config);
   filter->name="syncer";
-  if(verbose){
+  processes.append(filter);
+  if(verbose>3){
     ptr<Thread> view = make_shared<PerceptViewer>(percepts, ctrl_config);
-    ptr<Thread> view2 = make_shared<KinViewer>(ctrl_config);
-    processes.append({filter, view, view2});
+    processes.append(view);
+//    ptr<Thread> view2 = make_shared<KinViewer>(ctrl_config);
   }
 }
 
