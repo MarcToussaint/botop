@@ -115,11 +115,12 @@ void LGPop::runPerception(int verbose){
   processes.append(opencv);
 #else
   ptr<Thread> explainPixels =
-      make_shared<ExplainPixelsThread>(percepts, cam_color, cam_depth, model_segments, model_depth, cam_pose, cam_Fxypxy, verbose);
+      make_shared<ExplainPixelsThread>(ctrl_config, cam_color, cam_depth, model_segments, model_depth, cam_pose, cam_Fxypxy, verbose);
   explainPixels->name="explainPixels";
   processes.append(explainPixels);
 #endif
 
+#if 0
   //-- percept filter and integration in model
   ptr<Thread> filter = make_shared<SyncFiltered> (percepts, ctrl_config);
   filter->name="syncer";
@@ -129,6 +130,7 @@ void LGPop::runPerception(int verbose){
     processes.append(view);
 //    ptr<Thread> view2 = make_shared<KinViewer>(ctrl_config);
   }
+#endif
 }
 
 void LGPop::pauseProcess(const char* name, bool resume){
