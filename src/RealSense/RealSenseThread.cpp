@@ -25,6 +25,7 @@ RealSenseThread::RealSenseThread(const Var<byteA>& _color, const Var<floatA>& _d
 }
 
 RealSenseThread::~RealSenseThread(){
+  LOG(0) <<"DTOR";
   threadClose();
 }
 
@@ -98,7 +99,9 @@ void RealSenseThread::open(){
 }
 
 void RealSenseThread::close(){
+  LOG(0) <<"STOPPING";
   s->pipe->stop();
+  rai::wait(.1);
   delete s;
 }
 

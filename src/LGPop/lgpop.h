@@ -43,7 +43,7 @@ struct LGPop{
   ~LGPop();
 
   //-- running processes
-  void runRobotControllers();
+  void runRobotControllers(bool simuMode=false);
   void runTaskController(int verbose=0);
   void runCamera(int verbose=0);
   void runPerception(int verbose=0);

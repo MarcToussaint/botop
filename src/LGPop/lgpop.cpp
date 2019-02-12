@@ -45,17 +45,17 @@ LGPop::~LGPop(){
   reportCycleTimes();
 }
 
-void LGPop::runRobotControllers(){
-  if(!simulationMode){
+void LGPop::runRobotControllers(bool simuMode){
+  if(simuMode || simulationMode){
+    ptr<Thread> F_emul = make_shared<ControlEmulator>(ctrl_ref, ctrl_state, rawModel);
+    ptr<Thread> G_emul = make_shared<GripperEmulator>();
+    processes.append({F_emul, G_emul});
+  }else{
     ptr<Thread> F_right = make_shared<FrankaThread>(ctrl_ref, ctrl_state, 0, franka_getJointIndices(rawModel,'R'));
     ptr<Thread> F_left =  make_shared<FrankaThread>(ctrl_ref, ctrl_state, 1, franka_getJointIndices(rawModel,'L'));
     ptr<Thread> G_right = make_shared<FrankaGripper>(0);
     ptr<Thread> G_left =  make_shared<FrankaGripper>(1);
     processes.append({F_right, F_left, G_right, G_left});
-  }else{
-    ptr<Thread> F_emul = make_shared<ControlEmulator>(ctrl_ref, ctrl_state, rawModel);
-    ptr<Thread> G_emul = make_shared<GripperEmulator>();
-    processes.append({F_emul, G_emul});
   }
 }
 
