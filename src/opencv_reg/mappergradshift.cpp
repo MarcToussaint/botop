@@ -57,11 +57,13 @@ MapperGradShift::~MapperGradShift()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 cv::Ptr<Map> MapperGradShift::calculate(
-    InputArray _img1, InputArray image2, cv::Ptr<Map> init) const
+    InputArray _img1, InputArray image2, InputArray _mask, cv::Ptr<Map> init) const
 {
     Mat img1 = _img1.getMat();
     Mat gradx, grady, imgDiff;
     Mat img2;
+
+    Mat mask = _mask.getMat();
 
     CV_DbgAssert(img1.size() == image2.size());
 
@@ -81,6 +83,12 @@ cv::Ptr<Map> MapperGradShift::calculate(
     // For each value in A, all the matrix elements are added and then the channels are also added,
     // so we have two calls to "sum". The result can be found in the first element of the final
     // Scalar object.
+
+    if(mask.total()){
+      gradx = gradx.mul(mask);
+      grady = grady.mul(mask);
+      imgDiff = imgDiff.mul(mask);
+    }
 
     A(0, 0) = sum(sum(gradx.mul(gradx)))[0];
     A(0, 1) = sum(sum(gradx.mul(grady)))[0];

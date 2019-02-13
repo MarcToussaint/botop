@@ -54,10 +54,11 @@ MapperPyramid::MapperPyramid(Ptr<Mapper> baseMapper)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-Ptr<Map> MapperPyramid::calculate(InputArray _img1, InputArray image2, Ptr<Map> init) const
+Ptr<Map> MapperPyramid::calculate(InputArray _img1, InputArray image2, InputArray _mask, Ptr<Map> init) const
 {
     Mat img1 = _img1.getMat();
     Mat img2;
+    Mat mask = _mask.getMat();
 
     if(!init.empty()) {
         // We have initial values for the registration: we move img2 to that initial reference
@@ -70,24 +71,28 @@ Ptr<Map> MapperPyramid::calculate(InputArray _img1, InputArray image2, Ptr<Map> 
     cv::Ptr<Map> ident = baseMapper_.getMap();
 
     // Precalculate pyramid images
-    vector<Mat> pyrIm1(numLev_), pyrIm2(numLev_);
+    vector<Mat> pyrIm1(numLev_), pyrIm2(numLev_), pyrMask(numLev_);
     pyrIm1[0] = img1;
     pyrIm2[0] = img2;
+    pyrMask[0] = mask;
     for(int im_i = 1; im_i < numLev_; ++im_i) {
         pyrDown(pyrIm1[im_i - 1], pyrIm1[im_i]);
         pyrDown(pyrIm2[im_i - 1], pyrIm2[im_i]);
+        if(mask.total())
+          pyrDown(pyrMask[im_i - 1], pyrMask[im_i]);
     }
 
-    Mat currRef, currImg;
+    Mat currRef, currImg, currMask;
     for(int lv_i = 0; lv_i < numLev_; ++lv_i) {
-        currRef = pyrIm1[numLev_ - 1 - lv_i];
-        currImg = pyrIm2[numLev_ - 1 - lv_i];
+        currRef  = pyrIm1[numLev_ - 1 - lv_i];
+        currImg  = pyrIm2[numLev_ - 1 - lv_i];
+        currMask = pyrMask[numLev_ - 1 - lv_i];
         // Scale the transformation as we are incresing the resolution in each iteration
         if(lv_i != 0) {
             ident->scale(2.);
         }
         for(int it_i = 0; it_i < numIterPerScale_; ++it_i) {
-            ident = baseMapper_.calculate(currRef, currImg, ident);
+            ident = baseMapper_.calculate(currRef, currImg, currMask, ident);
         }
     }
 

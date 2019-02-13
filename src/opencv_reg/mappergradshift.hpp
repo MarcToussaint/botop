@@ -55,7 +55,7 @@ public:
     CV_WRAP MapperGradShift();
     virtual ~MapperGradShift();
 
-    CV_WRAP virtual cv::Ptr<Map> calculate(InputArray img1, InputArray img2, cv::Ptr<Map> init = cv::Ptr<Map>()) const CV_OVERRIDE;
+    CV_WRAP virtual cv::Ptr<Map> calculate(InputArray img1, InputArray img2, InputArray mask, cv::Ptr<Map> init = cv::Ptr<Map>()) const CV_OVERRIDE;
 
     CV_WRAP cv::Ptr<Map> getMap() const CV_OVERRIDE;
 };
