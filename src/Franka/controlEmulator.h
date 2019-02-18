@@ -5,16 +5,17 @@
 #include <Kin/kin.h>
 
 struct ControlEmulator : Thread{
-  Var<CtrlMsg> ctrl;
-  Var<CtrlMsg> state;
+  Var<rai::KinematicWorld> sim_config;
+  Var<CtrlMsg> ctrl_ref;
+  Var<CtrlMsg> ctrl_state;
 
   double tau;
   arr q,qdot;
   uintA q_indices;
 
-  ControlEmulator(Var<CtrlMsg>& _ctrl,
-                  Var<CtrlMsg>& _state,
-                  const rai::KinematicWorld& robotModel,
+  ControlEmulator(Var<rai::KinematicWorld>& _sim_config,
+                  Var<CtrlMsg>& _ctrl_ref,
+                  Var<CtrlMsg>& _ctrl_state,
                   const StringA& joints={},
                   double _tau=.001);
   ~ControlEmulator();

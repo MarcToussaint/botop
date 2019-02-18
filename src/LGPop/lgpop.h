@@ -10,27 +10,36 @@
 
 struct LGPop{
   bool simulationMode;
-  rai::KinematicWorld rawModel;
-  arr q_home;
-  rai::Transformation Q0_leftArm, Q0_rightArm;
+  rai::KinematicWorld rawModel; //should be constant, and unchanged from loaded model
+  arr q_home; //pose of loaded model
 
-  //-- Variables
+  //-- simulation variables (when run in simulationMode)
+  Var<rai::KinematicWorld> sim_config; //real-synced configuration
+
+  //-- control variables
   Var<rai::KinematicWorld> ctrl_config; //real-synced configuration
   Var<CtrlMsg> ctrl_ref;                //control reference
   Var<CtrlMsg> ctrl_state;              //control state
   Var<CtrlTaskL> ctrl_tasks;            //set of control tasks
 
+  //-- camera variables
   Var<floatA> cam_depth; //camera output
   Var<byteA> cam_color;  //camera output
   Var<arr> cam_pose;     //camera pose
   Var<arr> cam_Fxypxy;   //camera parameters
 
+  //-- model camera (predicated images) variables
   Var<byteA> model_segments; //output of model camera (segment IDs)
   Var<floatA> model_depth;   //output of model camera (segment IDs)
 
+  //-- calibration variables
   Var<arr> armPoseCalib; //(2x6 matrix: (dx,dy,dz, rx,ry,rz) (with trans and infinitesimal rot; for both arms)
 
+  //-- perception results
   Var<PerceptL> percepts; //percepts
+
+
+
 
 
   //-- list of all processes
@@ -55,6 +64,8 @@ struct LGPop{
   void reportCycleTimes();
 
   void updateArmPoseCalibInModel();
+
+  void sim_addRandomBox(const char* name="randomBox");
 
 };
 

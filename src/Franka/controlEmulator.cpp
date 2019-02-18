@@ -4,38 +4,42 @@
 
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
-ControlEmulator::ControlEmulator(Var<CtrlMsg>& _ctrl,
-                                 Var<CtrlMsg>& _state,
-                                 const rai::KinematicWorld& K,
+ControlEmulator::ControlEmulator(Var<rai::KinematicWorld>& _sim_config,
+                                 Var<CtrlMsg>& _ctrl_ref,
+                                 Var<CtrlMsg>& _ctrl_state,
                                  const StringA& joints,
                                  double _tau)
   : Thread("FrankaThread", _tau),
-    ctrl(_ctrl),
-    state(_state),
+    sim_config(_sim_config),
+    ctrl_ref(_ctrl_ref),
+    ctrl_state(_ctrl_state),
     tau(_tau){
   //        rai::KinematicWorld K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
-  q = K.getJointState();
-  qdot.resize(q.N).setZero();
-  if(joints.N){
-    q_indices.resize(joints.N);
-    uint i=0;
-    for(auto& s:joints){
-      rai::Frame *f = K.getFrameByName(s);
-      CHECK(f, "frame '" <<s <<"' does not exist");
-      CHECK(f->joint, "frame '" <<s <<"' is not a joint");
-      CHECK(f->joint->qDim()==1, "joint '" <<s <<"' is not 1D");
-      q_indices(i++) = f->joint->qIndex;
+  {
+    auto K = sim_config.set();
+    q = K->getJointState();
+    qdot.resize(q.N).setZero();
+    if(joints.N){
+      q_indices.resize(joints.N);
+      uint i=0;
+      for(auto& s:joints){
+        rai::Frame *f = K->getFrameByName(s);
+        CHECK(f, "frame '" <<s <<"' does not exist");
+        CHECK(f->joint, "frame '" <<s <<"' is not a joint");
+        CHECK(f->joint->qDim()==1, "joint '" <<s <<"' is not 1D");
+        q_indices(i++) = f->joint->qIndex;
+      }
+      CHECK_EQ(i, joints.N, "");
+    }else{
+      q_indices.setStraightPerm(q.N);
     }
-    CHECK_EQ(i, joints.N, "");
-  }else{
-    q_indices.setStraightPerm(q.N);
   }
-  ctrl.set()->q = q;
-  ctrl.set()->qdot = qdot;
+  ctrl_ref.set()->q = q;
+  ctrl_ref.set()->qdot = qdot;
   threadLoop();
-  state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
+  ctrl_state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
 }
 
 ControlEmulator::~ControlEmulator(){
@@ -45,7 +49,7 @@ ControlEmulator::~ControlEmulator(){
 void ControlEmulator::step(){
   //-- publish state
   {
-    auto stateset = state.set();
+    auto stateset = ctrl_state.set();
     stateset->q.resize(q.N).setZero();
     stateset->qdot.resize(qdot.N).setZero();
     for(uint i:q_indices){
@@ -54,10 +58,16 @@ void ControlEmulator::step(){
     }
   }
 
+  //-- publish to sim_config
+  {
+    sim_config.set()->setJointState(q, qdot);
+  }
+
+
   //-- get current ctrl
   arr q_ref, qdot_ref, qdd_des, P_compliance;
   {
-    auto ref = ctrl.get();
+    auto ref = ctrl_ref.get();
     q_ref = ref->q;
     qdot_ref = ref->qdot;
     P_compliance = ref->P_compliance;

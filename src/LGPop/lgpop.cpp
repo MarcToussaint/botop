@@ -25,10 +25,14 @@ LGPop::LGPop(bool _simulationMode)
   rawModel.addFile("../../model/pandaStation.g");
   rawModel.optimizeTree();
   q_home = rawModel.getJointState();
-  Q0_leftArm = rawModel["L_panda_link0"]->Q;
-  Q0_rightArm = rawModel["R_panda_link0"]->Q;
 
   ctrl_config.set() = rawModel;
+
+  if(simulationMode){
+    sim_config.set() = rawModel;
+    sim_config.name() = "SIMULATION config";
+    processes.append( make_shared<KinViewer>(sim_config) );
+  }
 
   cam_pose.set() = rawModel["camera"]->X.getArr7d();
 
@@ -38,7 +42,6 @@ LGPop::LGPop(bool _simulationMode)
     auto set = ctrl_state.set();
     rawModel.getJointState(set->q, set->qdot);
   }
-
 }
 
 LGPop::~LGPop(){
@@ -47,7 +50,7 @@ LGPop::~LGPop(){
 
 void LGPop::runRobotControllers(bool simuMode){
   if(simuMode || simulationMode){
-    ptr<Thread> F_emul = make_shared<ControlEmulator>(ctrl_ref, ctrl_state, rawModel);
+    ptr<Thread> F_emul = make_shared<ControlEmulator>(sim_config, ctrl_ref, ctrl_state);
     ptr<Thread> G_emul = make_shared<GripperEmulator>();
     processes.append({F_emul, G_emul});
   }else{
@@ -78,7 +81,7 @@ void LGPop::runCamera(int verbose){
     cam_Fxypxy.set() = ARR(914.905, 914.905, 322.497, 227.815);
     processes.append(std::dynamic_pointer_cast<Thread>(cam));
   }else{
-    auto cam = make_shared<rai::Sim_CameraView>(ctrl_config, cam_color, cam_depth, .1, "camera");
+    auto cam = make_shared<rai::Sim_CameraView>(sim_config, cam_color, cam_depth, .1, "camera");
     cam_Fxypxy.set() = cam->getFxypxy();
     processes.append(std::dynamic_pointer_cast<Thread>(cam));
   }
@@ -166,4 +169,17 @@ void LGPop::updateArmPoseCalibInModel(){
 
 //    FILE("z.KIN") <<Kset();
   }
+}
+
+void LGPop::sim_addRandomBox(const char* name){
+  arr size = {rnd.uni(.04,.1), rnd.uni(.1,.5), rnd.uni(.04, .2), .01 };
+  arr color = {1.,.5,.5};
+  arr pos = { rnd.uni(-1.,1.), rnd.uni(-.5,.5), .5*size(2)+.009 };
+  rai::Quaternion rot;
+  rot.setRad(rnd.uni(-RAI_PI,RAI_PI), 0,0,1);
+
+  sim_config.set()->addObject(name, rai::ST_ssBox, size, color, -1., "table", pos, rot.getArr4d());
+//      File("../../model/stick.g", "table", rai::Transformation({-.2,-.2,.05}, 0));
+
+
 }
