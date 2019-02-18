@@ -14,30 +14,29 @@ int main(int argc, char * argv[]){
     Depth2PointCloud cvt2pcl(RS.depth, RS.depth_fxypxy(0), RS.depth_fxypxy(1), RS.depth_fxypxy(2), RS.depth_fxypxy(3));
     PointCloudViewer pcview(cvt2pcl.points, RS.color);
 
-  for(;;){
+    for(;;){
 
-    int key=0;
-    {
-//      RS.depth.waitForNextRevision();
-      rai::wait(.1);
-      auto depthGet = RS.depth.get();
-      if(depthGet->nd==2){
-        gl.resize(depthGet->d1, depthGet->d0);
-        key = gl.watchImage(128.f*depthGet(), false, 1.);
+      int key=0;
+      {
+        //      RS.depth.waitForNextRevision();
+        rai::wait(.1);
+        auto depthGet = RS.depth.get();
+        if(depthGet->nd==2){
+          gl.resize(depthGet->d1, depthGet->d0);
+          key = gl.watchImage(128.f*depthGet(), false, 1.);
+        }
       }
-    }
 
-    {
-      auto colorGet = RS.color.get();
-      if(colorGet->nd==3){
-        gl2.resize(colorGet->d1, colorGet->d0);
-        key = gl2.watchImage(colorGet(), false, 1.);
+      {
+        auto colorGet = RS.color.get();
+        if(colorGet->nd==3){
+          gl2.resize(colorGet->d1, colorGet->d0);
+          key = gl2.watchImage(colorGet(), false, 1.);
+        }
       }
+
+      if(key=='q') break;
     }
-
-    if(key=='q') break;
-  }
-
   }
 
   LOG(0) <<"bye bye";
