@@ -78,7 +78,6 @@ void LGPop::runCamera(int verbose){
     cam_depth.waitForNextRevision();
     cam_Fxypxy.set() = cam->depth_fxypxy;
     cout <<"RS calib=" <<cam_Fxypxy.get()() <<endl;
-    cam_Fxypxy.set() = ARR(914.905, 914.905, 322.497, 227.815);
     processes.append(std::dynamic_pointer_cast<Thread>(cam));
   }else{
     auto cam = make_shared<rai::Sim_CameraView>(sim_config, cam_color, cam_depth, .1, "camera");
@@ -118,7 +117,7 @@ void LGPop::runPerception(int verbose){
   processes.append(opencv);
 #else
   ptr<Thread> explainPixels =
-      make_shared<ExplainPixelsThread>(ctrl_config, cam_color, cam_depth, model_segments, model_depth, cam_pose, cam_Fxypxy, verbose);
+      make_shared<ExplainPixelsThread>(ctrl_config, cam_color, cam_depth, model_segments, model_depth, cam_pose, cam_Fxypxy, armPoseCalib, verbose);
   explainPixels->name="explainPixels";
   processes.append(explainPixels);
 #endif
@@ -155,19 +154,26 @@ void LGPop::updateArmPoseCalibInModel(){
   arr calib = armPoseCalib.get();
 
   {
-    cout <<"HERE" <<calib <<endl;
     auto Kset = ctrl_config.set();
-    rai::Frame *f = Kset->getFrameByName("L_panda_link0");
-//    f->Q = Q0_leftArm;
-//    cout <<"X before:" <<f->X <<endl;
-    f->Q.pos.x += calib(0,0);
-    f->Q.pos.y += calib(0,1);
-    f->Q.pos.z += calib(0,2);
-    Kset->calc_fwdPropagateFrames();
-//    cout <<"X after:" <<f->X <<endl;
-//  Q0_rightArm = rawModel["R_panda_link0"]->Q;
+    double step=.1;
 
-//    FILE("z.KIN") <<Kset();
+    rai::Frame *f = Kset->getFrameByName("L_panda_link0");
+    f->Q.pos.x += step * calib(0,0);
+    f->Q.pos.y += step * calib(0,1);
+    f->Q.pos.z += 0.2*step * calib(0,2);
+    f->Q.rot.addX(0.2*step*calib(0,3));
+//    f->Q.rot.addY(0.2*step*calib(0,4));
+//    cout <<"calib LEFT =" <<f->Q <<endl;
+
+    f = Kset->getFrameByName("R_panda_link0");
+    f->Q.pos.x += step * calib(1,0);
+    f->Q.pos.y += step * calib(1,1);
+    f->Q.pos.z += 0.2*step * calib(1,2);
+    f->Q.rot.addX(0.2*step*calib(1,3));
+//    f->Q.rot.addY(0.2*step*calib(1,4));
+//    cout <<"calib RIGHT=" <<f->Q <<endl;
+
+    Kset->calc_fwdPropagateFrames();
   }
 }
 
