@@ -176,7 +176,7 @@ void FrankaThread::step(){
     arr u = qdd_des;
 #endif
 
-//    if(P_compliance.N) u = P_compliance * u;
+    if(P_compliance.N) u = P_compliance * u;
 
     std::array<double, 7> u_array = {0., 0., 0., 0., 0., 0., 0.};
     std::copy(u.begin(), u.end(), u_array.begin());
