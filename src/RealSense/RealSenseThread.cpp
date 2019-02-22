@@ -30,11 +30,20 @@ RealSenseThread::~RealSenseThread(){
 }
 
 void RealSenseThread::open(){
+  bool longCable = rai::getParameter<bool>("RealSense/longCable", true);
+  bool lowResolution = rai::getParameter<bool>("RealSense/lowResolution", true);
+  bool autoExposure = rai::getParameter<bool>("RealSense/autoExposure", false);
+
   s = new sRealSenseThread;
 
   s->cfg = std::make_shared<rs2::config>();
-  s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 424, 240, rs2_format::RS2_FORMAT_RGB8, 0);
-  s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 480, 270, rs2_format::RS2_FORMAT_Z16, 15);
+  if(lowResolution){
+    s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 424, 240, rs2_format::RS2_FORMAT_RGB8, 0);
+    s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 480, 270, rs2_format::RS2_FORMAT_Z16, 15);
+  }else{
+    s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 640, 360, rs2_format::RS2_FORMAT_RGB8, 15);
+    s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 15);
+  }
 
   rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
   s->pipe = std::make_shared<rs2::pipeline>();
@@ -45,35 +54,37 @@ void RealSenseThread::open(){
   rs2::device dev = profile.get_device();
   for (rs2::sensor& sensor:dev.query_sensors()){
     LOG(1) <<"sensor " <<sensor.get_info(RS2_CAMERA_INFO_NAME);
-#if 0 //crashes with long cable
-    for (int i = 0; i < static_cast<int>(RS2_OPTION_COUNT); i++)  {
-      rs2_option option_type = static_cast<rs2_option>(i);
-      if (sensor.supports(option_type)){
-        LOG(1) <<"  option " <<option_type <<'=' <<sensor.get_option(option_type) <<"  (" <<sensor.get_option_description(option_type) <<")  [" <<sensor.get_option_range(option_type).min <<',' <<sensor.get_option_range(option_type).max<<']';
+    if(!longCable){ //crashes with long cable
+      for (int i = 0; i < static_cast<int>(RS2_OPTION_COUNT); i++)  {
+        rs2_option option_type = static_cast<rs2_option>(i);
+        if (sensor.supports(option_type)){
+          LOG(1) <<"  option " <<option_type <<'=' <<sensor.get_option(option_type) <<"  (" <<sensor.get_option_description(option_type) <<")  [" <<sensor.get_option_range(option_type).min <<',' <<sensor.get_option_range(option_type).max<<']';
+        }
       }
     }
-#endif
-    if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"RGB Camera")){
-      if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
-        sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
-        sensor.set_option(RS2_OPTION_EXPOSURE, 100.);
-        LOG(1) <<"  I disabled auto exposure";
+    if(!autoExposure){
+      if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"RGB Camera")){
+        if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
+          sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
+          sensor.set_option(RS2_OPTION_EXPOSURE, 1000.);
+          LOG(1) <<"  I disabled auto exposure";
+        }
+        if(sensor.supports(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE)){
+          sensor.set_option(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, 0);
+          sensor.set_option(RS2_OPTION_WHITE_BALANCE, 4500.);
+          LOG(1) <<"  I disabled auto white balance";
+        }
       }
-      if(sensor.supports(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE)){
-        sensor.set_option(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, 0);
-        sensor.set_option(RS2_OPTION_WHITE_BALANCE, 4500.);
-        LOG(1) <<"  I disabled auto white balance";
+      if(!longCable){ //crashes with long cable
+        if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")){
+          if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
+            sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
+            sensor.set_option(RS2_OPTION_EXPOSURE, 6000.);
+            LOG(1) <<"  I disabled auto exposure";
+          }
+        }
       }
     }
-#if 0 //crashes with long cable
-    if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")){
-      if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
-        sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
-        sensor.set_option(RS2_OPTION_EXPOSURE, 6000.);
-        LOG(1) <<"  I disabled auto exposure";
-      }
-    }
-#endif
   }
 
   //-- info on all streams
@@ -121,8 +132,8 @@ void RealSenseThread::step(){
   rs2::video_frame rs_color = processed.get_color_frame();            // Find the color data
 
 
-  rs2::depth_frame rs_depth2 = s->temp_filter.process(rs_depth);
-  rs_depth = rs_depth2;
+//  rs2::depth_frame rs_depth2 = s->temp_filter.process(rs_depth);
+//  rs_depth = rs_depth2;
 //  rs_depth = s->hole_filter.process(rs_depth2);
 
 #if 1

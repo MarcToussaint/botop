@@ -1,3 +1,5 @@
+#pragma once
+
 #include <Kin/kin.h>
 #include <Kin/frame.h>
 

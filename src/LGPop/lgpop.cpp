@@ -22,7 +22,7 @@
 LGPop::LGPop(bool _simulationMode)
   : simulationMode(_simulationMode){
 
-  rawModel.addFile("../../model/pandaStation.g");
+  rawModel.addFile(rai::raiPath("../model/pandaStation.g"));
   rawModel.optimizeTree();
   q_home = rawModel.getJointState();
 
@@ -133,6 +133,10 @@ void LGPop::runPerception(int verbose){
 //    ptr<Thread> view2 = make_shared<KinViewer>(ctrl_config);
   }
 #endif
+}
+
+void LGPop::runCalibration(){
+  NIY;
 }
 
 void LGPop::pauseProcess(const char* name, bool resume){
