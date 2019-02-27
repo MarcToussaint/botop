@@ -38,6 +38,7 @@
 #include "precomp.hpp"
 #include "mappergradshift.hpp"
 #include "mapshift.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
 
 namespace cv {
 namespace reg {
@@ -56,26 +57,36 @@ MapperGradShift::~MapperGradShift()
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-cv::Ptr<Map> MapperGradShift::calculate(
-    InputArray _img1, InputArray image2, InputArray _mask, cv::Ptr<Map> init) const
+cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, cv::Ptr<Map> init) const
 {
     Mat img1 = _img1.getMat();
+    Mat mask1 = _mask1.getMat();
     Mat gradx, grady, imgDiff;
-    Mat img2;
+    Mat img2, mask2;
 
-    Mat mask = _mask.getMat();
 
-    CV_DbgAssert(img1.size() == image2.size());
+    CV_DbgAssert(_img1.size() == _img2.size());
+    CV_DbgAssert(_img1.type() == _img2.type());
 
     if(!init.empty()) {
         // We have initial values for the registration: we move img2 to that initial reference
-        init->inverseWarp(image2, img2);
+        init->inverseWarp(_img2, img2);
+        if(mask2.total())
+          init->inverseWarp(_mask2, mask2);
     } else {
-        img2 = image2.getMat();
+        img2 = _img2.getMat();
+        mask2 = _mask2.getMat();
     }
 
     // Get gradient in all channels
-    gradient(img1, img2, gradx, grady, imgDiff);
+    if(gradx.type()==CV_32FC1){
+      gradient(img1, img2, gradx, grady, imgDiff);
+    }else{
+      Mat I1, I2;
+      img1.convertTo(I1, CV_32FC3, 1./255.);
+      img2.convertTo(I2, CV_32FC3, 1./255.);
+      gradient(I1, I2, gradx, grady, imgDiff);
+    }
 
     // Calculate parameters using least squares
     Matx<double, 2, 2> A;
@@ -84,10 +95,24 @@ cv::Ptr<Map> MapperGradShift::calculate(
     // so we have two calls to "sum". The result can be found in the first element of the final
     // Scalar object.
 
-    if(mask.total()){
-      gradx = gradx.mul(mask);
-      grady = grady.mul(mask);
-      imgDiff = imgDiff.mul(mask);
+    if(mask1.total()){
+      if(gradx.type()==CV_32FC3){
+        Mat tmp;
+        cvtColor(mask1, tmp, CV_GRAY2RGB);
+        CV_Assert(tmp.type() == gradx.type());
+        gradx = gradx.mul(tmp);
+        grady = grady.mul(tmp);
+        imgDiff = imgDiff.mul(tmp);
+      }else{
+        gradx = gradx.mul(mask1);
+        grady = grady.mul(mask1);
+        imgDiff = imgDiff.mul(mask1);
+      }
+    }
+    if(mask2.total()){
+      gradx = gradx.mul(mask2);
+      grady = grady.mul(mask2);
+      imgDiff = imgDiff.mul(mask2);
     }
 
     A(0, 0) = sum(sum(gradx.mul(gradx)))[0];

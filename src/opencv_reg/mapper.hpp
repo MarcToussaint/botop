@@ -63,7 +63,7 @@ public:
      * \param[in] If present, it is an initial rough estimation that the mapper will try to refine.
      * \return Map from img1 to img2, stored in a smart pointer.
      */
-    CV_WRAP virtual cv::Ptr<Map> calculate(InputArray img1, InputArray img2, InputArray mask, cv::Ptr<Map> init = cv::Ptr<Map>()) const = 0;
+    CV_WRAP virtual cv::Ptr<Map> calculate(InputArray img1, InputArray mask1, InputArray img2, InputArray mask2, cv::Ptr<Map> init = cv::Ptr<Map>()) const = 0;
 
     /*
      * Returns a map compatible with the Mapper class
