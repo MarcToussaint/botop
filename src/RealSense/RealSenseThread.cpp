@@ -41,8 +41,8 @@ void RealSenseThread::open(){
     s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 424, 240, rs2_format::RS2_FORMAT_RGB8, 0);
     s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 480, 270, rs2_format::RS2_FORMAT_Z16, 15);
   }else{
-    s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 640, 360, rs2_format::RS2_FORMAT_RGB8, 15);
-    s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 15);
+    s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 640, 480, rs2_format::RS2_FORMAT_RGB8, 30);
+    s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 480, rs2_format::RS2_FORMAT_Z16, 30);
   }
 
   rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);

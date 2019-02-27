@@ -39,6 +39,7 @@
 #include "mappergradshift.hpp"
 #include "mapshift.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include <iostream>
 
 namespace cv {
 namespace reg {
@@ -79,7 +80,7 @@ cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, Inp
     }
 
     // Get gradient in all channels
-    if(gradx.type()==CV_32FC1){
+    if(img1.type()==CV_32FC1){
       gradient(img1, img2, gradx, grady, imgDiff);
     }else{
       Mat I1, I2;
@@ -125,6 +126,14 @@ cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, Inp
 
     // Calculate shift. We use Cholesky decomposition, as A is symmetric.
     Vec<double, 2> shift = A.inv(DECOMP_CHOLESKY)*b;
+
+//    //verbose:
+//    cv::Mat tmp = img1 - img2;
+//    tmp.mul(mask1);
+//    cv::pow(tmp, 2., tmp);
+//    std::cout <<"scale=" <<imgDiff.size() <<"  registration error=" <<sqrt(cv::sum(tmp).val[0]/cv::sum(mask1).val[0]) <<std::endl;
+
+
 
     if(init.empty()) {
         return Ptr<Map>(new MapShift(shift));
