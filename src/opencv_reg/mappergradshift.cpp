@@ -58,7 +58,7 @@ MapperGradShift::~MapperGradShift()
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, cv::Ptr<Map> init) const
+cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, cv::Ptr<Map> init, double* error) const
 {
     Mat img1 = _img1.getMat();
     Mat mask1 = _mask1.getMat();
@@ -127,6 +127,9 @@ cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, Inp
     // Calculate shift. We use Cholesky decomposition, as A is symmetric.
     Vec<double, 2> shift = A.inv(DECOMP_CHOLESKY)*b;
 
+    if(error){
+      *error = sum(sum(imgDiff))[0] / sum(sum(mask1))[0];
+    }
 //    //verbose:
 //    cv::Mat tmp = img1 - img2;
 //    tmp.mul(mask1);

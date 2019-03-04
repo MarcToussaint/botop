@@ -54,7 +54,7 @@ MapperPyramid::MapperPyramid(Ptr<Mapper> baseMapper)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-Ptr<Map> MapperPyramid::calculate(InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, Ptr<Map> init) const
+Ptr<Map> MapperPyramid::calculate(InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, Ptr<Map> init, double* error) const
 {
     Mat img1 = _img1.getMat();
     Mat mask1 = _mask1.getMat();

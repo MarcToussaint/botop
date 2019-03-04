@@ -61,7 +61,7 @@ public:
      */
     CV_WRAP MapperPyramid(Ptr<Mapper> baseMapper);
 
-    CV_WRAP virtual cv::Ptr<Map> calculate(InputArray img1, InputArray _mask1, InputArray img2, InputArray _mask2, cv::Ptr<Map> init = cv::Ptr<Map>()) const CV_OVERRIDE;
+    CV_WRAP virtual cv::Ptr<Map> calculate(InputArray img1, InputArray _mask1, InputArray img2, InputArray _mask2, cv::Ptr<Map> init = cv::Ptr<Map>(), double* error=0) const CV_OVERRIDE;
 
     CV_WRAP cv::Ptr<Map> getMap() const CV_OVERRIDE;
 
