@@ -71,6 +71,8 @@ public:
      */
     CV_WRAP virtual cv::Ptr<Map> getMap() const = 0;
 
+    CV_PROP_RW double stepSize_ = 1.;           /*!< Number of levels of the pyramid */
+
 protected:
     /*
      * Calculates gradient and difference between images

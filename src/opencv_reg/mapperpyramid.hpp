@@ -70,7 +70,7 @@ public:
 
 private:
     MapperPyramid& operator=(const MapperPyramid&);
-    const Mapper& baseMapper_;  /*!< Mapper used in inner level */
+    Mapper& baseMapper_;  /*!< Mapper used in inner level */
 };
 
 /*!

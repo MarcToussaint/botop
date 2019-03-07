@@ -17,7 +17,7 @@
 #include <Perception/perceptViewer.h>
 #include <Perception/perceptSyncer.h>
 
-#include <ExplainPixels/explainPixels.h>
+#include <FlatVision/flatVision.h>
 
 LGPop::LGPop(bool _simulationMode)
   : simulationMode(_simulationMode){
@@ -117,7 +117,7 @@ void LGPop::runPerception(int verbose){
   processes.append(opencv);
 #else
   ptr<Thread> explainPixels =
-      make_shared<ExplainPixelsThread>(ctrl_config, cam_color, cam_depth, model_segments, model_depth, cam_pose, cam_Fxypxy, armPoseCalib, verbose);
+      make_shared<FlatVisionThread>(ctrl_config, cam_color, cam_depth, model_segments, model_depth, cam_pose, cam_Fxypxy, armPoseCalib, verbose);
   explainPixels->name="explainPixels";
   processes.append(explainPixels);
 #endif
