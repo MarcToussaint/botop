@@ -59,13 +59,13 @@ MapperGradShift::~MapperGradShift()
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, cv::Ptr<Map> init, double* error) const
+cv::Ptr<Map> MapperGradShift::calculate(
+    InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, cv::Ptr<Map> init, double* error) const
 {
     Mat img1 = _img1.getMat();
     Mat mask1 = _mask1.getMat();
     Mat gradx, grady, imgDiff;
     Mat img2, mask2;
-
 
     CV_DbgAssert(_img1.size() == _img2.size());
     CV_DbgAssert(_img1.type() == _img2.type());
@@ -145,8 +145,6 @@ cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, Inp
     }
     //verbose:
     std::cout <<"scale=" <<imgDiff.size() <<"  registration error=" <<std::setprecision(5) <<sum(sum(imgDiff))[0]/sum(mask1)[0] <<std::endl;
-
-
 
     if(init.empty()) {
         return Ptr<Map>(new MapShift(shift));

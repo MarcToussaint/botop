@@ -14,15 +14,15 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
 
   //-- assign non-stable unexplained pixels as noise
   for(uint i=0;i<pixelLabels.N;i++){
-    byte& l = pixelLabels.elem(i);
-    byte& c = countUnexplained.elem(i);
+    byte& l = pixelLabels.p[i];
+    byte& c = countUnexplained.p[i];
 
     //count how often consecutive signals
     if(l) c=0; //is already explained -> reset count
     else{ if(c<255) c++; }
 
     //when unexplained, but not stably -> noise
-    if(!l && c<10) l=PL_noise;
+    if(!l && c<3) l=PL_noise;
   }
 
   //..now we only have stable unexplained pixellabels left

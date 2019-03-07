@@ -93,42 +93,21 @@ RegReturn registrationCalibration(const byteA& cam_color,
   RR.numLev_=6;
   RR.numIterPerScale_=2;
   RR.stepSize_=.5;
-  double error=-123.;
-  cv::Ptr<cv::reg::Map> map = RR.calculate(crop_modImg, crop_modMask, crop_camImg, crop_camMask, cv::Ptr<cv::reg::Map>(), &error);
-
-  //-- compute final matching error
-#if 0
-  cv::Mat tmp = crop_camImg;
-//  map->inverseWarp(crop_camImg, tmp);
-  cv::Mat cv_diff;
-  if(tmp.type()==CV_8UC3){
-    cv::Mat I1, I2;
-    tmp.convertTo(I1, CV_32FC3, 1./255.);
-    crop_modImg.convertTo(I2, CV_32FC3, 1./255.);
-    cv_diff = I2-I1;
-  }else{
-    cv_diff = crop_modImg-tmp;
-  }
-  cv_diff.mul(crop_modMask);
-  floatA diff = conv_cvMat2floatA(cv_diff);
-  double matchError = sqrt(sumOfSqr(diff) / cv::sum(crop_modMask).val[0]);
-  cout <<"matchError=" <<cv::sum(cv_diff) <<' ' <<cv::sum(crop_modMask) <<endl;
-#else
-  double matchError = error;
-#endif
+  double matchError=-123.;
+  cv::Ptr<cv::reg::Map> map = RR.calculate(crop_modImg, crop_modMask, crop_camImg, crop_camMask, cv::Ptr<cv::reg::Map>(), &matchError);
 
   //-- grab the 3 parameters dx, dy, phi
-#if 1
-  cv::reg::MapShift* amap = dynamic_cast<cv::reg::MapShift*>(&*map);
-  calib(0) = amap->getShift()(0); //translation in x
-  calib(1) = amap->getShift()(1); //translation in y
-  calib(5) = 0.; //rotation about z
-#else
-  cv::reg::MapAffine* amap = dynamic_cast<cv::reg::MapAffine*>(&*map);
-  calib(0) = amap->getShift()(0); //translation in x
-  calib(1) = amap->getShift()(1); //translation in y
-  calib(5) = ::asin(amap->getLinTr()(1,0)); //rotation about z
-#endif
+  cv::reg::MapShift* smap = dynamic_cast<cv::reg::MapShift*>(&*map);
+  if(smap){
+    calib(0) = smap->getShift()(0); //translation in x
+    calib(1) = smap->getShift()(1); //translation in y
+    calib(5) = 0.; //rotation about z
+  }else{
+    cv::reg::MapAffine* amap = dynamic_cast<cv::reg::MapAffine*>(&*map);
+    calib(0) = amap->getShift()(0); //translation in x
+    calib(1) = amap->getShift()(1); //translation in y
+    calib(5) = amap->getLinTr()(2); //rotation about z
+  }
 //  static int i=0;
 //  cout <<i++ <<" TRANFORMATION " <<calib <<endl;
 

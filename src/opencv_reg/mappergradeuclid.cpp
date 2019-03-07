@@ -39,6 +39,8 @@
 #include "mappergradeuclid.hpp"
 #include "mapaffine.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include <iostream>
+#include <iomanip>
 
 namespace cv {
 namespace reg {
@@ -149,14 +151,19 @@ cv::Ptr<Map> MapperGradEuclid::calculate(
     // Calculate parameters. We use Cholesky decomposition, as A is symmetric.
     Vec<double, 3> k = A.inv(DECOMP_CHOLESKY)*b;
 
+    k *= stepSize_;
+
     double cosT = cos(k(2));
     double sinT = sin(k(2));
     Matx<double, 2, 2> linTr(cosT, -sinT, sinT, cosT);
     Vec<double, 2> shift(k(0), k(1));
 
+    cv::pow(imgDiff, 2., imgDiff);
     if(error){
-      *error = sum(sum(imgDiff))[0] / sum(sum(mask1))[0];
+      *error = sum(sum(imgDiff))[0] / sum(mask1)[0];
     }
+    //verbose:
+    std::cout <<"scale=" <<imgDiff.size() <<"  registration error=" <<std::setprecision(5) <<sum(sum(imgDiff))[0]/sum(mask1)[0] <<std::endl;
 
     if(init.empty()) {
         return Ptr<Map>(new MapAffine(linTr, shift));
