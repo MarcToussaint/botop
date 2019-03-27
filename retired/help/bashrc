@@ -1,0 +1,3 @@
+export ROSDIR=/opt/ros/kinetic
+source ${ROSDIR}/setup.bash
+#export ROS_PACKAGE_PATH=${HOME}/local
