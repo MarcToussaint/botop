@@ -38,6 +38,9 @@
 #include "precomp.hpp"
 #include "mappergradeuclid.hpp"
 #include "mapaffine.hpp"
+#include "opencv2/imgproc/imgproc.hpp"
+#include <iostream>
+#include <iomanip>
 
 namespace cv {
 namespace reg {
@@ -57,29 +60,40 @@ MapperGradEuclid::~MapperGradEuclid()
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 cv::Ptr<Map> MapperGradEuclid::calculate(
-    InputArray _img1, InputArray image2, cv::Ptr<Map> init) const
+    InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, cv::Ptr<Map> init, double* error) const
 {
     Mat img1 = _img1.getMat();
+    Mat mask1 = _mask1.getMat();
     Mat gradx, grady, imgDiff;
-    Mat img2;
+    Mat img2, mask2;
 
-    CV_DbgAssert(img1.size() == image2.size());
-    CV_DbgAssert(img1.channels() == image2.channels());
-    CV_DbgAssert(img1.channels() == 1 || img1.channels() == 3);
+    CV_DbgAssert(_img1.size() == _img2.size());
+    CV_DbgAssert(_img1.type() == _img2.type());
 
     if(!init.empty()) {
         // We have initial values for the registration: we move img2 to that initial reference
-        init->inverseWarp(image2, img2);
+        init->inverseWarp(_img2, img2);
+        if(mask2.total())
+          init->inverseWarp(_mask2, mask2);
     } else {
-        img2 = image2.getMat();
+        img2 = _img2.getMat();
+        mask2 = _mask2.getMat();
     }
 
     // Matrices with reference frame coordinates
     Mat grid_r, grid_c;
-    grid(img1, grid_r, grid_c);
 
     // Get gradient in all channels
-    gradient(img1, img2, gradx, grady, imgDiff);
+    if(img1.type()==CV_32FC1 || img1.type()==CV_32FC3){
+      gradient(img1, img2, gradx, grady, imgDiff);
+      grid(img1, grid_r, grid_c);
+    }else{
+      Mat I1, I2;
+      img1.convertTo(I1, CV_32FC3, 1./255.);
+      img2.convertTo(I2, CV_32FC3, 1./255.);
+      gradient(I1, I2, gradx, grady, imgDiff);
+      grid(I1, grid_r, grid_c);
+    }
 
     // Calculate parameters using least squares
     Matx<double, 3, 3> A;
@@ -87,6 +101,36 @@ cv::Ptr<Map> MapperGradEuclid::calculate(
     // For each value in A, all the matrix elements are added and then the channels are also added,
     // so we have two calls to "sum". The result can be found in the first element of the final
     // Scalar object.
+
+    if(mask1.total()){
+      if(gradx.type()==CV_32FC3){
+        Mat tmp;
+        cvtColor(mask1, tmp, CV_GRAY2RGB);
+        CV_Assert(tmp.type() == gradx.type());
+        gradx = gradx.mul(tmp);
+        grady = grady.mul(tmp);
+        imgDiff = imgDiff.mul(tmp);
+      }else{
+        gradx = gradx.mul(mask1);
+        grady = grady.mul(mask1);
+        imgDiff = imgDiff.mul(mask1);
+      }
+    }
+    if(mask2.total()){
+      if(gradx.type()==CV_32FC3){
+        Mat tmp;
+        cvtColor(mask1, tmp, CV_GRAY2RGB);
+        CV_Assert(tmp.type() == gradx.type());
+        gradx = gradx.mul(tmp);
+        grady = grady.mul(tmp);
+        imgDiff = imgDiff.mul(tmp);
+      }else{
+        gradx = gradx.mul(mask2);
+        grady = grady.mul(mask2);
+        imgDiff = imgDiff.mul(mask2);
+      }
+    }
+
     Mat xIy_yIx = grid_c.mul(grady);
     xIy_yIx -= grid_r.mul(gradx);
 
@@ -107,10 +151,19 @@ cv::Ptr<Map> MapperGradEuclid::calculate(
     // Calculate parameters. We use Cholesky decomposition, as A is symmetric.
     Vec<double, 3> k = A.inv(DECOMP_CHOLESKY)*b;
 
+    k *= stepSize_;
+
     double cosT = cos(k(2));
     double sinT = sin(k(2));
     Matx<double, 2, 2> linTr(cosT, -sinT, sinT, cosT);
     Vec<double, 2> shift(k(0), k(1));
+
+    cv::pow(imgDiff, 2., imgDiff);
+    if(error){
+      *error = sum(sum(imgDiff))[0] / sum(mask1)[0];
+    }
+    //verbose:
+    std::cout <<"scale=" <<imgDiff.size() <<"  registration error=" <<std::setprecision(5) <<sum(sum(imgDiff))[0]/sum(mask1)[0] <<std::endl;
 
     if(init.empty()) {
         return Ptr<Map>(new MapAffine(linTr, shift));

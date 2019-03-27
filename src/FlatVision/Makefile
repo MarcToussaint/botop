@@ -1,11 +1,11 @@
 BASE = ../../rai
-BASE2 = ..
+BASE2 = ../../src
 NAME   = $(shell basename `pwd`)
 OUTPUT = lib$(NAME).so
 
-DEPEND = Core Control Perception Franka RealSense FlatVision
+DEPEND = Core Gui Perception opencv_reg
 
-PYBIND = 1
+OPENCV = 1
 
 SRCS = $(shell find . -maxdepth 1 -name '*.cpp' )
 OBJS = $(SRCS:%.cpp=%.o)

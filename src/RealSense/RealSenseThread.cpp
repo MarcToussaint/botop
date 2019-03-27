@@ -33,6 +33,7 @@ void RealSenseThread::open(){
   bool longCable = rai::getParameter<bool>("RealSense/longCable", true);
   bool lowResolution = rai::getParameter<bool>("RealSense/lowResolution", true);
   bool autoExposure = rai::getParameter<bool>("RealSense/autoExposure", false);
+  bool alignToDepth = rai::getParameter<bool>("RealSense/alignToDepth", true);
 
   s = new sRealSenseThread;
 
@@ -41,8 +42,8 @@ void RealSenseThread::open(){
     s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 424, 240, rs2_format::RS2_FORMAT_RGB8, 0);
     s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 480, 270, rs2_format::RS2_FORMAT_Z16, 15);
   }else{
-    s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 640, 480, rs2_format::RS2_FORMAT_RGB8, 30);
-    s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 480, rs2_format::RS2_FORMAT_Z16, 30);
+    s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 640, 360, rs2_format::RS2_FORMAT_RGB8, 30);
+    s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 30);
   }
 
   rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
@@ -106,7 +107,13 @@ void RealSenseThread::open(){
   LOG(1) <<"depth scale: " <<s->depth_scale;
 
   //-- align with depth or color?
-  s->align = std::make_shared<rs2::align>(RS2_STREAM_DEPTH); //RS2_STREAM_COLOR
+  if(alignToDepth){
+    s->align = std::make_shared<rs2::align>(RS2_STREAM_DEPTH);
+    fxypxy = depth_fxypxy;
+  }else{
+    s->align = std::make_shared<rs2::align>(RS2_STREAM_COLOR);
+    fxypxy = color_fxypxy;
+  }
 }
 
 void RealSenseThread::close(){
@@ -128,9 +135,8 @@ void RealSenseThread::step(){
   rs2::frameset processed = s->align->process(data);
 //  rs2::frameset processed = data;
 
-  rs2::depth_frame rs_depth = processed.get_depth_frame(); // Find and colorize the depth data
-  rs2::video_frame rs_color = processed.get_color_frame();            // Find the color data
-
+  rs2::depth_frame rs_depth = processed.get_depth_frame();
+  rs2::video_frame rs_color = processed.get_color_frame();
 
 //  rs2::depth_frame rs_depth2 = s->temp_filter.process(rs_depth);
 //  rs_depth = rs_depth2;
@@ -140,11 +146,20 @@ void RealSenseThread::step(){
   {
     auto depthSet = depth.set();
     depthSet->resize(rs_depth.get_height(), rs_depth.get_width());
+#if 0
     for(uint y=0;y<depthSet->d0;y++) for(uint x=0;x<depthSet->d1;x++){
       float d = rs_depth.get_distance(x,y);
       if(d>2.) d=2.;
-      depthSet->operator()(y,x) = d;
+      depthSet->p[y*depthSet->d1+x] = d;
     }
+#else
+    CHECK_EQ(rs_depth.get_bits_per_pixel(), 16, "");
+    CHECK_EQ(rs_depth.get_stride_in_bytes(), rs_depth.get_width()*2, "");
+    const uint16_t *data = reinterpret_cast<const uint16_t*>(rs_depth.get_data());
+    for(uint i=0;i<depthSet->N;i++){
+      depthSet->p[i] = float(data[i])*s->depth_scale;
+    }
+#endif
   }
 #else //also compute point cloud
   float pixel[2];

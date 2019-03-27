@@ -40,6 +40,7 @@
 #include "mapshift.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include <iostream>
+#include <iomanip>
 
 namespace cv {
 namespace reg {
@@ -58,13 +59,13 @@ MapperGradShift::~MapperGradShift()
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, cv::Ptr<Map> init) const
+cv::Ptr<Map> MapperGradShift::calculate(
+    InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, cv::Ptr<Map> init, double* error) const
 {
     Mat img1 = _img1.getMat();
     Mat mask1 = _mask1.getMat();
     Mat gradx, grady, imgDiff;
     Mat img2, mask2;
-
 
     CV_DbgAssert(_img1.size() == _img2.size());
     CV_DbgAssert(_img1.type() == _img2.type());
@@ -80,7 +81,7 @@ cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, Inp
     }
 
     // Get gradient in all channels
-    if(img1.type()==CV_32FC1){
+    if(img1.type()==CV_32FC1 || img1.type()==CV_32FC3){
       gradient(img1, img2, gradx, grady, imgDiff);
     }else{
       Mat I1, I2;
@@ -111,9 +112,18 @@ cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, Inp
       }
     }
     if(mask2.total()){
-      gradx = gradx.mul(mask2);
-      grady = grady.mul(mask2);
-      imgDiff = imgDiff.mul(mask2);
+      if(gradx.type()==CV_32FC3){
+        Mat tmp;
+        cvtColor(mask1, tmp, CV_GRAY2RGB);
+        CV_Assert(tmp.type() == gradx.type());
+        gradx = gradx.mul(tmp);
+        grady = grady.mul(tmp);
+        imgDiff = imgDiff.mul(tmp);
+      }else{
+        gradx = gradx.mul(mask2);
+        grady = grady.mul(mask2);
+        imgDiff = imgDiff.mul(mask2);
+      }
     }
 
     A(0, 0) = sum(sum(gradx.mul(gradx)))[0];
@@ -127,13 +137,14 @@ cv::Ptr<Map> MapperGradShift::calculate(InputArray _img1, InputArray _mask1, Inp
     // Calculate shift. We use Cholesky decomposition, as A is symmetric.
     Vec<double, 2> shift = A.inv(DECOMP_CHOLESKY)*b;
 
-//    //verbose:
-//    cv::Mat tmp = img1 - img2;
-//    tmp.mul(mask1);
-//    cv::pow(tmp, 2., tmp);
-//    std::cout <<"scale=" <<imgDiff.size() <<"  registration error=" <<sqrt(cv::sum(tmp).val[0]/cv::sum(mask1).val[0]) <<std::endl;
+    shift *= stepSize_;
 
-
+    cv::pow(imgDiff, 2., imgDiff);
+    if(error){
+      *error = sum(sum(imgDiff))[0] / sum(mask1)[0];
+    }
+    //verbose:
+    std::cout <<"scale=" <<imgDiff.size() <<"  registration error=" <<std::setprecision(5) <<sum(sum(imgDiff))[0]/sum(mask1)[0] <<std::endl;
 
     if(init.empty()) {
         return Ptr<Map>(new MapShift(shift));

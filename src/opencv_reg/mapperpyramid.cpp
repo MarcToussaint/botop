@@ -51,10 +51,11 @@ namespace reg {
 MapperPyramid::MapperPyramid(Ptr<Mapper> baseMapper)
     : numLev_(3), numIterPerScale_(3), baseMapper_(*baseMapper)
 {
+  baseMapper_.stepSize_=stepSize_;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-Ptr<Map> MapperPyramid::calculate(InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, Ptr<Map> init) const
+Ptr<Map> MapperPyramid::calculate(InputArray _img1, InputArray _mask1, InputArray _img2, InputArray _mask2, Ptr<Map> init, double* error) const
 {
     Mat img1 = _img1.getMat();
     Mat mask1 = _mask1.getMat();
@@ -98,8 +99,16 @@ Ptr<Map> MapperPyramid::calculate(InputArray _img1, InputArray _mask1, InputArra
         if(lv_i != 0) {
             ident->scale(2.);
         }
-        for(int it_i = 0; it_i < numIterPerScale_; ++it_i) {
-            ident = baseMapper_.calculate(currImg1, currMask1, currImg2, currMask2, ident);
+        int numIter = numIterPerScale_;
+        if(lv_i==0){ //different parameters for coarsest level!!
+          numIter = 10;
+          baseMapper_.stepSize_ = .2;
+        }else{
+          numIter = numIterPerScale_;
+          baseMapper_.stepSize_ = stepSize_;
+        }
+        for(int it_i = 0; it_i < numIter; ++it_i) {
+            ident = baseMapper_.calculate(currImg1, currMask1, currImg2, currMask2, ident, error);
         }
     }
 
