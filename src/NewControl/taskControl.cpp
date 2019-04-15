@@ -300,7 +300,7 @@ ActStatus MotionProfile_Path::update(arr& yRef, arr& ydotRef, double tau, const 
 //===========================================================================
 
 CtrlTask::CtrlTask(const char* name, const ptr<Feature>& _map)
-  : name(name), active(true), map(_map), scale(1.), hierarchy(1) {
+  : name(name), active(true), map(_map) {
   status.set() = AS_init;
   //  ref = new MotionProfile_PD();
 }
@@ -311,38 +311,31 @@ CtrlTask::CtrlTask(const char* name, const ptr<Feature>& _map, const ptr<MotionP
   status.set() = AS_init;
 }
 
-CtrlTask::CtrlTask(const char* name, const ptr<Feature>& _map, double maxVel)
-  : CtrlTask(name, _map) {
-  ref = make_shared<MotionProfile_Bang>(arr(), maxVel);
+CtrlTask::CtrlTask(const char *name, const ptr<Feature>& map, const ptr<MotionProfile>& ref, double kp, double kd, const arr &C)
+  : CtrlTask(name, map) {
+  this->ref = ref;
+  this->kp = kp;
+  this->kd = kd;
+  this->C = C;
 }
 
-CtrlTask::CtrlTask(const char* name, const ptr<Feature>& _map, double decayTime, double dampingRatio, double maxVel, double maxAcc)
-  : CtrlTask(name, _map) {
-  if(dampingRatio<0.){
-    ref = make_shared<MotionProfile_Sine>(arr(), decayTime);
-  }else{
-    ref = make_shared<MotionProfile_PD>(arr(), decayTime, dampingRatio, maxVel, maxAcc);
-  }
-}
-
-CtrlTask::CtrlTask(const char* name, const ptr<Feature>& _map, const Graph& params)
-  : CtrlTask(name, _map) {
-  ref = make_shared<MotionProfile_PD>(params);
-  Node *n;
-  if((n=params["scale"])) scale = n->get<double>();
-}
-
-CtrlTask::~CtrlTask() {
-  if(ctrlTasks){
-    ctrlTasks->set()->removeValue(this, true);
-    ctrlTasks=0;
-  }
-}
+CtrlTask::~CtrlTask() {}
 
 ActStatus CtrlTask::update(double tau, const rai::KinematicWorld& world, const arr& tauExternal) {
   map->__phi(y, J_y, world);
   f = pseudoInverse(~J_y)*tauExternal;
   if(world.qdot.N) v = J_y*world.qdot; else v.resize(y.N).setZero();
+
+  if(C.nd == 1 && C.N == y.N) {
+    C = diag(C);
+  } else if(C.nd == 2) {
+    // was here for debugging only, TODO remove
+  } else if(!C.N) {
+    C = eye(y.N);
+  } else {
+    HALT("The dimensionality of the C matrix is inconsistent")
+  }
+
   ActStatus s_old = status.get();
   ActStatus s_new = s_old;
   if(ref) s_new = ref->update(y_ref, v_ref, tau, y, v);
@@ -350,16 +343,6 @@ ActStatus CtrlTask::update(double tau, const rai::KinematicWorld& world, const a
   return s_new;
 }
 
-MotionProfile_PD& CtrlTask::PD() {
-  if(!ref) ref = make_shared<MotionProfile_PD>();
-  ptr<MotionProfile_PD> pd = std::dynamic_pointer_cast<MotionProfile_PD>(ref);
-  if(!pd) {
-    LOG(-1) <<"you've created a non-PD ref for this before, of type " <<typeid(*ref).name();
-    ref = make_shared<MotionProfile_PD>();
-    pd = std::dynamic_pointer_cast<MotionProfile_PD>(ref);
-  }
-  return *pd;
-}
 
 void CtrlTask::setRef(ptr<MotionProfile> _ref) {
   CHECK(!ref, "ref is already set");
@@ -372,40 +355,20 @@ void CtrlTask::setTarget(const arr& y_target, const arr& v_target) {
   ref->resetState();
 }
 
-void CtrlTask::getForceControlCoeffs(arr& f_des, arr& u_bias, arr& K_I, arr& J_ft_inv, const rai::KinematicWorld& world) {
-  //-- get necessary Jacobians
-  ptr<TM_Default> m = std::dynamic_pointer_cast<TM_Default>(map);
-  CHECK(m,"this only works for the default position task map");
-  CHECK_EQ(m->type, TMT_pos,"this only works for the default positioni task map");
-  CHECK_GE(m->i, 0,"this only works for the default position task map");
-  rai::Frame *body = world.frames(m->i);
-  rai::Frame* l_ft_sensor = world.getFrameByName("l_ft_sensor");
-  arr J_ft, J;
-  world.kinematicsPos(NoArr, J,   body, m->ivec);
-  world.kinematicsPos_wrtFrame(NoArr, J_ft,body, m->ivec, l_ft_sensor);
-  
-  //-- compute the control coefficients
-  u_bias = ~J*f_ref;
-  f_des = f_ref;
-  J_ft_inv = inverse_SymPosDef(J_ft*~J_ft)*J_ft;
-  K_I = f_alpha*~J;
-}
 
-void CtrlTask::reportState(ostream& os) {
-  os <<"  CtrlTask " <<name;
-  if(!active) cout <<" INACTIVE";
-  if(y_ref.N==y.N && v_ref.N==v.N) {
-    os <<": "/*y_target=" <<PD().y_target */<<" \ty_ref=" <<y_ref <<" \ty=" <<y
-       <<"  y-err=" <<length(y_ref-y)
-       <<"  v-err=" <<length(v_ref-v)
-       <<endl;
-  } else {
-    os <<" -- y_ref.N!=y.N or ydot_ref.N!=v.N -- not initialized? -- " <<endl;
-  }
-}
 
 //===========================================================================
 
+
+
+
+
+
+
+
+
+
+#if 0
 TaskControlMethods::TaskControlMethods(const arr& _Hmetric)
   : Hmetric(_Hmetric) { //rai::getParameter<double>("Hrate", .1)*world.getHmetric()) {
 }
@@ -859,9 +822,36 @@ void TaskControlMethods::calcForceControl(CtrlTaskL& tasks, arr& K_ft, arr& J_ft
   
 }
 
+#endif
 
 
 
+
+
+void TaskControlMethod::lockJointGroup(const char* groupname, rai::KinematicWorld& world, bool lockThem) {
+  if(!groupname) {
+    if(lockThem) {
+      lockJoints = consts<byte>(true, world.q.N);
+      world.qdot.setZero();
+    } else lockJoints.clear();
+    return;
+  }
+  if(!lockJoints.N) lockJoints = consts<byte>(false, world.q.N);
+  rai::Joint *j;
+  for(rai::Frame *f : world.frames) if((j=f->joint)) {
+    if(f->ats[groupname]) {
+      for(uint i=0; i<j->qDim(); i++) {
+        lockJoints(j->qIndex+i) = lockThem;
+        if(lockThem && world.qdot.N) world.qdot(j->qIndex+i) = 0.; //TODO Danny: why modify the world?
+      }
+    }
+  }
+}
+
+void TaskControlMethod::reportCurrentState(CtrlTaskL& tasks) {
+  cout << "** TaskControlMethods" << endl;
+  NIY;
+}
 
 
 
@@ -877,12 +867,12 @@ void TaskControlMethodInverseKinematics::calculate(CtrlCmdMsg& ctrlCmdMsg, const
   for(CtrlTask* t: tasks) {
     if(t->active && t->ref) {
       if(t->y_ref.N){
-        y.append(t->scale*(t->y_ref - t->y));
-        J_y.append(t->scale*(t->J_y));
+        y.append((t->y_ref - t->y));
+        J_y.append((t->J_y));
       }
       if(t->v_ref.N){
-        v.append(t->scale*(t->v_ref));
-        J_v.append(t->scale*(t->J_y));
+        v.append((t->v_ref));
+        J_v.append((t->J_y));
       }
     }
   }
@@ -917,32 +907,61 @@ void TaskControlMethodInverseKinematics::calculate(CtrlCmdMsg& ctrlCmdMsg, const
     ctrlCmdMsg.qRef = ctrlStateMsg.q;
   }
 
+  ctrlCmdMsg.controlType = ControlType::configRefs;
   ctrlCmdMsg.Kp.clear();
   ctrlCmdMsg.Kd.clear();
   ctrlCmdMsg.u_b.clear();
+  ctrlCmdMsg.qDDotRef.clear();
+  ctrlCmdMsg.P_compliance.clear();
 }
 
-void TaskControlMethod::lockJointGroup(const char* groupname, rai::KinematicWorld& world, bool lockThem) {
-  if(!groupname) {
-    if(lockThem) {
-      lockJoints = consts<byte>(true, world.q.N);
-      world.qdot.setZero();
-    } else lockJoints.clear();
-    return;
-  }
-  if(!lockJoints.N) lockJoints = consts<byte>(false, world.q.N);
-  rai::Joint *j;
-  for(rai::Frame *f : world.frames) if((j=f->joint)) {
-    if(f->ats[groupname]) {
-      for(uint i=0; i<j->qDim(); i++) {
-        lockJoints(j->qIndex+i) = lockThem;
-        if(lockThem && world.qdot.N) world.qdot(j->qIndex+i) = 0.; //TODO Danny: why modify the world?
+
+
+//-----------------------------------------------------------------------------
+
+
+
+TaskControlMethodProjectedAcceleration::TaskControlMethodProjectedAcceleration() {}
+
+void TaskControlMethodProjectedAcceleration::calculate(CtrlCmdMsg &ctrlCmdMsg, const CtrlStateMsg &ctrlStateMsg, const CtrlTaskL &tasks, const rai::KinematicWorld &ctrl_config) {
+  uint n = ctrl_config.getJointStateDimension();
+  arr q = ctrlStateMsg.q;
+
+  arr H = eye(n); // TODO other H metrics
+  arr A = H;
+
+  arr Kp = zeros(n, n);
+  arr Kd = zeros(n, n);
+  arr qDDotRef = zeros(n);
+
+
+  for(CtrlTask* t: tasks) {
+    if(t->active && t->ref) {
+      arr JTC = ~t->J_y*t->C;
+      A += JTC*t->J_y;
+
+      if(t->y_ref.N){
+        Kp += JTC*t->kp*t->J_y;
+        qDDotRef += JTC*t->kp*(t->y_ref - t->y + t->J_y*q);
+      }
+
+      Kd += JTC*t->kd*t->J_y; // always add damping!
+      if(t->v_ref.N){
+        qDDotRef += JTC*t->kd*t->v_ref;
       }
     }
   }
-}
 
-void TaskControlMethod::reportCurrentState(CtrlTaskL& tasks) {
-  cout << "** TaskControlMethods" << endl;
-  for(CtrlTask* t: tasks) t->reportState(cout);
+  arr AInv = inverse_SymPosDef(A);
+  Kp = AInv*Kp;
+  Kd = AInv*Kd;
+  qDDotRef = AInv*qDDotRef;
+
+  ctrlCmdMsg.controlType = ControlType::projectedAcc;
+  ctrlCmdMsg.Kp = Kp;
+  ctrlCmdMsg.Kd = Kd;
+  ctrlCmdMsg.qDDotRef = qDDotRef;
+
+  ctrlCmdMsg.u_b.clear();
+  ctrlCmdMsg.P_compliance.clear();
 }

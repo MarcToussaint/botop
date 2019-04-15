@@ -97,6 +97,7 @@ void TaskControlThread::step() {
   //-- safety checks come here
   // MORE TODO
   // limit dq
+#if 0
   double maxQStep = 2e-1;
   arr dq = ctrlCmdMsg.qRef - q_real;
   double l = length(dq);
@@ -111,6 +112,7 @@ void TaskControlThread::step() {
     cout << "limit max qDot exceeded " << ctrlCmdMsg.qDotRef << endl;
     return;
   }
+#endif
 
   ctrl_ref.set() = ctrlCmdMsg;
 }
@@ -250,7 +252,7 @@ ptr<CtrlTask> TaskControlInterface::addCtrlTask(const char* name, const ptr<Feat
   ptr<CtrlTask> ct = make_shared<CtrlTask>(name, taskMap, mp);
   ct->active = active;
   ct->update(0., ctrl_config.get(), zeros(ctrl_config.get()->getJointStateDimension())); // initialize control task with current values
-  ct->ctrlTasks = &ctrl_tasks;
+  //ct->ctrlTasks = &ctrl_tasks;
   ctrl_tasks.set()->append(ct.get());
   return ct;
 }
@@ -281,6 +283,14 @@ ptr<CtrlTask> TaskControlInterface::addCtrlTaskConst(const char* name, const ptr
 
 ptr<CtrlTask> TaskControlInterface::addCtrlTaskConst(const char* name, FeatureSymbol fs, const StringA& frames, const arr& y_target, bool active) {
   return addCtrlTask(name, symbols2feature(fs, frames, ctrl_config.get()), make_shared<MotionProfile_Const>(y_target), active);
+}
+
+ptr<CtrlTask> TaskControlInterface::addCtrlTaskConst(const char *name, FeatureSymbol fs, const StringA &frames, const arr &y_target, double kp, double kd, const arr &C, bool active) {
+  ptr<CtrlTask> ct = make_shared<CtrlTask>(name, symbols2feature(fs, frames, ctrl_config.get()), make_shared<MotionProfile_Const>(y_target), kp, kd, C);
+  ct->active = active;
+  ct->update(0., ctrl_config.get(), zeros(ctrl_config.get()->getJointStateDimension())); // initialize control task with current values
+  ctrl_tasks.set()->append(ct.get());
+  return ct;
 }
 
 ptr<CtrlTask> TaskControlInterface::addCtrlTaskConstVel(const char* name, const ptr<Feature>& taskMap, const arr& v_target, bool active) {
@@ -326,7 +336,7 @@ arr TaskControlInterface::forceInTaskSpace(const ptr<CtrlTask>& ct) {
 
 
 
-
+#if 0
 ptr<CtrlTask> addCompliance(Var<CtrlTaskL>& ctrl_tasks,
                             Var<rai::KinematicWorld>& ctrl_config,
                             const char* name, FeatureSymbol fs, const StringA& frames,
@@ -343,4 +353,4 @@ ptr<CtrlTask> addCompliance(Var<CtrlTaskL>& ctrl_tasks,
 
 
 
-
+#endif

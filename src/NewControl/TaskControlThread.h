@@ -59,6 +59,9 @@ struct TaskControlInterface {
   ptr<CtrlTask> addCtrlTaskConst(const char* name, const ptr<Feature>& taskMap, const arr& y_target = arr(), bool active = true);
   ptr<CtrlTask> addCtrlTaskConst(const char* name, FeatureSymbol fs, const StringA& frames, const arr& y_target = arr(), bool active = true);
 
+  ptr<CtrlTask> addCtrlTaskConst(const char* name, FeatureSymbol fs, const StringA& frames, const arr& y_target = arr(), double kp = 0.0, double kd = 0.0, const arr& C = arr(), bool active = true);
+
+
   ptr<CtrlTask> addCtrlTaskConstVel(const char* name, const ptr<Feature>& taskMap, const arr& v_target = arr(), bool active = true);
   ptr<CtrlTask> addCtrlTaskConstVel(const char* name, FeatureSymbol fs, const StringA& frames, const arr& v_target = arr(), bool active = true);
 

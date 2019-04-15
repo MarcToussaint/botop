@@ -314,72 +314,100 @@ void FrankaThreadNew::step(){
     }
 
     //-- get current ctrl
-    arr q_ref, qdot_ref, qdd_des, P_compliance;
+    arr q_ref, qdot_ref, qDDotRef, KpRef, KdRef, P_compliance; // TODO Kp, Kd, u_b and also read out the correct indices
+    ControlType controlType;
     {
       auto ref = ctrl.get();
-      if(!qIndices.N){
+
+      controlType = ref->controlType;
+
+      if(!qIndices.N) {
         q_ref = ref->qRef;
         qdot_ref = ref->qDotRef;
-      }else{
+        qDDotRef = ref->qDDotRef;
+        KpRef = ref->Kp;
+        KdRef = ref->Kd;
+      } else {
         if(q_ref.N!=7) q_ref.resize(7);
         if(qdot_ref.N!=7) qdot_ref.resize(7);
         for(uint i=0;i<7;i++){
           q_ref(i) = ref->qRef(qIndices(i));
           qdot_ref(i) = ref->qDotRef(qIndices(i));
         }
+        // TODOTODOTODO for Kp etc.
       }
       P_compliance = ref->P_compliance;
-      qdd_des = zeros(7);
     }
 
     firstTime=false;
 
-    //check for correct ctrl otherwise do something...
-    if(q_ref.N!=7){
-      cerr <<"FRANKA: inconsistent ctrl q_ref message" <<endl;
-      return std::array<double, 7>({0., 0., 0., 0., 0., 0., 0.});
-    }
-    if(P_compliance.N){
-      if(!(P_compliance.nd==2 && P_compliance.d0==7 && P_compliance.d1==7)){
-        cerr <<"FRANKA: inconsistent ctrl P_compliance message" <<endl;
-        P_compliance.clear();
+    arr u = zeros(7); // torques send to the robot
+
+    //-- construct torques from control message depending on the control type
+    if(controlType == ControlType::configRefs) { // plain qRef, qDotRef references
+      arr qdd_des = zeros(7);
+      //check for correct ctrl otherwise do something...
+      if(q_ref.N!=7){
+        cerr << "FRANKA: inconsistent ctrl q_ref message" << endl;
+        return std::array<double, 7>({0., 0., 0., 0., 0., 0., 0.});
       }
+      if(P_compliance.N){
+        if(!(P_compliance.nd==2 && P_compliance.d0==7 && P_compliance.d1==7)){
+          cerr << "FRANKA: inconsistent ctrl P_compliance message" << endl;
+          P_compliance.clear();
+        }
+      }
+      //-- compute desired torques
+      arr Kp(7), Kd(7);
+      CHECK_EQ(Kp.N, 7,"");
+      CHECK_EQ(Kd.N, 7,"");
+      CHECK_EQ(Kp_freq.N, 7,"");
+      CHECK_EQ(Kd_ratio.N, 7,"");
+      for(uint i=0;i<7;i++){
+        double freq = Kp_freq(i);
+        Kp(i) = freq*freq;
+        Kd(i) = 2.*Kd_ratio(i)*freq;
+      }
+
+      if(P_compliance.N){
+        Kp = P_compliance * (Kp % P_compliance);
+      }else{
+        Kp = diag(Kp);
+      }
+
+      if(q_ref.N==7){
+        qdd_des += Kp * (q_ref - q) + Kd % (qdot_ref - qdot);
+        // if(!(steps%50)) cout <<"dot_ref" <<qdot_ref <<endl;
+      }
+
+      u = qdd_des;
+      if(P_compliance.N) u = P_compliance * u;
+
+    } else if(controlType == ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
+      CHECK_EQ(KpRef.nd, 2, "")
+      CHECK_EQ(KpRef.d0, 7, "")
+      CHECK_EQ(KpRef.d1, 7, "")
+      CHECK_EQ(KdRef.nd, 2, "")
+      CHECK_EQ(KdRef.d0, 7, "")
+      CHECK_EQ(KdRef.d1, 7, "")
+      CHECK_EQ(qDDotRef.N, 7, "")
+
+      arr M;
+      M.setCarray(model.mass(robot_state).begin(), 49);
+      M.reshape(7,7);
+
+      KpRef = M*KpRef;
+      KdRef = M*KdRef;
+      qDDotRef = M*qDDotRef;
+
+      u = qDDotRef - KpRef*q - KdRef*qdot;
+
+      u(5) *= 2.0;
+
+      //cout << u << endl;
+
+      //u *= 0.0;
     }
-
-    //-- compute desired torques
-    arr Kp(7), Kd(7);
-    CHECK_EQ(Kp.N, 7,"");
-    CHECK_EQ(Kd.N, 7,"");
-    CHECK_EQ(Kp_freq.N, 7,"");
-    CHECK_EQ(Kd_ratio.N, 7,"");
-    for(uint i=0;i<7;i++){
-      double freq = Kp_freq(i);
-      Kp(i) = freq*freq;
-      Kd(i) = 2.*Kd_ratio(i)*freq;
-    }
-
-    if(P_compliance.N){
-      Kp = P_compliance * (Kp % P_compliance);
-    }else{
-      Kp = diag(Kp);
-    }
-
-    if(q_ref.N==7){
-      qdd_des += Kp * (q_ref - q) + Kd % (qdot_ref - qdot);
-//      if(!(steps%50)) cout <<"dot_ref" <<qdot_ref <<endl;
-    }
-
-#if 0
-    arr M;
-    M.setCarray(model.mass(robot_state).begin(), 49);
-    M.reshape(7,7);
-
-    arr u = M * qdd_des;
-#else
-    arr u = qdd_des;
-#endif
-
-    if(P_compliance.N) u = P_compliance * u;
 
 
     std::array<double, 7> u_array = {0., 0., 0., 0., 0., 0., 0.};
@@ -392,3 +420,12 @@ void FrankaThreadNew::step(){
   // start real-time control loop
   robot.control(torque_control_callback);
 }
+
+
+#if 0
+    arr M;
+    M.setCarray(model.mass(robot_state).begin(), 49);
+    M.reshape(7,7);
+
+    arr u = M * qdd_des;
+#endif

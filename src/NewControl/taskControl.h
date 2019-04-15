@@ -146,8 +146,6 @@ struct CtrlTask {
   bool active;       ///< also non-active tasks are updated (states evaluated), but don't enter the TaskControlMethods
   Var<ActStatus> status;
 
-  Var<CtrlTaskL>* ctrlTasks=0; ///< if non-zero, auto-removes itself from this list on destruction
-
   //-- defines the feature map
   ptr<Feature> map;        ///< this defines the task space
   
@@ -158,35 +156,26 @@ struct CtrlTask {
   //-- if motion task: defines the reference in task space
   ptr<MotionProfile> ref;  ///< non-NULL iff this is a pos/vel task
   arr y_ref, v_ref;        ///< update() will define compute these references (reference=NOW, target=FUTURE)
-  double scale;            ///< additional scaling (precision) for each task (redundant with map->scale! use latter for non-isotropic!)
-  uint hierarchy;          ///< hierarchy level in hiearchycal inverse kinematics: higher = higher priority
-  
+
+  arr C;                   ///< compliance matrix
+  double kp, kd;           ///< gains
+
   //-- if compliance task:
   arr compliance;          ///< non-empty iff this is a compliance task; values in [0,1] for each dimension of the Jacobian
   
-  //-- if force task:
-  arr f_ref;               ///< non-empty iff this is a force limit control task; defines the box limits (abs value in all dimensions)
-  double f_alpha, f_gamma; ///< TODO
-  
+
   CtrlTask(const char* name, const ptr<Feature>& _map);
   CtrlTask(const char* name, const ptr<Feature>& _map, const ptr<MotionProfile>& _ref);
-  CtrlTask(const char* name, const ptr<Feature>& _map, double maxVel);
-  CtrlTask(const char* name, const ptr<Feature>& _map, double decayTime, double dampingRatio, double maxVel=-1., double maxAcc=-1.);
-  CtrlTask(const char* name, const ptr<Feature>& _map, const Graph& params);
+  CtrlTask(const char* name, const ptr<Feature>& map, const ptr<MotionProfile>& ref, double kp, double kd, const arr& C);
   ~CtrlTask();
   
   ActStatus update(double tau, const rai::KinematicWorld& world, const arr& tauExternal);
   void resetState() { if(ref) ref->resetState(); status.set()=AS_init; }
-  
-  arr getPrec();
-  void getForceControlCoeffs(arr& f_des, arr& u_bias, arr& K_I, arr& J_ft_inv, const rai::KinematicWorld& world);
-  
-  MotionProfile_PD& PD();
+
   void setRef(ptr<MotionProfile> _ref);
   void setTarget(const arr& y_target, const arr& v_target = NoArr);
   void setTimeScale(double d){ CHECK(ref,""); ref->setTimeScale(d); ref->resetState(); }
   
-  void reportState(ostream& os);
 };
 
 //===========================================================================
@@ -211,7 +200,15 @@ struct TaskControlMethodInverseKinematics : TaskControlMethod {
   virtual void calculate(CtrlCmdMsg& ctrlCmdMsg, const CtrlStateMsg& ctrlStateMsg, const CtrlTaskL& tasks, const rai::KinematicWorld& ctrl_config);
 };
 
+struct TaskControlMethodProjectedAcceleration : TaskControlMethod {
+  TaskControlMethodProjectedAcceleration();
+  virtual void calculate(CtrlCmdMsg& ctrlCmdMsg, const CtrlStateMsg& ctrlStateMsg, const CtrlTaskL& tasks, const rai::KinematicWorld& ctrl_config);
+};
 
+
+
+
+#if 0
 /// implements a number of basic equations given a set of control tasks
 struct TaskControlMethods {
   arr Hmetric;           ///< defines the metric in q-space (or qddot-space)
@@ -237,6 +234,7 @@ struct TaskControlMethods {
   void calcForceControl(CtrlTaskL& tasks, arr& K_ft, arr& J_ft_inv, arr& fRef, double& gamma, const rai::KinematicWorld& world); ///< returns the force controller coefficients
   void reportCurrentState(CtrlTaskL& tasks);
 };
+#endif
 
 //===========================================================================
 

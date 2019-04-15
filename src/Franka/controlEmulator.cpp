@@ -68,34 +68,65 @@ void ControlEmulator::step(){
   }
 
 
+
+
   //-- get current ctrl
-  arr q_ref, qdot_ref, qdd_des, P_compliance;
+  arr q_ref, qdot_ref, qDDotRef, KpRef, KdRef, P_compliance; // TODO Kp, Kd, u_b and also read out the correct indices
+  ControlType controlType;
   {
     auto ref = ctrl_ref.get();
+
+    controlType = ref->controlType;
     q_ref = ref->qRef;
     qdot_ref = ref->qDotRef;
+    qDDotRef = ref->qDDotRef;
+    KpRef = ref->Kp;
+    KdRef = ref->Kd;
     P_compliance = ref->P_compliance;
-    qdd_des = zeros(ref->qRef.N);
   }
 
-  //check for correct ctrl otherwise do something...
-  if(q_ref.N!=q.N || qdot_ref.N!=q.N){
-    LOG(-1) <<"inconsistent ctrl message";
-    return;
-  }
-  if(P_compliance.N){
-    if(!(P_compliance.nd==2 && P_compliance.d0==q.N && P_compliance.d1==q.N)){
-      LOG(-1) <<"inconsistent ctrl P_compliance message";
-      P_compliance.clear();
+
+  arr u = zeros(7); // torques send to the robot
+
+  arr qdd_des = zeros(7);
+
+  //-- construct torques from control message depending on the control type
+  if(controlType == ControlType::configRefs) { // plain qRef, qDotRef references
+
+    //check for correct ctrl otherwise do something...
+    if(q_ref.N!=7){
+      cerr << "FRANKA: inconsistent ctrl q_ref message" << endl;
+      return;
     }
+    if(P_compliance.N){
+      if(!(P_compliance.nd==2 && P_compliance.d0==7 && P_compliance.d1==7)){
+        cerr << "FRANKA: inconsistent ctrl P_compliance message" << endl;
+        P_compliance.clear();
+      }
+    }
+    //-- compute desired torques
+
+    double k_p, k_d;
+    naturalGains(k_p, k_d, .2, 1.);
+    if(q_ref.N==q.N){
+      qdd_des += k_p * (q_ref - q) + k_d * (qdot_ref - qdot);
+    }
+    u = qdd_des;
+    if(P_compliance.N) u = P_compliance * u;
+
+  } else if(controlType == ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
+    CHECK_EQ(KpRef.nd, 2, "")
+    CHECK_EQ(KpRef.d0, 7, "")
+    CHECK_EQ(KpRef.d1, 7, "")
+    CHECK_EQ(KdRef.nd, 2, "")
+    CHECK_EQ(KdRef.d0, 7, "")
+    CHECK_EQ(KdRef.d1, 7, "")
+    CHECK_EQ(qDDotRef.N, 7, "")
+
+    u = qDDotRef - KpRef*q - KdRef*qdot;
   }
 
-  //-- compute desired torques
-  double k_p, k_d;
-  naturalGains(k_p, k_d, .2, 1.);
-  if(q_ref.N==q.N){
-    qdd_des += k_p * (q_ref - q) + k_d * (qdot_ref - qdot);
-  }
+  qdd_des = u;
 
   //-- directly integrate
   q += .5 * tau * qdot;
