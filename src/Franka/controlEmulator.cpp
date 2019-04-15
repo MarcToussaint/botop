@@ -5,8 +5,8 @@
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
 ControlEmulator::ControlEmulator(Var<rai::KinematicWorld>& _sim_config,
-                                 Var<CtrlMsg>& _ctrl_ref,
-                                 Var<CtrlMsg>& _ctrl_state,
+                                 Var<CtrlCmdMsg>& _ctrl_ref,
+                                 Var<CtrlStateMsg>& _ctrl_state,
                                  const StringA& joints,
                                  double _tau)
   : Thread("FrankaThread", _tau),
@@ -36,8 +36,8 @@ ControlEmulator::ControlEmulator(Var<rai::KinematicWorld>& _sim_config,
       q_indices.setStraightPerm(q.N);
     }
   }
-  ctrl_ref.set()->q = q;
-  ctrl_ref.set()->qdot = qdot;
+  ctrl_state.set()->q = q;
+  ctrl_state.set()->qDot = qdot;
   threadLoop();
   ctrl_state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
 }
@@ -49,12 +49,16 @@ ControlEmulator::~ControlEmulator(){
 void ControlEmulator::step(){
   //-- publish state
   {
+    arr tauExternal;
+    tauExternal = zeros(q.N);
     auto stateset = ctrl_state.set();
     stateset->q.resize(q.N).setZero();
-    stateset->qdot.resize(qdot.N).setZero();
+    stateset->qDot.resize(qdot.N).setZero();
+    stateset->tauExternal.resize(q.N).setZero();
     for(uint i:q_indices){
       stateset->q(i) = q(i);
-      stateset->qdot(i) = qdot(i);
+      stateset->qDot(i) = qdot(i);
+      stateset->tauExternal(i) = tauExternal(i);
     }
   }
 
@@ -68,10 +72,10 @@ void ControlEmulator::step(){
   arr q_ref, qdot_ref, qdd_des, P_compliance;
   {
     auto ref = ctrl_ref.get();
-    q_ref = ref->q;
-    qdot_ref = ref->qdot;
+    q_ref = ref->qRef;
+    qdot_ref = ref->qDotRef;
     P_compliance = ref->P_compliance;
-    qdd_des = zeros(ref->q.N);
+    qdd_des = zeros(ref->qRef.N);
   }
 
   //check for correct ctrl otherwise do something...

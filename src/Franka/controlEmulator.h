@@ -1,21 +1,21 @@
 #pragma once
 
 #include <Core/thread.h>
-#include <Control/ctrlMsg.h>
+#include <NewControl/ctrlMsgs.h>
 #include <Kin/kin.h>
 
 struct ControlEmulator : Thread{
   Var<rai::KinematicWorld> sim_config;
-  Var<CtrlMsg> ctrl_ref;
-  Var<CtrlMsg> ctrl_state;
+  Var<CtrlCmdMsg> ctrl_ref;
+  Var<CtrlStateMsg> ctrl_state;
 
   double tau;
   arr q,qdot;
   uintA q_indices;
 
   ControlEmulator(Var<rai::KinematicWorld>& _sim_config,
-                  Var<CtrlMsg>& _ctrl_ref,
-                  Var<CtrlMsg>& _ctrl_state,
+                  Var<CtrlCmdMsg>& _ctrl_ref,
+                  Var<CtrlStateMsg>& _ctrl_state,
                   const StringA& joints={},
                   double _tau=.001);
   ~ControlEmulator();
