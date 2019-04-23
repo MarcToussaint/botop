@@ -213,16 +213,15 @@ FrankaThreadNew::FrankaThreadNew(Var<CtrlCmdMsg>& _ctrl, Var<CtrlStateMsg>& _sta
   : Thread("FrankaThread"),
     ctrl(_ctrl),
     ctrl_state(_state),
-    qIndices(_qIndices){
-  if(qIndices.N){
-    CHECK_EQ(qIndices.N, 7, "");
-    qIndices_max = qIndices.max();
-  }
+    qIndices(_qIndices) {
 
-  //-- basic Kp Kd settings
+  CHECK_EQ(qIndices.N, 7, "");
+  qIndices_max = qIndices.max();
+
+  //-- basic Kp Kd settings for reference control mode
   Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", ARR(15., 15., 15., 10., 5., 5., 3.));
   Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", ARR(.8, .8, .7, .7, .1, .1, .1));
-  LOG(0) <<"FRANKA: Kp_freq=" <<Kp_freq <<" Kd_ratio=" <<Kd_ratio;
+  LOG(0) << "FRANKA: Kp_freq=" << Kp_freq << " Kd_ratio=" << Kd_ratio;
 
   //-- choose robot/ipAddress
   CHECK_LE(whichRobot, 1, "");
@@ -239,6 +238,8 @@ FrankaThreadNew::~FrankaThreadNew(){
   threadClose();
 }
 
+long c = 0;
+
 void FrankaThreadNew::step(){
   // connect to robot
   franka::Robot robot(ipAddress);
@@ -248,9 +249,9 @@ void FrankaThreadNew::step(){
 
   // set collision behavior
   robot.setCollisionBehavior({{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
-  {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
+                             {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+                             {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
+                             {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
   // initialize state and ctrl with first state
   {
@@ -261,26 +262,22 @@ void FrankaThreadNew::step(){
 
     auto stateset = ctrl_state.set();
     auto ref = ctrl.set();
-    if(!qIndices.N){
-      stateset->q = q;
-      stateset->qDot = qdot;
-      stateset->tauExternal = zeros(q.N);
-      ref->qRef = q;
-      ref->qDotRef = zeros(q.N);
-    }else{
-      while(stateset->q.N<=qIndices_max) stateset->q.append(0.);
-      while(stateset->qDot.N<=qIndices_max) stateset->qDot.append(0.);
-      while(stateset->tauExternal.N<=qIndices_max) stateset->tauExternal.append(0.);
-      while(ref->qRef.N<=qIndices_max) ref->qRef.append(0.);
-      while(ref->qDotRef.N<=qIndices_max) ref->qDotRef.append(0.);
-      for(uint i=0;i<7;i++){
-        stateset->q(qIndices(i)) = q(i);
-        stateset->qDot(qIndices(i)) = qdot(i);
-        stateset->tauExternal(qIndices(i)) = 0.;
-        ref->qRef(qIndices(i)) = q(i);
-        ref->qDotRef(qIndices(i)) = 0.;
-      }
+
+    // TODO really modify the complete state?
+    while(stateset->q.N<=qIndices_max) stateset->q.append(0.);
+    while(stateset->qDot.N<=qIndices_max) stateset->qDot.append(0.);
+    while(stateset->tauExternal.N<=qIndices_max) stateset->tauExternal.append(0.);
+    while(ref->qRef.N<=qIndices_max) ref->qRef.append(0.);
+    while(ref->qDotRef.N<=qIndices_max) ref->qDotRef.append(0.);
+
+    for(uint i=0; i < 7; i++){
+      stateset->q(qIndices(i)) = q(i);
+      stateset->qDot(qIndices(i)) = qdot(i);
+      stateset->tauExternal(qIndices(i)) = 0.;
+      ref->qRef(qIndices(i)) = q(i);
+      ref->qDotRef(qIndices(i)) = 0.;
     }
+
   }
 
 
@@ -300,43 +297,45 @@ void FrankaThreadNew::step(){
     //publish state
     {
       auto stateset = ctrl_state.set();
-      if(!qIndices.N){
-        stateset->q = q;
-        stateset->qDot = qdot;
-        stateset->tauExternal = torques;
-      }else{
-        for(uint i=0;i<7;i++){
-          stateset->q(qIndices(i)) = q(i);
-          stateset->qDot(qIndices(i)) = qdot(i);
-          stateset->tauExternal(qIndices(i)) = torques(i);
-        }
+      for(uint i=0;i<7;i++){
+        stateset->q(qIndices(i)) = q(i);
+        stateset->qDot(qIndices(i)) = qdot(i);
+        stateset->tauExternal(qIndices(i)) = torques(i);
       }
     }
 
-    //-- get current ctrl
-    arr q_ref, qdot_ref, qDDotRef, KpRef, KdRef, P_compliance; // TODO Kp, Kd, u_b and also read out the correct indices
+    //-- get current ctrl command
+    arr q_ref, qdot_ref, qDDotRef, KpRef, KdRef, P_compliance; // TODO Kp, Kd and also read out the correct indices
     ControlType controlType;
     {
       auto ref = ctrl.get();
 
       controlType = ref->controlType;
 
-      if(!qIndices.N) {
-        q_ref = ref->qRef;
-        qdot_ref = ref->qDotRef;
-        qDDotRef = ref->qDDotRef;
-        KpRef = ref->Kp;
-        KdRef = ref->Kd;
-      } else {
-        if(q_ref.N!=7) q_ref.resize(7);
-        if(qdot_ref.N!=7) qdot_ref.resize(7);
-        for(uint i=0;i<7;i++){
-          q_ref(i) = ref->qRef(qIndices(i));
-          qdot_ref(i) = ref->qDotRef(qIndices(i));
+
+      if(ref->qRef.N >= 7) q_ref.resize(7);
+      if(ref->qDotRef.N >= 7) qdot_ref.resize(7);
+      if(ref->qDDotRef.N >= 7) qDDotRef.resize(7);
+      if(ref->Kp.d0 >= 7 && ref->Kp.d1 >=7 && ref->Kp.d0 == ref->Kp.d1) KpRef.resize(7, 7);
+      if(ref->Kd.d0 >= 7 && ref->Kd.d1 >=7 && ref->Kd.d0 == ref->Kd.d1) KdRef.resize(7, 7);
+
+      for(uint i = 0; i < 7; i++) {
+        if(ref->qRef.N >= 7) q_ref(i) = ref->qRef(qIndices(i));
+        if(ref->qDotRef.N >= 7) qdot_ref(i) = ref->qDotRef(qIndices(i));
+        if(ref->qDDotRef.N >= 7) qDDotRef(i) = ref->qDDotRef(qIndices(i));
+
+        for(uint j = 0; j < 7; j++) {
+          if(ref->Kp.d0 >= 7 && ref->Kp.d1 >=7 && ref->Kp.d0 == ref->Kp.d1) KpRef(i, j) = ref->Kp(qIndices(i), qIndices(j));
+          if(ref->Kd.d0 >= 7 && ref->Kd.d1 >=7 && ref->Kd.d0 == ref->Kd.d1) KdRef(i, j) = ref->Kd(qIndices(i), qIndices(j));
         }
-        // TODOTODOTODO for Kp etc.
       }
-      P_compliance = ref->P_compliance;
+
+
+      if(ref->P_compliance.N) {
+        HALT("NOT IMPLEMENTED YET (at least properly)")
+        P_compliance = ref->P_compliance;
+      }
+
     }
 
     firstTime=false;
@@ -396,17 +395,34 @@ void FrankaThreadNew::step(){
       M.setCarray(model.mass(robot_state).begin(), 49);
       M.reshape(7,7);
 
+#if 0
+      c++;
+      if(c%10 == 0) {
+        cout << M << endl << endl;
+      }
+#endif
+
+
+#if 0
+      M(4,4) = 0.2;
+      M(5,5) = 0.2;
+      M(6,6) = 0.1;
+#else
+      arr MDiag = diag(ARR(0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2));
+      M = M + MDiag;
+#endif
+
       KpRef = M*KpRef;
       KdRef = M*KdRef;
       qDDotRef = M*qDDotRef;
 
       u = qDDotRef - KpRef*q - KdRef*qdot;
 
-      u(5) *= 2.0;
+      //u(5) *= 2.0;
 
       //cout << u << endl;
 
-      //u *= 0.0;
+      //u *= 0.0; // useful for testing new stuff without braking the robot
     }
 
 
@@ -420,12 +436,3 @@ void FrankaThreadNew::step(){
   // start real-time control loop
   robot.control(torque_control_callback);
 }
-
-
-#if 0
-    arr M;
-    M.setCarray(model.mass(robot_state).begin(), 49);
-    M.reshape(7,7);
-
-    arr u = M * qdd_des;
-#endif

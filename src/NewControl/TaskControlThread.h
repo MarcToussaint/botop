@@ -51,10 +51,16 @@ struct TaskControlInterface {
 
   ptr<CtrlTask> addCtrlTask(const char* name, const ptr<Feature>& taskMap, const ptr<MotionProfile>& mp, bool active = true);
   ptr<CtrlTask> addCtrlTask(const char* name, FeatureSymbol fs, const StringA& frames, const ptr<MotionProfile>& mp, bool active = true);
+
+  ptr<CtrlTask> addCtrlTask(const char* name, FeatureSymbol fs, const StringA& frames, const ptr<MotionProfile>& mp, double kp, double kd, const arr& C = arr(), bool active = true);
+
+
   ptr<CtrlTask> addCtrlTaskSineMP(const char* name, const ptr<Feature>& taskMap, double duration, bool active = true);
   ptr<CtrlTask> addCtrlTaskSineMP(const char* name, FeatureSymbol fs, const StringA& frames, double duration, bool active = true);
   ptr<CtrlTask> addCtrlTaskPD(const char* name, const ptr<Feature>& taskMap, double decayTime, double dampingRatio, bool active = true);
   ptr<CtrlTask> addCtrlTaskPD(const char* name, FeatureSymbol fs, const StringA& frames, double decayTime, double dampingRatio, bool active = true);
+
+  ptr<CtrlTask> addCtrlTaskSineMP(const char* name, FeatureSymbol fs, const StringA& frames, double duration,  double kp, double kd, const arr& C = arr(), bool active = true);
 
   ptr<CtrlTask> addCtrlTaskConst(const char* name, const ptr<Feature>& taskMap, const arr& y_target = arr(), bool active = true);
   ptr<CtrlTask> addCtrlTaskConst(const char* name, FeatureSymbol fs, const StringA& frames, const arr& y_target = arr(), bool active = true);
@@ -64,6 +70,8 @@ struct TaskControlInterface {
 
   ptr<CtrlTask> addCtrlTaskConstVel(const char* name, const ptr<Feature>& taskMap, const arr& v_target = arr(), bool active = true);
   ptr<CtrlTask> addCtrlTaskConstVel(const char* name, FeatureSymbol fs, const StringA& frames, const arr& v_target = arr(), bool active = true);
+
+  ptr<CtrlTask> addCtrlTaskConstVel(const char* name, FeatureSymbol fs, const StringA& frames, const arr& v_target = arr(), double kd = 0.0, const arr& C = arr(), bool active = true);
 
 
   void setTarget(ptr<CtrlTask>& ct, const arr& y_ref, const arr& v_ref = NoArr);

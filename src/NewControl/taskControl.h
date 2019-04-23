@@ -26,8 +26,7 @@ typedef rai::Array<CtrlTask*> CtrlTaskL;
 
 //===========================================================================
 
-/// a motion profile is a non-feedback(!) way to generate a task space reference path
-/// [perhaps an adaptive phase, or Peter's adaptation to object motions, could be a modest way to incorporate feedback in the future]
+/// a motion profile is a way to generate a task space reference path (could include feedback or not)
 struct MotionProfile {
   virtual ~MotionProfile() {}
   virtual ActStatus update(arr& yRef, arr& ydotRef, double tau, const arr& y, const arr& ydot) = 0;
@@ -44,6 +43,19 @@ struct MotionProfile_Const : MotionProfile {
   bool flipTargetSignOnNegScalarProduct;
   MotionProfile_Const(const arr& y_target, bool flip=false) : y_target(y_target), flipTargetSignOnNegScalarProduct(flip) {}
   virtual ActStatus update(arr& yRef, arr& ydotRef, double tau,const arr& y, const arr& ydot);
+  virtual void setTarget(const arr& ytarget, const arr& vtarget=NoArr){ y_target = ytarget; }
+  virtual void setTimeScale(double d) {}
+  virtual void resetState() {}
+  virtual bool isDone() { return false; }
+};
+
+//===========================================================================
+
+struct MotionProfile_MaxCarrot : MotionProfile {
+  arr y_target;
+  double maxDistance;
+  MotionProfile_MaxCarrot(const arr& y_target, double maxDistance) : y_target(y_target), maxDistance(maxDistance) {}
+  virtual ActStatus update(arr& yRef, arr& ydotRef, double tau, const arr& y, const arr& ydot);
   virtual void setTarget(const arr& ytarget, const arr& vtarget=NoArr){ y_target = ytarget; }
   virtual void setTimeScale(double d) {}
   virtual void resetState() {}
@@ -177,11 +189,6 @@ struct CtrlTask {
   void setTimeScale(double d){ CHECK(ref,""); ref->setTimeScale(d); ref->resetState(); }
   
 };
-
-//===========================================================================
-
-void getForceControlCoeffs(arr& f_des, arr& u_bias, arr& KfL, arr& J_ft, const rai::KinematicWorld& world);
-void fwdSimulateControlLaw(arr &Kp, arr &Kd, arr &u0, rai::KinematicWorld& world);
 
 //===========================================================================
 

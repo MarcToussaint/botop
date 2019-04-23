@@ -29,11 +29,13 @@ struct FrankaThreadNew : Thread{
   bool stop=false, firstTime=true;
   arr Kp_freq, Kd_ratio;
   const char* ipAddress;
+
   uintA qIndices;
   uint qIndices_max=0;
+
   uint steps=0;
 
-  FrankaThreadNew(Var<CtrlCmdMsg>& _ctrl, Var<CtrlStateMsg>& _state, uint whichRobot=0, const uintA& _qIndices={});
+  FrankaThreadNew(Var<CtrlCmdMsg>& _ctrl, Var<CtrlStateMsg>& _state, uint whichRobot=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6});
   ~FrankaThreadNew();
 
 private:

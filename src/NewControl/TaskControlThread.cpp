@@ -261,6 +261,14 @@ ptr<CtrlTask> TaskControlInterface::addCtrlTask(const char* name, FeatureSymbol 
   return addCtrlTask(name, symbols2feature(fs, frames, ctrl_config.get()), mp, active);
 }
 
+ptr<CtrlTask> TaskControlInterface::addCtrlTask(const char *name, FeatureSymbol fs, const StringA &frames, const ptr<MotionProfile> &mp, double kp, double kd, const arr &C, bool active) {
+  ptr<CtrlTask> ct = make_shared<CtrlTask>(name, symbols2feature(fs, frames, ctrl_config.get()), mp, kp, kd, C);
+  ct->active = active;
+  ct->update(0., ctrl_config.get(), zeros(ctrl_config.get()->getJointStateDimension())); // initialize control task with current values
+  ctrl_tasks.set()->append(ct.get());
+  return ct;
+}
+
 ptr<CtrlTask> TaskControlInterface::addCtrlTaskSineMP(const char* name, const ptr<Feature>& taskMap, double duration, bool active) {
   return addCtrlTask(name, taskMap, make_shared<MotionProfile_Sine>(arr(), duration), active);
 }
@@ -275,6 +283,14 @@ ptr<CtrlTask> TaskControlInterface::addCtrlTaskPD(const char* name, const ptr<Fe
 
 ptr<CtrlTask> TaskControlInterface::addCtrlTaskPD(const char* name, FeatureSymbol fs, const StringA& frames, double decayTime, double dampingRatio, bool active) {
   return addCtrlTask(name, symbols2feature(fs, frames, ctrl_config.get()), make_shared<MotionProfile_PD>(arr(), decayTime, dampingRatio), active);
+}
+
+ptr<CtrlTask> TaskControlInterface::addCtrlTaskSineMP(const char *name, FeatureSymbol fs, const StringA &frames, double duration, double kp, double kd, const arr &C, bool active) {
+  ptr<CtrlTask> ct = make_shared<CtrlTask>(name, symbols2feature(fs, frames, ctrl_config.get()), make_shared<MotionProfile_Sine>(arr(), duration), kp, kd, C);
+  ct->active = active;
+  ct->update(0., ctrl_config.get(), zeros(ctrl_config.get()->getJointStateDimension())); // initialize control task with current values
+  ctrl_tasks.set()->append(ct.get());
+  return ct;
 }
 
 ptr<CtrlTask> TaskControlInterface::addCtrlTaskConst(const char* name, const ptr<Feature>& taskMap, const arr& y_target, bool active) {
@@ -299,6 +315,14 @@ ptr<CtrlTask> TaskControlInterface::addCtrlTaskConstVel(const char* name, const 
 
 ptr<CtrlTask> TaskControlInterface::addCtrlTaskConstVel(const char* name, FeatureSymbol fs, const StringA& frames, const arr& v_target, bool active) {
   return addCtrlTask(name, symbols2feature(fs, frames, ctrl_config.get()), make_shared<MotionProfile_ConstVel>(v_target), active);
+}
+
+ptr<CtrlTask> TaskControlInterface::addCtrlTaskConstVel(const char *name, FeatureSymbol fs, const StringA &frames, const arr &v_target, double kd, const arr &C, bool active) {
+  ptr<CtrlTask> ct = make_shared<CtrlTask>(name, symbols2feature(fs, frames, ctrl_config.get()), make_shared<MotionProfile_ConstVel>(v_target), 0.0, kd, C);
+  ct->active = active;
+  ct->update(0., ctrl_config.get(), zeros(ctrl_config.get()->getJointStateDimension())); // initialize control task with current values
+  ctrl_tasks.set()->append(ct.get());
+  return ct;
 }
 
 void TaskControlInterface::setTarget(ptr<CtrlTask>& ct, const arr& y_ref, const arr& v_ref) {
