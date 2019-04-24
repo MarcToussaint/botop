@@ -7,9 +7,9 @@ test_paths = $(shell find test -mindepth 2 -maxdepth 2 -name 'Makefile' -printf 
 
 build: $(DEPEND:%=inPath_makeLib/%)
 
-initUbuntuPackages: $(DEPEND:%=inPath_installUbuntu/%)
+installUbuntuAll: $(DEPEND:%=inPath_installUbuntu/%)
 
-printUbuntu: $(DEPEND:%=inPath_printUbuntuPackages/%) printUbuntuPackages
+printUbuntuAll: $(DEPEND:%=inPath_printUbuntu/%) printUbuntu
 
 clean: $(DEPEND:%=inPath_clean/%)
 

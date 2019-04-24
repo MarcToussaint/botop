@@ -32,19 +32,21 @@ struct ObjectManager{
 
   void adaptFlatObjects(byteA& pixelLabels,
                         const byteA& cam_color, const floatA& cam_depth,
-                        const byteA& model_segments, const floatA& model_depth);
+                        const byteA& model_segments, const floatA& model_depth,
+                        const arr& cam_fxypxy);
 
   void injectNovelObjects(rai::Array<FlatPercept>& flats,
                           const byteA& labels, const byteA& cam_color, const floatA& cam_depth,
-                          const arr& cam_pose, const arr& cam_fxypxy,
-                          rai::KinematicWorld& directSync=NoWorld);
+                          const arr& cam_pose, const arr& cam_fxypxy);
+
+  void removeUnhealthyObject(rai::KinematicWorld& C);
 
   //-- display tools
 
-  void displayLabelPCL(PixelLabel label,
-                       const byteA& labels, const floatA& cam_depth,
-                       const arr& cam_pose, const arr& cam_fxypxy,
-                       rai::KinematicWorld& config);
+  void displayLabelsAsPCL(PixelLabel label,
+                          const byteA& labels, const floatA& cam_depth,
+                          const arr& cam_pose, const arr& cam_fxypxy,
+                          rai::KinematicWorld& config);
 
   void syncWithConfig(rai::KinematicWorld& C);
 

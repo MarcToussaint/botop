@@ -11,7 +11,7 @@ FlatVisionThread::FlatVisionThread(Var<rai::KinematicWorld>& _config, Var<byteA>
     cam_Fxypxy(this, _cameraFxypxy),
     armPoseCalib(this, _armPoseCalib),
     verbose(_verbose){
-  exBackground.verbose = verbose;
+  exBackground.verbose = 0; //verbose;
   exRobot.verbose = verbose;
   exNovel.verbose = verbose;
 //  threadOpen();
@@ -93,16 +93,18 @@ void FlatVisionThread::step(){
 
   //-- flat objects
   objectManager.explainFlatObjectPixels(labels, _cam_color, _cam_depth, _model_segments, _model_depth);
-  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _model_segments, _model_depth);
+  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _model_segments, _model_depth, _cam_fxypxy);
+  objectManager.removeUnhealthyObject(config.set());
 
   //-- novel percepts
   exNovel.compute(labels, _cam_color, _cam_depth);
-  if(exNovel.flats.N>0){
-    objectManager.displayLabelPCL(PL_novelPercepts,
-                                  labels, _cam_depth,
-                                  _cam_pose, _cam_fxypxy,
-                                  config.set());
-  }
+
+//  for(FlatPercept& p:exNovel.flats){
+//    objectManager.displayLabelsAsPCL(p.label,
+//                                     labels, _cam_depth,
+//                                     _cam_pose, _cam_fxypxy,
+//                                     config.set());
+//  }
 
   //-- merge with 2D objects
 #if 0
@@ -121,9 +123,16 @@ void FlatVisionThread::step(){
                                    labels,
                                    _cam_color, _cam_depth,
                                    _cam_pose, _cam_fxypxy);
-
-//  objectManager.syncWithConfig(config.set()());
 #endif
+
+  for(const ptr<Object>& obj:objectManager.objects.get()()){
+    objectManager.displayLabelsAsPCL(obj->pixelLabel,
+                                     labels, _cam_depth,
+                                     _cam_pose, _cam_fxypxy,
+                                     config.set());
+  }
+  objectManager.syncWithConfig(config.set());
+
 
   objectManager.displayLabels(labels, _cam_color);
 

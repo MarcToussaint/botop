@@ -110,17 +110,10 @@ void LGPop::runPerception(int verbose){
   }
 
   //-- big OpenCV process that generates basic percepts
-#if 0
-  ptr<Thread> opencv =
-      make_shared<CV_BackgroundSubstraction_Thread>(percepts, cam_color, cam_depth, model_segments, cam_pose, cam_Fxypxy, verbose);
-  opencv->name="opencv";
-  processes.append(opencv);
-#else
-  ptr<Thread> explainPixels =
+  ptr<Thread> flatVision =
       make_shared<FlatVisionThread>(ctrl_config, cam_color, cam_depth, model_segments, model_depth, cam_pose, cam_Fxypxy, armPoseCalib, verbose);
-  explainPixels->name="explainPixels";
-  processes.append(explainPixels);
-#endif
+  flatVision->name="explainPixels";
+  processes.append(flatVision);
 
 #if 0
   //-- percept filter and integration in model
