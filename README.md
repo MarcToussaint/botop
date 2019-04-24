@@ -12,7 +12,7 @@ git submodule init
 git submodule update
 
 #ensure you got the Ubuntu packages installed, e.g.:
-make -C rai -j1 printUbuntu
+make -C rai -j1 printUbuntuAll
 
 make -C src/Sim
 roscore &

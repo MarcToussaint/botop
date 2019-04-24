@@ -38,6 +38,7 @@ void ObjectManager::explainFlatObjectPixels(byteA& pixelLabels,
 
   //-- loop through objects
   for(std::shared_ptr<Object>& obj:O()){
+#if 0
     //-- registration and calibration, including cam_mask!
     floatA cam_mask(H,W);
     cam_mask.setZero();
@@ -61,6 +62,7 @@ void ObjectManager::explainFlatObjectPixels(byteA& pixelLabels,
     //obj->mask.shift(dx+dy*W);
     obj->depth.shift(dx+dy*W);
     obj->color.shift(3*(dx+dy*W));
+#endif
 
     //-- render into flat model and label pixels
     for(uint x=obj->rect(0);x<obj->rect(2);x++) for(uint y=obj->rect(1);y<obj->rect(3);y++){
@@ -82,7 +84,7 @@ void ObjectManager::explainFlatObjectPixels(byteA& pixelLabels,
     }
   }
 
-  //-- loop through objects
+  //-- loop through objects to label 'closeToObject' pixels
   for(std::shared_ptr<Object>& obj:O()){
     //-- label close pixels as close
     uintA rect = obj->rect;
@@ -97,7 +99,8 @@ void ObjectManager::explainFlatObjectPixels(byteA& pixelLabels,
 
 void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
                                      const byteA& cam_color, const floatA& cam_depth,
-                                     const byteA& model_segments, const floatA& model_depth){
+                                     const byteA& model_segments, const floatA& model_depth,
+                                     const arr& cam_fxypxy){
   auto O = objects.set();
 
   //-- loop through objects
@@ -107,7 +110,6 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
     double alpha=.5; //adaptation rate
     if(obj->age>10) alpha=.1;
 //    if(obj->age>50) alpha=.01;
-
 
     //-- smooth the mask
     cv::Mat cv_mask = CV(obj->mask);
@@ -136,7 +138,8 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
     for(uint x=obj->rect(0);x<obj->rect(2);x++) for(uint y=obj->rect(1);y<obj->rect(3);y++){
       if(pixelLabels(y,x)==obj->pixelLabel){
         float& d = obj->depth(y,x);
-        d = (1.-alpha)*d + alpha * cam_depth(y,x);
+        if(d<.1) d = cam_depth(y,x); //d was previously no signal depth
+        else if(cam_depth(y,x)>.1) d = (1.-alpha)*d + alpha * cam_depth(y,x);
         for(uint i=0;i<3;i++){
           byte& c = obj->color(y,x,i);
           c = (1.-alpha)*c + alpha * cam_color(y,x,i);
@@ -147,25 +150,22 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
     //-- object's min, max, avg depth and size
     recomputeObjMinMaxAvgDepthSize(obj);
 
-    //-- is healthy or should be killed?
-    if(obj->size<100.) obj->unhealthy++;
-    else if(obj->unhealthy>0) obj->unhealthy--;
-  }
+    //-- compute rotated bounding box
+    computeRotateBoundingBox(obj->polygon, cam_color, obj->mask, obj->rect);
 
-  //-- remove unhealth objects
-  for(uint i=O().N;i--;){
-    if(O().elem(i)->unhealthy>10){
-      O().remove(i);
-      changeCount=30;
-    }
+    create3DfromFlat(obj, OT_poly, obj->pixelLabel, pixelLabels, cam_color, cam_depth, cam_fxypxy);
+
+    //-- is healthy or should be killed?
+    if(obj->size<400.) obj->unhealthy++;
+    else if(obj->unhealthy>0) obj->unhealthy--;
   }
 }
 
-rai::Frame *getFrame(rai::KinematicWorld& C, uint ID, const char* name){
+rai::Frame *getFrame(rai::KinematicWorld& C, rai::Frame *frame_guess, const char* name){
   //find existing frame for this object?
-  rai::Frame *f=0;
-  if(ID>0 && ID<C.frames.N){
-    f=C.frames(ID);
+  rai::Frame *f=frame_guess;
+  if(f){
+    CHECK_EQ(C.frames(f->ID), f, "");
     CHECK_EQ(f->name, name, "");
   }else{
     f = C.getFrameByName(name, false);
@@ -178,6 +178,7 @@ rai::Frame *getFrame(rai::KinematicWorld& C, uint ID, const char* name){
     new rai::Shape(*f);
     f->shape->type() = rai::ST_mesh;
     f->shape->visual = true;
+    LOG(0) <<"creating new shape '" <<name <<"'";
   }
   return f;
 }
@@ -185,8 +186,7 @@ rai::Frame *getFrame(rai::KinematicWorld& C, uint ID, const char* name){
 void ObjectManager::injectNovelObjects(rai::Array<FlatPercept>& flats,
                                        const byteA& labels,
                                        const byteA& cam_color, const floatA& cam_depth,
-                                       const arr& cam_pose, const arr& cam_fxypxy,
-                                       rai::KinematicWorld& directSync){
+                                       const arr& cam_pose, const arr& cam_fxypxy){
 
   if(changeCount>0){
     changeCount--;
@@ -205,47 +205,73 @@ void ObjectManager::injectNovelObjects(rai::Array<FlatPercept>& flats,
 #endif
 
     changeCount=30;
-
-    if(&directSync){
-      ptr<Object> obj = createObjectFromPercept(flat, labels, cam_color, cam_depth, cam_pose, cam_fxypxy, OT_pcl);
-      obj->pixelLabel = PixelLabel(PL_objects + obj->object_ID);
-      rai::Frame *f=getFrame(directSync, 0, STRING("perc_"<<k));
-      f->shape->visual = false;
-      f->X = obj->pose;
-      f->shape->mesh() = obj->mesh;
-      f->shape->mesh().C = ARR(.5, 1., 1.);
-    }
     k++;
   }
 }
 
-void ObjectManager::displayLabelPCL(PixelLabel label, const byteA& labels, const floatA& cam_depth, const arr& cam_pose, const arr& cam_fxypxy, rai::KinematicWorld& config){
+void ObjectManager::removeUnhealthyObject(rai::KinematicWorld& C){
+  auto O = objects.set();
+
+  //-- remove unhealth objects
+  for(uint i=O().N;i--;){
+    if(O().elem(i)->unhealthy>10){
+      rai::Frame *f = O().elem(i)->frame; //C.frames.elem(O().elem(i)->frame_ID);
+      C.frames.remove(f->ID);
+      {
+        uint i=0;
+        for(rai::Frame *f: C.frames) f->ID = i++;
+      }
+      C.checkConsistency();
+      cout <<"removing frame '" <<f->name <<"'" <<endl;
+      O().remove(i);
+      changeCount=30;
+    }
+  }
+}
+
+void ObjectManager::displayLabelsAsPCL(PixelLabel label, const byteA& labels, const floatA& cam_depth, const arr& cam_pose, const arr& cam_fxypxy, rai::KinematicWorld& config){
   arr V = getPCLforLabels(label, labels, cam_depth, cam_pose, cam_fxypxy);
   rai::Frame *f=getFrame(config, 0, STRING("pcl_"<<(int)label));
-  f->shape->visual = false;
+  f->shape->visual = true;
   f->X.set(cam_pose);
+  cout <<V.N <<endl;
+  f->shape->mesh().clear();
   f->shape->mesh().V = V;
   f->shape->mesh().C = ARR(.5, 1., 1.);
 }
+
+
+
+//if(&directSync){
+//  ptr<Object> obj = createObjectFromPercept(flat, labels, cam_color, cam_depth, cam_pose, cam_fxypxy, OT_pcl);
+//  obj->pixelLabel = PixelLabel(PL_objects + obj->object_ID);
+//  rai::Frame *f=getFrame(directSync, 0, STRING("perc_"<<k));
+//  f->shape->visual = false;
+//  f->X = obj->pose;
+//  f->shape->mesh() = obj->mesh;
+//  f->shape->mesh().C = ARR(.5, 1., 1.);
+//}
+
 
 void ObjectManager::syncWithConfig(rai::KinematicWorld& C){
 
   auto O = objects.set();
   for(ptr<Object>& obj:O()){
-    rai::Frame *f=getFrame(C, obj->frame_ID, STRING("obj_"<<obj->object_ID));
-    obj->frame_ID=f->ID;
+    rai::Frame *f=getFrame(C, obj->frame, STRING("obj_"<<obj->object_ID));
+    obj->frame = f;
 
     //update the frame's parameters
     f->X = obj->pose;
     f->shape->mesh() = obj->mesh;
     f->shape->mesh().C = ARR(1., .5, .0, .5);
-    f->ats.getNew<int>("label") = 0x80+obj->object_ID;
+    f->ats.getNew<int>("label") = PL_objects+obj->object_ID;
   }
 }
 
 void ObjectManager::displayLabels(const byteA& labels, const byteA& cam_color){
   cv::Mat cv_disp = CV(cam_color).clone();
   cv::Scalar col(255.,0.,0.);
+
   auto O=objects.set();
   for(ptr<Object>& obj:O()){
     std::stringstream text;
@@ -258,6 +284,15 @@ void ObjectManager::displayLabels(const byteA& labels, const byteA& cam_color){
       rgb *= 1.-m;
       rgb += m*cv::Vec3b(255,0,0);
     }
+
+    cv::Scalar colo(0,0,1.);
+
+    for(uint i=1;i<obj->polygon.d0;i++)
+      cv::line(cv_disp,
+               cv::Point(obj->polygon(i-1,0), obj->polygon(i-1,1)),
+               cv::Point(obj->polygon(i,0), obj->polygon(i,1)), colo, 2, 8 );
+
+
   }
 
   cv::cvtColor(cv_disp, cv_disp, cv::COLOR_RGB2BGR);
