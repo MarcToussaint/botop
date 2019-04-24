@@ -23,7 +23,7 @@ TaskControlThread::TaskControlThread(const Var<rai::KinematicWorld>& _ctrl_confi
     requiresInitialSync(true),
     verbose(0)
 {
-  
+
   double hyper = rai::getParameter<double>("hyperSpeed", -1.);
   if(hyper>0.) this->metronome.reset(.01/hyper);
 

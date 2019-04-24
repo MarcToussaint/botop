@@ -277,8 +277,9 @@ void FrankaThreadNew::step(){
       ref->qRef(qIndices(i)) = q(i);
       ref->qDotRef(qIndices(i)) = 0.;
     }
-
   }
+
+
 
 
 
@@ -294,6 +295,7 @@ void FrankaThreadNew::step(){
     q.setCarray(robot_state.q.begin(), robot_state.q.size());
     qdot.setCarray(robot_state.dq.begin(), robot_state.dq.size());
     torques.setCarray(robot_state.tau_ext_hat_filtered.begin(), robot_state.tau_ext_hat_filtered.size());
+
     //publish state
     {
       auto stateset = ctrl_state.set();
