@@ -158,6 +158,8 @@ struct CtrlTask {
   bool active;       ///< also non-active tasks are updated (states evaluated), but don't enter the TaskControlMethods
   Var<ActStatus> status;
 
+  Var<CtrlTaskL>* ctrlTasks=0; ///< if non-zero, auto-removes itself from this list on destruction
+
   //-- defines the feature map
   ptr<Feature> map;        ///< this defines the task space
   

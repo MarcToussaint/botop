@@ -38,9 +38,11 @@ LGPop::LGPop(bool _simulationMode)
 
   armPoseCalib.set() = zeros(2,6);
 
+  // init ctrl_state msg
   {
     auto set = ctrl_state.set();
-    rawModel.getJointState(set->q, set->qdot);
+    rawModel.getJointState(set->q, set->qDot);
+    set->tauExternal.resize(set->q.N).setZero();
   }
 }
 
@@ -54,8 +56,8 @@ void LGPop::runRobotControllers(bool simuMode){
     ptr<Thread> G_emul = make_shared<GripperEmulator>();
     processes.append({F_emul, G_emul});
   }else{
-    ptr<Thread> F_right = make_shared<FrankaThread>(ctrl_ref, ctrl_state, 0, franka_getJointIndices(rawModel,'R'));
-    ptr<Thread> F_left =  make_shared<FrankaThread>(ctrl_ref, ctrl_state, 1, franka_getJointIndices(rawModel,'L'));
+    ptr<Thread> F_right = make_shared<FrankaThreadNew>(ctrl_ref, ctrl_state, 0, franka_getJointIndices(rawModel,'R'));
+    ptr<Thread> F_left =  make_shared<FrankaThreadNew>(ctrl_ref, ctrl_state, 1, franka_getJointIndices(rawModel,'L'));
     ptr<Thread> G_right = make_shared<FrankaGripper>(0);
     ptr<Thread> G_left =  make_shared<FrankaGripper>(1);
     processes.append({F_right, F_left, G_right, G_left});
@@ -63,7 +65,7 @@ void LGPop::runRobotControllers(bool simuMode){
 }
 
 void LGPop::runTaskController(int verbose){
-  ptr<Thread> TC = make_shared<TaskControlThread>(ctrl_config, ctrl_ref, ctrl_state, ctrl_tasks);
+  ptr<Thread> TC = make_shared<TaskControlThread>(ctrl_config, ctrl_ref, ctrl_state, ctrl_tasks, new TaskControlMethodProjectedAcceleration);
   processes.append(TC);
   if(verbose){
     ctrl_config.name() = "ctrl_config";

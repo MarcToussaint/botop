@@ -115,14 +115,14 @@ void ControlEmulator::step(){
     if(P_compliance.N) u = P_compliance * u;
 
   } else if(controlType == ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
-    CHECK_EQ(KpRef.nd, 2, "")
+    /*CHECK_EQ(KpRef.nd, 2, "")
     CHECK_EQ(KpRef.d0, 7, "")
     CHECK_EQ(KpRef.d1, 7, "")
     CHECK_EQ(KdRef.nd, 2, "")
     CHECK_EQ(KdRef.d0, 7, "")
     CHECK_EQ(KdRef.d1, 7, "")
     CHECK_EQ(qDDotRef.N, 7, "")
-
+*/
     u = qDDotRef - KpRef*q - KdRef*qdot;
   }
 

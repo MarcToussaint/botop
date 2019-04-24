@@ -334,7 +334,12 @@ CtrlTask::CtrlTask(const char *name, const ptr<Feature>& map, const ptr<MotionPr
   this->C = C;
 }
 
-CtrlTask::~CtrlTask() {}
+CtrlTask::~CtrlTask() {
+  if(ctrlTasks){
+    ctrlTasks->set()->removeValue(this, true);
+    ctrlTasks=0;
+  }
+}
 
 ActStatus CtrlTask::update(double tau, const rai::KinematicWorld& world, const arr& tauExternal) {
   map->__phi(y, J_y, world);
