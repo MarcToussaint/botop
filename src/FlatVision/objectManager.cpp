@@ -21,7 +21,7 @@ bool sortByAvgHeight(const ptr<Object>& a, const ptr<Object>& b){
   return a->depth_avg < b->depth_avg;
 }
 
-void ObjectManager::explainFlatObjectPixels(byteA& pixelLabels,
+void ObjectManager::renderFlatObject(byteA& pixelLabels,
                                             const byteA& cam_color, const floatA& cam_depth,
                                             const byteA& model_segments, const floatA& model_depth){
   auto O = objects.set();
@@ -64,7 +64,7 @@ void ObjectManager::explainFlatObjectPixels(byteA& pixelLabels,
     obj->color.shift(3*(dx+dy*W));
 #endif
 
-    //-- render into flat model and label pixels
+    //-- render into flat model and DON'T label pixels
     for(uint x=obj->rect(0);x<obj->rect(2);x++) for(uint y=obj->rect(1);y<obj->rect(3);y++){
 //    for(uint x=0;x<W;x++) for(uint y=0;y<H;y++){
       float m = obj->mask(y, x);
@@ -77,24 +77,24 @@ void ObjectManager::explainFlatObjectPixels(byteA& pixelLabels,
         flat_depth(y,x) = d;
         memmove(&flat_color(y,x,0), c, 3);
 
-        if(pixelLabels(y,x)==PL_unexplained){ //object MAY NOT explain background or noise
-          pixelLabels(y,x) = obj->pixelLabel;
-        }
+//        if(pixelLabels(y,x)==PL_unexplained){ //object MAY NOT explain background or noise
+//          pixelLabels(y,x) = obj->pixelLabel;
+//        }
       }
     }
   }
 
   //-- loop through objects to label 'closeToObject' pixels
-  for(std::shared_ptr<Object>& obj:O()){
-    //-- label close pixels as close
-    uintA rect = obj->rect;
-    extendRect(rect, 5, pixelLabels.d0, pixelLabels.d1);
-    for(uint x=rect(0);x<rect(2);x++) for(uint y=rect(1);y<rect(3);y++){
-      if(pixelLabels(y,x)==PL_unexplained){
-        pixelLabels(y,x) = (PL_closeToObject|obj->pixelLabel);
-      }
-    }
-  }
+//  for(std::shared_ptr<Object>& obj:O()){
+//    //-- label close pixels as close
+//    uintA rect = obj->rect;
+//    extendRect(rect, 5, pixelLabels.d0, pixelLabels.d1);
+//    for(uint x=rect(0);x<rect(2);x++) for(uint y=rect(1);y<rect(3);y++){
+//      if(pixelLabels(y,x)==PL_unexplained){
+//        pixelLabels(y,x) = (PL_closeToObject|obj->pixelLabel);
+//      }
+//    }
+//  }
 }
 
 void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
@@ -108,7 +108,7 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
 
     obj->age++;
     double alpha=.5; //adaptation rate
-    if(obj->age>10) alpha=.1;
+//    if(obj->age>10) alpha=.1;
 //    if(obj->age>50) alpha=.01;
 
     //-- smooth the mask
@@ -195,7 +195,7 @@ void ObjectManager::injectNovelObjects(rai::Array<FlatPercept>& flats,
 
   auto O = objects.set();
   uint k=0;
-  for(FlatPercept& flat : flats) if(O().N<3){
+  for(FlatPercept& flat : flats) if(flat.done!=PS_merged && O().N<5){
 #if 1
     ptr<Object> obj = createObjectFromPercept(flat, labels, cam_color, cam_depth, cam_pose, cam_fxypxy, OT_box);
     obj->object_ID = objIdCount++;
@@ -203,6 +203,8 @@ void ObjectManager::injectNovelObjects(rai::Array<FlatPercept>& flats,
     O->append(obj);
     LOG(0) <<"novel object: " <<obj->object_ID <<" #O=" <<O().N;
 #endif
+
+    flat.done=PS_merged;
 
     changeCount=30;
     k++;
@@ -216,17 +218,97 @@ void ObjectManager::removeUnhealthyObject(rai::KinematicWorld& C){
   for(uint i=O().N;i--;){
     if(O().elem(i)->unhealthy>10){
       rai::Frame *f = O().elem(i)->frame; //C.frames.elem(O().elem(i)->frame_ID);
-      C.frames.remove(f->ID);
-      {
-        uint i=0;
-        for(rai::Frame *f: C.frames) f->ID = i++;
+      if(f){
+        C.frames.remove(f->ID);
+        {
+          uint i=0;
+          for(rai::Frame *f: C.frames) f->ID = i++;
+        }
+        C.checkConsistency();
+        cout <<"removing frame '" <<f->name <<"'" <<endl;
       }
-      C.checkConsistency();
-      cout <<"removing frame '" <<f->name <<"'" <<endl;
       O().remove(i);
       changeCount=30;
     }
   }
+}
+
+
+bool ObjectManager::mergePerceptIntoObjects(FlatPercept& perc,
+                                            const byteA& labels,
+                                            const byteA& cam_color, const floatA& cam_depth,
+                                            const byteA& model_segments, const floatA& model_depth){
+
+  auto objSet = objects.set();
+
+  //-- count pixel overlabs of percept with all flat vision objects
+  perc.size=0.;
+  uintA counts;
+  counts.resize(PL_max+1).setZero();
+  for(uint x=perc.rect(0);x<perc.rect(2);x++)
+    for(uint y=perc.rect(1);y<perc.rect(3);y++)
+      if(labels(y,x)==perc.label){
+        perc.size++;
+        byte l = flat_segments(y,x);
+        if(l & PL_objects){
+          counts(l)++;
+        }
+      }
+  PixelLabel objPixelLabel = (PixelLabel)counts.maxIndex();
+  if(objPixelLabel==PL_unexplained) return false;
+  uint match = counts(objPixelLabel);
+  Object& obj = getObject(objPixelLabel);
+
+  //-- no sufficient overlap? -> return false
+  double overlap = double(match) / perc.size;
+  double overlap2 = double(match) / obj.size;
+  if(overlap < 0.2 && overlap2 < .2){
+    cout <<"NOT FUSING with object:" <<std::hex <<objPixelLabel <<" (overlap=" <<overlap <<" " <<overlap2 <<")" <<endl;
+    return false; //merge was no success
+  }
+
+  //-- we're fusing!
+  cout <<"FUSING with object:" <<std::hex <<objPixelLabel <<" (overlap=" <<overlap <<" " <<overlap2 <<")" <<endl;
+
+  //-- registration and calibration with TWO masks!
+//  auto reg = registrationCalibration(cam_color, cam_depth, percMask, obj.color, obj.depth, obj.mask, true, 1);
+//  cout <<"calib= " <<reg.calib <<endl;
+
+  floatA newMask = obj.mask;
+  for(uint x=perc.rect(0);x<perc.rect(2);x++) for(uint y=perc.rect(1);y<perc.rect(3);y++){
+    if(labels(y,x)==perc.label){
+      labels(y,x) = obj.pixelLabel;
+    }
+  }
+
+  perc.done=PS_merged;
+  return true; //merge was a success
+}
+
+void ObjectManager::processNovelPercepts(rai::Array<FlatPercept>& flats,
+                                         const byteA& labels,
+                                         const byteA& cam_color, const floatA& cam_depth,
+                                         const byteA& model_segments, const floatA& model_depth,
+                                         const arr& cam_pose, const arr& cam_fxypxy){
+
+#if 1
+  for(;;){ //sorted
+    //get largest percept
+    FlatPercept *pp=0;
+    for(FlatPercept& p:flats) if(p.done==PS_fresh && (!pp || p.size>pp->size)) pp=&p;
+    if(!pp) break;
+    bool success = mergePerceptIntoObjects(*pp, labels, cam_color, cam_depth, model_segments, model_depth);
+    if(success) pp->done=PS_merged;
+    else pp->done=PS_unmerged;
+  }
+#else
+  for(FlatPercept& p:flats){
+    bool success = mergePerceptIntoObjects(p, labels, cam_color, cam_depth, model_segments, model_depth);
+    if(success) p.done=PS_merged;
+    else p.done=PS_unmerged;
+  }
+#endif
+
 }
 
 void ObjectManager::displayLabelsAsPCL(PixelLabel label, const byteA& labels, const floatA& cam_depth, const arr& cam_pose, const arr& cam_fxypxy, rai::KinematicWorld& config){
@@ -256,7 +338,7 @@ void ObjectManager::displayLabelsAsPCL(PixelLabel label, const byteA& labels, co
 void ObjectManager::syncWithConfig(rai::KinematicWorld& C){
 
   auto O = objects.set();
-  for(ptr<Object>& obj:O()){
+  for(std::shared_ptr<Object>& obj:O()){
     rai::Frame *f=getFrame(C, obj->frame, STRING("obj_"<<obj->object_ID));
     obj->frame = f;
 

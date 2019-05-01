@@ -38,15 +38,20 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
   //-- approximate contours to polygons + get bounding rects and circles
   uint C  = cv_contours.size();
   std::vector<std::vector<cv::Point> > contours_poly(C);
+  std::vector<std::vector<cv::Point> > contours_hull(C);
   std::vector<cv::Rect> boundRect(C);
   std::vector<cv::Point2f> center(C);
   std::vector<float> radius(C);
+  std::vector<double> size(C);
   std::vector<int> label(C);
   uint numPercepts=0;
-  for(uint i=0; i<cv_contours.size(); i++){
-    approxPolyDP( cv::Mat(cv_contours[i]), contours_poly[i], 3, true );
+  for(uint i=0; i<C; i++){
+    cv::approxPolyDP( cv::Mat(cv_contours[i]), contours_poly[i], 3, true );
+    cv::convexHull( cv::Mat(contours_poly[i]), contours_hull[i], false );
+
     boundRect[i] = cv::boundingRect( cv::Mat(contours_poly[i]) );
-    minEnclosingCircle( cv::Mat(contours_poly[i]), center[i], radius[i] );
+    size[i] = cv::contourArea(cv::Mat(contours_poly[i]));
+    cv::minEnclosingCircle( cv::Mat(contours_poly[i]), center[i], radius[i] );
     if(radius[i]>radiusLimit &&
        boundRect[i].width>radiusLimit &&
        boundRect[i].height>radiusLimit){
@@ -57,12 +62,12 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
     }
   }
 
-  //-- assign pixelLabels by drawing directly into the image with the right labels!
+  //-- assign pixelLabels by drawing the contour polygon or hull directly into the image with the right labels!
   cv::Mat cv_pixelLabels = CV(pixelLabels);
   for(uint i=0; i<C; i++){
     if(label[i]>=0){
       cv::Scalar col(PL_novelPercepts+label[i]);
-      cv::drawContours(cv_pixelLabels, cv_contours, i, col, CV_FILLED);
+      cv::drawContours(cv_pixelLabels, contours_poly, i, col, CV_FILLED); //POLY!
     }
   }
 
@@ -72,19 +77,19 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
     if(label[i]>=0){
       FlatPercept& p=flats(label[i]);
       p.label=PixelLabel(PL_novelPercepts+label[i]);
+      p.done=PS_fresh;
       p.x=center[i].x;
       p.y=center[i].y;
       p.radius = radius[i];
+      p.size = size[i];
       p.rect = TUP(boundRect[i].x,
                    boundRect[i].y,
                    boundRect[i].x+boundRect[i].width,
                    boundRect[i].y+boundRect[i].height);
-      //polygon contour
-      p.polygon.resize(contours_poly[i].size(), 2);
-      for(uint j=0;j<p.polygon.d0;j++){
-        p.polygon(j,0) = contours_poly[i][j].x;
-        p.polygon(j,1) = contours_poly[i][j].y;
-      }
+      //contour polygon
+      conv_pointVec_arr(p.polygon, contours_poly[i]);
+      //contour hull
+      conv_pointVec_arr(p.hull, contours_hull[i]);
     }
   }
 
@@ -102,6 +107,7 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
         id2color(col, k+1);
         cv::Scalar colo(col[0], col[1], col[2]);
         cv::drawContours( cv_color, contours_poly, i, colo, 2, 8);
+        cv::drawContours( cv_color, contours_hull, i, colo, 2, 8);
         rectangle( cv_color, boundRect[i].tl(), boundRect[i].br(), colo, 2, 8, 0 );
         circle( cv_color, center[i], (int)radius[i], colo, 2, 8, 0 );
         k++;

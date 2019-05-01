@@ -71,7 +71,7 @@ ptr<Object> createObjectFromPercept(const FlatPercept& flat,
   //-- 2D properties
   cv::Rect cv_rect(cv::Point(flat.rect(0),flat.rect(1)), cv::Point(flat.rect(2), flat.rect(3)));
   obj->rect = flat.rect;
-  obj->polygon = flat.polygon;
+  obj->polygon = flat.hull;
   obj->mask = convert<float>(labels==(byte)flat.label);
   obj->depth = cam_depth;
   obj->color = cam_color;
@@ -137,7 +137,7 @@ void create3DfromFlat(ptr<Object> obj, NovelObjectType type, PixelLabel label,
 
     //-- create mesh from polygon
     obj->mesh.clear();
-    if(polygon.N){
+    if(polygon.d0 > 2){
       obj->mesh.V.append(polygon);
       for(uint i=0;i<polygon.d0;i++) polygon(i,2) = -obj->depth_min+.001;
       obj->mesh.V.append(polygon);
@@ -216,50 +216,71 @@ void computeRotateBoundingBox(uintA& polygon, const byteA& img, const floatA& ma
 
   //-- compute contours
   std::vector<std::vector<cv::Point> > cv_contours;
-  cv::Mat bin = (cv_mask_crop >= .5f);
-//  cv::threshold( cv_mask_crop, bin, .5f, 255, cv::THRESH_BINARY );
+  cv::Mat bin = (cv_mask_crop >= .9f);
   cv::findContours(bin, cv_contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
 
-  if(true){
+  //-- preprocess contours
+  uint C  = cv_contours.size();
+  if(!C) return;
+
+  std::vector<std::vector<cv::Point> > contours_poly(C);
+  std::vector<std::vector<cv::Point> > contours_hull(C);
+  std::vector<double> size(C);
+  for(uint i=0; i<C; i++){
+    cv::approxPolyDP( cv::Mat(cv_contours[i]), contours_poly[i], 3, true );
+//    cv::convexHull( cv::Mat(contours_poly[i]), contours_hull[i], false );
+    size[i] = cv::contourArea(cv::Mat(contours_poly[i]));
+  }
+
+  //-- find largest
+  int l=-1;
+  for(uint i=0; i<C; i++) if(l<0 || size[i]>size[l]) l=i;
+
+  //-- compute rotated bb for largest
+  cv::RotatedRect minRect;
+  minRect = cv::minAreaRect( cv::Mat(contours_poly[l]) );
+  cv::convexHull( cv::Mat(contours_poly[l]), contours_hull[l], false );
+
+  { //display
     cv::Mat cv_img = CV(img).clone();
+    cv::Scalar colo(1,0,0);
+    cv::drawContours( cv_img, contours_poly, l, colo, 2, 8);
+    cv::drawContours( cv_img, contours_hull, l, colo, 2, 8);
+    //rectangle( cv_color, boundRect[i].tl(), boundRect[i].br(), colo, 2, 8, 0 );
+    //circle( cv_color, center[i], (int)radius[i], colo, 2, 8, 0 );
 
-    for(uint i=0,k=0; i<cv_contours.size(); i++){
-      cv::RotatedRect minRect;
-      minRect = cv::minAreaRect( cv::Mat(cv_contours[i]) );
-
-      byte col[3];
-      id2color(col, k+1);
-      cv::Scalar colo(col[0], col[1], col[2]);
-      cv::drawContours( cv_img, cv_contours, i, colo, 2, 8);
-      //        rectangle( cv_color, boundRect[i].tl(), boundRect[i].br(), colo, 2, 8, 0 );
-      //        circle( cv_color, center[i], (int)radius[i], colo, 2, 8, 0 );
-
-      // rotated rectangle
-           cv::Point2f rect_points[4];
-           minRect.points( rect_points );
-           for( int j = 0; j < 4; j++ )
-              cv::line( cv_img, rect_points[j], rect_points[(j+1)%4], colo, 1, 8 );
-      k++;
-    }
+    //draw rotated rectangle
+//    cv::Point2f rect_points[4];
+//    minRect.points( rect_points );
+//    for(int j=0; j<4; j++) cv::line(cv_img, rect_points[j], rect_points[(j+1)%4], colo, 1, 8 );
 
     cv::imshow("rotated BB", cv_img);
     cv::waitKey(1);
   }
 
-
-  for(uint i=0; i<cv_contours.size(); i++){
-    cv::RotatedRect minRect;
-    minRect = cv::minAreaRect( cv::Mat(cv_contours[i]) );
-
-    double A = minRect.size.area();
-    if(A>10. && A<10000.){
-      cv::Point2f pts[4];
-      minRect.points(pts);
-      polygon.resize(4,2);
-      for(uint i=0;i<4;i++){
-        polygon(i,0) = pts[i].x;
-        polygon(i,1) = pts[i].y;
-      }
-    }
+  //-- assign to output polygon
+#if 0
+  cv::Point2f pts[4];
+  minRect.points(pts);
+  polygon.resize(4,2);
+  for(uint i=0;i<4;i++){
+    CHECK_LE(pts[i].x, 2*img.d1+1, "");
+    CHECK_LE(pts[i].y, 2*img.d0+1, "");
+    CHECK_GE(pts[i].x, -1., "");
+    CHECK_GE(pts[i].y, -1., "");
+    polygon(i,0) = pts[i].x;
+    polygon(i,1) = pts[i].y;
   }
+#else
+  conv_pointVec_arr(polygon, contours_hull[l]);
+#endif
+}
+
+void conv_pointVec_arr(uintA& pts, const std::vector<cv::Point>& cv_pts){
+  pts.resize(cv_pts.size(), 2);
+  for(uint j=0;j<pts.d0;j++){
+    pts(j,0) = cv_pts[j].x;
+    pts(j,1) = cv_pts[j].y;
+  }
+
 }

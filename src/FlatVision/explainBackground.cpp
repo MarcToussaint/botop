@@ -41,13 +41,19 @@ void ExplainBackground::compute(byteA& pixelLabels,
     }else{
       count=0;    //reset count
     }
+
     if(count>=5){  //if count>=5, reassign background and reset count
       b=deeper;
       count=0;
+    }else{
+      if(fabs(d-b)<.5*threshold){ //for very close pixels, smooth very slowly
+        double alpha=.1;
+        b = (1-alpha)*b + alpha*d;
+      }
     }
   }
 
-  //-- assign pixels to background is deeper than background - threshold
+  //-- label pixels as background that are deeper than background - threshold
   for(uint i=0;i<pixelLabels.N;i++){
     if(!pixelLabels.p[i] &&
        (cam_depth.p[i] > background.p[i] - threshold)){

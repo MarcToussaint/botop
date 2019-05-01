@@ -13,12 +13,17 @@ enum PixelLabel : byte { PL_unexplained=0x00, PL_nosignal=0x01, PL_noise=0x02, P
                          PL_closeToObject=0xc0,
                          PL_max=0xff};
 
+enum PerceptStatus { PS_fresh=0, PS_merged, PS_unmerged };
+
 struct FlatPercept{
   PixelLabel label;
   double x=0.,y=0.;
   double radius=0.;
+  double size=0;
   uintA rect;
   uintA polygon;
+  uintA hull;
+  PerceptStatus done=PS_fresh;
 };
 
 struct Object{
@@ -75,3 +80,11 @@ void create3DfromFlat(ptr<Object> obj, NovelObjectType type, PixelLabel label,
 arr getPCLforLabels(PixelLabel label,
                     const byteA& labels, const floatA& cam_depth,
                     const arr& cam_pose, const arr& fxypxy);
+
+namespace cv{
+  template<typename _T> class Point_;
+  typedef Point_<int> Point2i;
+  typedef Point2i Point;
+}
+
+void conv_pointVec_arr(uintA& pts, const std::vector<cv::Point>& cv_pts);

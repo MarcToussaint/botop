@@ -1,7 +1,7 @@
 #include "flatVision.h"
 
 FlatVisionThread::FlatVisionThread(Var<rai::KinematicWorld>& _config, Var<byteA>& _color, Var<floatA>& _depth, Var<byteA>& _model_segments, Var<floatA> _model_depth, Var<arr>& _cameraPose, Var<arr>& _cameraFxypxy, Var<arr>& _armPoseCalib, int _verbose)
-  : Thread("FlatVision", .1),
+  : Thread("FlatVision", -1.),
     config(this, _config),
     cam_color(this, _color),
     cam_depth(this, _depth, true),
@@ -14,8 +14,9 @@ FlatVisionThread::FlatVisionThread(Var<rai::KinematicWorld>& _config, Var<byteA>
   exBackground.verbose = 0; //verbose;
   exRobot.verbose = verbose;
   exNovel.verbose = verbose;
-//  threadOpen();
-  threadStep();
+  threadOpen();
+//  threadStep();
+//  threadLoop();
 }
 
 void FlatVisionThread::step(){
@@ -91,48 +92,34 @@ void FlatVisionThread::step(){
   objectManager.explainObjectPixels(labels, _cam_color, _cam_depth, _model_segments, _model_depth);
 #endif
 
-  //-- flat objects
-  objectManager.explainFlatObjectPixels(labels, _cam_color, _cam_depth, _model_segments, _model_depth);
-  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _model_segments, _model_depth, _cam_fxypxy);
-  objectManager.removeUnhealthyObject(config.set());
-
   //-- novel percepts
   exNovel.compute(labels, _cam_color, _cam_depth);
 
-//  for(FlatPercept& p:exNovel.flats){
-//    objectManager.displayLabelsAsPCL(p.label,
-//                                     labels, _cam_depth,
-//                                     _cam_pose, _cam_fxypxy,
-//                                     config.set());
-//  }
-
-  //-- merge with 2D objects
-#if 0
-  objectManager.flatRenderObjects(_cam_depth.d0, _cam_depth.d1);
+  objectManager.renderFlatObject(labels, _cam_color, _cam_depth, _model_segments, _model_depth);
 
   objectManager.processNovelPercepts(exNovel.flats,
                                      labels,
                                      _cam_color, _cam_depth,
                                      _model_segments, _model_depth,
                                      _cam_pose, _cam_fxypxy);
-#endif
 
-  //-- map novels to objects
-#if 1
+  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _model_segments, _model_depth, _cam_fxypxy);
+
+  objectManager.removeUnhealthyObject(config.set());
+
   objectManager.injectNovelObjects(exNovel.flats,
                                    labels,
                                    _cam_color, _cam_depth,
                                    _cam_pose, _cam_fxypxy);
-#endif
 
-  for(const ptr<Object>& obj:objectManager.objects.get()()){
-    objectManager.displayLabelsAsPCL(obj->pixelLabel,
-                                     labels, _cam_depth,
-                                     _cam_pose, _cam_fxypxy,
-                                     config.set());
-  }
+//  for(const ptr<Object>& obj:objectManager.objects.get()()){
+//    objectManager.displayLabelsAsPCL(obj->pixelLabel,
+//                                     labels, _cam_depth,
+//                                     _cam_pose, _cam_fxypxy,
+//                                     config.set());
+//  }
+
   objectManager.syncWithConfig(config.set());
-
 
   objectManager.displayLabels(labels, _cam_color);
 

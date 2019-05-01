@@ -21,6 +21,7 @@ RealSenseThread::RealSenseThread(const Var<byteA>& _color, const Var<floatA>& _d
   : Thread("RealSenseThread"),
     color(this, _color),
     depth(this, _depth){
+  threadOpen(true);
   threadLoop();
 }
 
@@ -85,6 +86,26 @@ void RealSenseThread::open(){
           }
         }
       }
+    }else{
+      if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"RGB Camera")){
+        if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
+          sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 1);
+          LOG(1) <<"  I enabled auto exposure";
+        }
+        if(sensor.supports(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE)){
+          sensor.set_option(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, 1);
+          LOG(1) <<"  I enabled auto white balance";
+        }
+      }
+      if(!longCable){ //crashes with long cable
+        if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")){
+          if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
+            sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 1);
+            LOG(1) <<"  I enabled auto exposure";
+          }
+        }
+      }
+
     }
   }
 
@@ -142,7 +163,6 @@ void RealSenseThread::step(){
 //  rs_depth = rs_depth2;
 //  rs_depth = s->hole_filter.process(rs_depth2);
 
-#if 1
   {
     auto depthSet = depth.set();
     depthSet->resize(rs_depth.get_height(), rs_depth.get_width());
@@ -161,26 +181,7 @@ void RealSenseThread::step(){
     }
 #endif
   }
-#else //also compute point cloud
-  float pixel[2];
-  float point[3];
-  {
-    auto depthSet = depth.set();
-    auto pointsSet = points.set();
-    depthSet->resize(rs_depth.get_height(), rs_depth.get_width());
-    pointsSet->resize(rs_depth.get_height(), rs_depth.get_width(), 3);
-    depth2
-    for(uint y=0;y<depthSet->d0;y++) for(uint x=0;x<depthSet->d1;x++){
-      float d = rs_depth.get_distance(x,y);
-      if(d>1.) d=1.;
-      depthSet->operator()(y,x) = d;
-      pixel[0]=x;
-      pixel[1]=y;
-      rs2_deproject_pixel_to_point(point, &s->depth_intrinsics, pixel, d);
-      for(uint i=0;i<3;i++) pointsSet()(y,x,i) = point[i];
-    }
-  }
-#endif
+
   {
     auto colorSet = color.set();
     colorSet->resize(rs_color.get_height(), rs_color.get_width(), 3);
