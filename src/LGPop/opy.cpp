@@ -3,8 +3,8 @@
 #include "opy.h"
 #include "lgpop.h"
 
-void RyLGPop::runRobotControllers(bool simuMode){
-  self->runRobotControllers(simuMode);
+void RyLGPop::runRobotControllers(LGPop::OpMode opMode){
+  self->runRobotControllers(opMode);
 }
 
 void RyLGPop::runTaskController(int verbose){
@@ -51,7 +51,7 @@ namespace py = pybind11;
 PYBIND11_MODULE(libLGPop, m) {
 
   py::class_<RyLGPop>(m, "LGPop")
-      .def(py::init<bool>())
+      .def(py::init<LGPop::OpMode>())
       METHOD(runRobotControllers)
       METHOD(runTaskController)
       METHOD(runCamera)

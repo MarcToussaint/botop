@@ -5,11 +5,11 @@
 struct RyLGPop{
   std::shared_ptr<LGPop> self;
 
-  RyLGPop(bool _simulationMode=true){
-    self = make_shared<LGPop>(_simulationMode);
+  RyLGPop(LGPop::OpMode opMode=LGPop::RealMode){
+    self = make_shared<LGPop>(opMode);
   }
 
-  void runRobotControllers(bool simuMode=false);
+  void runRobotControllers(LGPop::OpMode opMode=LGPop::RealMode);
   void runTaskController(int verbose=0);
   void runCamera(int verbose=0);
   void runPerception(int verbose=0);

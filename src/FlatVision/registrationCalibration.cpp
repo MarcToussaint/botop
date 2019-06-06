@@ -20,7 +20,7 @@ RegReturn registrationCalibration(const byteA& cam_color,
                                   const floatA& model_depth,
                                   const floatA& model_mask,
                                   bool useDepth,
-                                  uint padding,
+                                  int padding,
                                   int verbose){
 
 
@@ -46,9 +46,9 @@ RegReturn registrationCalibration(const byteA& cam_color,
   arr Y(maskN);
   double avgDepth=0.;
   uint k=0;
-  uint H=mask.d0, W=mask.d1;
-  for(uint y=0;y<H;y++) for(uint x=0;x<W;x++){
-    uint i=y*W+x;
+  int H=mask.d0, W=mask.d1;
+  for(int y=0;y<H;y++) for(int x=0;x<W;x++){
+    int i=y*W+x;
     if(mask.elem(i)>0.f){
       X(k,0) = double(x)/W-.5;
       X(k,1) = double(y)/H-.5;
@@ -70,7 +70,7 @@ RegReturn registrationCalibration(const byteA& cam_color,
   calib(4) = -beta.elem(0); //tilt in x is rotation about y
 
   //-- from the mask get the rect and enlarge it a bit
-  uintA rect = nonZeroRect(mask, .5);
+  intA rect = nonZeroRect(mask, .5);
   extendRect(rect, padding, mask.d0, mask.d1);
   cv::Rect cv_rect(cv::Point(rect(0), rect(1)), cv::Point(rect(2), rect(3)));
 

@@ -7,11 +7,19 @@
 #include <Control/TaskControlThread.h>
 
 #include <Perception/percept.h>
+#include <FlatVision/helpers.h>
 
 #include <Franka/franka.h>
 
+namespace rai {
+  enum OpenClose { _open, _close };
+  enum LeftRight { _left, _right };
+}
+
 struct LGPop{
-  bool simulationMode;
+  enum OpMode { NoMode, SimulationMode, RealMode };
+
+  OpMode opMode;
   rai::KinematicWorld rawModel; //should be constant, and unchanged from loaded model
   arr q_home; //pose of loaded model
 
@@ -38,37 +46,45 @@ struct LGPop{
   Var<arr> armPoseCalib; //(2x6 matrix: (dx,dy,dz, rx,ry,rz) (with trans and infinitesimal rot; for both arms)
 
   //-- perception results
-  Var<PerceptL> percepts; //percepts
-
-
-
-
+  Var<rai::Array<ptr<Object>>> objects;
 
   //-- list of all processes
   rai::Array<ptr<Thread>> processes;
 
 
 
-  LGPop(bool _simulationMode=true);
+  LGPop(OpMode _opMode=SimulationMode);
 
   ~LGPop();
 
   //-- running processes
-  void runRobotControllers(bool simuMode=false);
+  void runRobotControllers(OpMode _ctrlOpMode=NoMode);
   void runTaskController(int verbose=0);
   void runCamera(int verbose=0);
   void runPerception(int verbose=0);
   void runCalibration();
 
+  void perception_setSyncToConfig(bool _syncToConfig);
+
   void pauseProcess(const char* name, bool resume=false);
+
+  //--
+  bool execGripper(rai::OpenClose, rai::LeftRight);
+  ptr<CtrlTask> execPath(const arr& path, const arr& times, StringA joints, bool wait);
+
 
 
   void reportCycleTimes();
 
   void updateArmPoseCalibInModel();
 
+  void ctrl_attach(const char* a, const char* b);
+  void sim_attach(const char* a, const char* b);
   void sim_addRandomBox(const char* name="randomBox");
 
+
+private:
+  std::shared_ptr<struct self_LGPop> self;
 };
 
 
@@ -77,3 +93,5 @@ struct LGPop{
  * LGP plan
  * execute plan
  */
+
+double shapeSize(const rai::KinematicWorld& K, const char* name, uint i=1);

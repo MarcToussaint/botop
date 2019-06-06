@@ -8,7 +8,6 @@
 void ExplainNovelPercepts::compute(byteA& pixelLabels,
                                    const byteA& cam_color, const floatA& cam_depth) {
 
-
   //-- initialize unexplained filter
   if(!countUnexplained.N) countUnexplained.resizeAs(pixelLabels).setZero();
 
@@ -33,9 +32,10 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
   cv::Mat bin = (cv_labels == PL_unexplained);
   cv::findContours(bin, cv_contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
 
-  int radiusLimit=10;
+  int boxSizeLimit=10;
+  int sizeLimit=100;
 
-  //-- approximate contours to polygons + get bounding rects and circles
+  //-- approximate contours with polygons + get bounding rects and circles
   uint C  = cv_contours.size();
   std::vector<std::vector<cv::Point> > contours_poly(C);
   std::vector<std::vector<cv::Point> > contours_hull(C);
@@ -52,9 +52,10 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
     boundRect[i] = cv::boundingRect( cv::Mat(contours_poly[i]) );
     size[i] = cv::contourArea(cv::Mat(contours_poly[i]));
     cv::minEnclosingCircle( cv::Mat(contours_poly[i]), center[i], radius[i] );
-    if(radius[i]>radiusLimit &&
-       boundRect[i].width>radiusLimit &&
-       boundRect[i].height>radiusLimit){
+
+    if(size[i]>sizeLimit &&
+       (boundRect[i].width>boxSizeLimit ||
+        boundRect[i].height>boxSizeLimit)){
       label[i]=numPercepts;
       numPercepts++;
     }else{
@@ -82,10 +83,10 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
       p.y=center[i].y;
       p.radius = radius[i];
       p.size = size[i];
-      p.rect = TUP(boundRect[i].x,
-                   boundRect[i].y,
-                   boundRect[i].x+boundRect[i].width,
-                   boundRect[i].y+boundRect[i].height);
+      p.rect = ARRAY<int>(boundRect[i].x,
+                          boundRect[i].y,
+                          boundRect[i].x+boundRect[i].width,
+                          boundRect[i].y+boundRect[i].height);
       //contour polygon
       conv_pointVec_arr(p.polygon, contours_poly[i]);
       //contour hull
@@ -102,7 +103,7 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
 
     cv::Mat cv_color = CV(cam_color).clone();
     for(uint i=0,k=0; i<cv_contours.size(); i++){
-      if(radius[i]>radiusLimit){
+      if(label[i]>=0){
         byte col[3];
         id2color(col, k+1);
         cv::Scalar colo(col[0], col[1], col[2]);

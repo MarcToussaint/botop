@@ -20,9 +20,9 @@ struct FlatPercept{
   double x=0.,y=0.;
   double radius=0.;
   double size=0;
-  uintA rect;
-  uintA polygon;
-  uintA hull;
+  intA rect;
+  intA polygon;
+  intA hull;
   PerceptStatus done=PS_fresh;
 };
 
@@ -37,8 +37,9 @@ struct Object{
   //2D shape
   double size=0.;
   double depth_avg=0., depth_min=0., depth_max=0.;
-  uintA rect;
-  uintA polygon;
+  intA rect;
+  intA polygon;
+  floatA rotatedBBox;  //(center, size, angle)
   floatA mask; //has size (rect(2),rect(3)); number \in[0,1] indicate where object should be
   floatA depth;
   byteA color;
@@ -56,26 +57,17 @@ stdOutPipe(Object)
 
 enum NovelObjectType { OT_pcl, OT_box, OT_poly };
 
-uintA nonZeroRect(floatA& mask, double threshold);
+intA nonZeroRect(floatA& mask, double threshold);
 
-void shiftRect(uintA& rect, int dx, int dy, uint H, uint W);
-void extendRect(uintA& rect, uint pad, uint H, uint W);
+void shiftRect(intA& rect, int dx, int dy, int H, int W);
 
-void computeRotateBoundingBox(uintA& polygon, const byteA& img, const floatA& mask, const uintA& rect);
+void extendRect(intA& rect, int pad, int H, int W);
+
+void computePolyAndRotatedBoundingBox(intA& polygon, floatA& rotatedBBox, const floatA& mask);
 
 void recomputeObjMinMaxAvgDepthSize(ptr<Object> obj);
 
 void pixelColorNormalizeIntensity(byteA&);
-
-ptr<Object> createObjectFromPercept(const FlatPercept& flat,
-                                 const byteA& labels, const byteA& cam_color, const floatA& cam_depth,
-                                 const arr& cam_pose, const arr& fxypxy,
-                                 NovelObjectType type);
-
-void create3DfromFlat(ptr<Object> obj, NovelObjectType type, PixelLabel label,
-                      const byteA& labels, const byteA& cam_color, const floatA& cam_depth,
-                      const arr& fxypxy);
-
 
 arr getPCLforLabels(PixelLabel label,
                     const byteA& labels, const floatA& cam_depth,
@@ -87,4 +79,4 @@ namespace cv{
   typedef Point2i Point;
 }
 
-void conv_pointVec_arr(uintA& pts, const std::vector<cv::Point>& cv_pts);
+void conv_pointVec_arr(intA& pts, const std::vector<cv::Point>& cv_pts);

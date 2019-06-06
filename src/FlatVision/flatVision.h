@@ -14,6 +14,7 @@ struct FlatVisionThread : Thread {
   //output
 //  Var<PerceptL> percepts;
   Var<rai::KinematicWorld> config;
+  Var<rai::Array<ptr<Object>>> objects;
   //input
   Var<byteA> cam_color;
   Var<floatA> cam_depth;
@@ -25,6 +26,7 @@ struct FlatVisionThread : Thread {
   Var<arr> armPoseCalib; //(2x6 matrix: (dx,dy,dz, rx,ry,rz) (with trans and infinitesimal rot; for both arms)
   //parameters
   int verbose=1;
+  bool syncToConfig=true;
 
   //methods
   ExplainBackground exBackground;
@@ -33,14 +35,15 @@ struct FlatVisionThread : Thread {
   ObjectManager objectManager;
 
   FlatVisionThread(Var<rai::KinematicWorld>& _config,
-                      Var<byteA>& _color,
-                      Var<floatA>& _depth,
-                      Var<byteA>& _model_segments,
-                      Var<floatA> _model_depth,
-                      Var<arr>& _cameraPose,
-                      Var<arr>& _cameraFxypxy,
-                      Var<arr>& _armPoseCalib,
-                      int _verbose=1);
+                   Var<rai::Array<ptr<Object>>>& _objects,
+                   Var<byteA>& _color,
+                   Var<floatA>& _depth,
+                   Var<byteA>& _model_segments,
+                   Var<floatA> _model_depth,
+                   Var<arr>& _cameraPose,
+                   Var<arr>& _cameraFxypxy,
+                   Var<arr>& _armPoseCalib,
+                   int _verbose=1);
   ~FlatVisionThread(){
     threadClose();
   }

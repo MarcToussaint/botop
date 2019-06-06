@@ -1,8 +1,14 @@
 #include "flatVision.h"
 
-FlatVisionThread::FlatVisionThread(Var<rai::KinematicWorld>& _config, Var<byteA>& _color, Var<floatA>& _depth, Var<byteA>& _model_segments, Var<floatA> _model_depth, Var<arr>& _cameraPose, Var<arr>& _cameraFxypxy, Var<arr>& _armPoseCalib, int _verbose)
+FlatVisionThread::FlatVisionThread(Var<rai::KinematicWorld>& _config,
+                                   Var<rai::Array<ptr<Object>>>& _objects,
+                                   Var<byteA>& _color, Var<floatA>& _depth,
+                                   Var<byteA>& _model_segments, Var<floatA> _model_depth,
+                                   Var<arr>& _cameraPose, Var<arr>& _cameraFxypxy, Var<arr>& _armPoseCalib,
+                                   int _verbose)
   : Thread("FlatVision", -1.),
     config(this, _config),
+    objects(this, _objects),
     cam_color(this, _color),
     cam_depth(this, _depth, true),
     model_segments(this, _model_segments),
@@ -10,8 +16,9 @@ FlatVisionThread::FlatVisionThread(Var<rai::KinematicWorld>& _config, Var<byteA>
     cam_pose(this, _cameraPose),
     cam_Fxypxy(this, _cameraFxypxy),
     armPoseCalib(this, _armPoseCalib),
-    verbose(_verbose){
-  exBackground.verbose = 0; //verbose;
+    verbose(_verbose),
+    objectManager(_objects){
+  exBackground.verbose = verbose;
   exRobot.verbose = verbose;
   exNovel.verbose = verbose;
   threadOpen();
@@ -34,7 +41,7 @@ void FlatVisionThread::step(){
   }
 
   //-- crop
-  uint cL=100,cR=140,cT=100,cB=100;
+  uint cL=30,cR=30,cT=30,cB=30;
   _cam_color = _cam_color.sub(cT,-cB,cL,-cR,0,-1);
   _cam_depth = _cam_depth.sub(cT,-cB,cL,-cR);
   _model_segments = _model_segments.sub(cT,-cB,cL,-cR);
@@ -95,35 +102,29 @@ void FlatVisionThread::step(){
   //-- novel percepts
   exNovel.compute(labels, _cam_color, _cam_depth);
 
-  objectManager.renderFlatObject(labels, _cam_color, _cam_depth, _model_segments, _model_depth);
+  //just render, for display only
+  objectManager.renderFlatObject(labels.d0, labels.d1);
 
-  objectManager.processNovelPercepts(exNovel.flats,
-                                     labels,
-                                     _cam_color, _cam_depth,
-                                     _model_segments, _model_depth,
-                                     _cam_pose, _cam_fxypxy);
+  //decide pixel-wise which pixels of novel percepts to merge into existing objects
+  objectManager.assignPerceptsToObjects(exNovel.flats, labels);
 
-  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _model_segments, _model_depth, _cam_fxypxy);
+  //add remaining novel objects as objects
+  objectManager.injectNovelObjects(exNovel.flats, labels,
+                                   _cam_color, _cam_depth);
 
-  objectManager.removeUnhealthyObject(config.set());
+  //adapt objects based on novel pixels
+  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _cam_pose, _cam_fxypxy);
 
-  objectManager.injectNovelObjects(exNovel.flats,
-                                   labels,
-                                   _cam_color, _cam_depth,
-                                   _cam_pose, _cam_fxypxy);
-
-//  for(const ptr<Object>& obj:objectManager.objects.get()()){
-//    objectManager.displayLabelsAsPCL(obj->pixelLabel,
-//                                     labels, _cam_depth,
-//                                     _cam_pose, _cam_fxypxy,
-//                                     config.set());
-//  }
-
-  objectManager.syncWithConfig(config.set());
+  if(syncToConfig){
+    objectManager.removeUnhealthyObject(config.set());
+    objectManager.syncWithConfig(config.set());
+  }
 
   objectManager.displayLabels(labels, _cam_color);
 
-  objectManager.printObjectInfos();
+  if(verbose>1){
+    objectManager.printObjectInfos();
+  }
 
 //  if(verbose>0){
 //    LOG(0) <<"novels: #=" <<exNovel.flats.N;

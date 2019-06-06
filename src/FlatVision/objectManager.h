@@ -19,25 +19,24 @@ struct ObjectManager{
   floatA flat_mask;
   byteA flat_color;
 
-  ObjectManager();
+  ObjectManager(Var<rai::Array<ptr<Object>>>& _objects);
   ~ObjectManager();
 
   Object& getObject(PixelLabel pixelLabel);
 
   //-- flat world methods
 
-  void renderFlatObject(byteA& pixelLabels,
-                               const byteA& cam_color, const floatA& cam_depth,
-                               const byteA& model_segments, const floatA& model_depth);
+  void renderFlatObject(int H, int W);
+
+  void assignPerceptsToObjects(rai::Array<FlatPercept>& flats,
+                               const byteA& labels);
+
+  void injectNovelObjects(rai::Array<FlatPercept>& flats,
+                          const byteA& labels, const byteA& cam_color, const floatA& cam_depth);
 
   void adaptFlatObjects(byteA& pixelLabels,
                         const byteA& cam_color, const floatA& cam_depth,
-                        const byteA& model_segments, const floatA& model_depth,
-                        const arr& cam_fxypxy);
-
-  void injectNovelObjects(rai::Array<FlatPercept>& flats,
-                          const byteA& labels, const byteA& cam_color, const floatA& cam_depth,
-                          const arr& cam_pose, const arr& cam_fxypxy);
+                        const arr& cam_pose, const arr& cam_fxypxy);
 
   void removeUnhealthyObject(rai::KinematicWorld& C);
 
@@ -45,12 +44,6 @@ struct ObjectManager{
                                const byteA& labels,
                                const byteA& cam_color, const floatA& cam_depth,
                                const byteA& model_segments, const floatA& model_depth);
-
-  void processNovelPercepts(rai::Array<FlatPercept>& flats,
-                            const byteA& labels,
-                            const byteA& cam_color, const floatA& cam_depth,
-                            const byteA& model_segments, const floatA& model_depth,
-                            const arr& cam_pose, const arr& cam_fxypxy);
 
 
   //-- display tools
