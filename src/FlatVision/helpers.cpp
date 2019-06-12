@@ -167,7 +167,6 @@ ptr<Object> createObjectFromPercept(const FlatPercept& flat,
   obj->mesh.C = id2color(obj->object_ID);
   //set the pose to be the camera pose:
   if(cam_pose.N) obj->pose = rai::Transformation(cam_pose) * obj->pose;
-  if(obj->mesh.V.N) obj->bbCenter = obj->mesh.getCenter().getArr();
 
   return obj;
 }
@@ -240,26 +239,26 @@ void computePolyAndRotatedBoundingBox(intA& polygon, floatA& rotatedBBox, const 
   if(cv_mask_crop.total()<=10) return;
 
   //-- compute contours
-  std::vector<std::vector<cv::Point> > cv_contours;
+  std::vector<std::vector<cv::Point> > contours;
   cv::Mat bin = (cv_mask_crop >= .9f);
-  cv::findContours(bin, cv_contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
+  cv::findContours(bin, contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
 
   //-- preprocess contours
-  uint C  = cv_contours.size();
+  uint C  = contours.size();
   if(!C) return;
   int largest=-1;
   std::vector<double> size(C);
   for(uint i=0; i<C; i++){
-    size[i] = cv::contourArea(cv::Mat(cv_contours[i]));
+    size[i] = cv::contourArea(cv::Mat(contours[i]));
     if(largest<0 || size[i]>size[largest]) largest=i;
   }
 
   //-- compute rotated bb for largest
   cv::RotatedRect minRect;
-  minRect = cv::minAreaRect( cv::Mat(cv_contours[largest]) );
+  minRect = cv::minAreaRect( cv::Mat(contours[largest]) );
   rotatedBBox = ARRAY<float>(minRect.center.x, minRect.center.y, minRect.size.width, minRect.size.height, minRect.angle);
   std::vector<cv::Point> contours_hull;
-  cv::convexHull( cv::Mat(contours_hull), cv_contours[largest], false );
+  cv::convexHull( cv::Mat(contours_hull), contours[largest], false );
   conv_pointVec_arr(polygon, contours_hull);
 }
 

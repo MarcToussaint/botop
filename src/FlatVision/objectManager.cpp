@@ -159,7 +159,7 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
     //-- set shape
     arr size = {cam_fxypxy(2)+obj->rotatedBBox(2), cam_fxypxy(3)-obj->rotatedBBox(3), obj->depth_avg};
     depthData2point(size, cam_fxypxy);
-    obj->bbSize = {size(0), size(1), 0.5*(obj->depth_max-obj->depth_min), 0.001};
+    obj->boxSize = {size(0), size(1), 0.5*(obj->depth_max-obj->depth_min), 0.001};
 
     //-- is healthy or should be killed?
     if(obj->size<400.) obj->unhealthy++;
@@ -341,8 +341,8 @@ void ObjectManager::syncWithConfig(rai::KinematicWorld& C){
     //update the frame's parameters
     f->X = obj->pose;
     f->shape->type() = rai::ST_ssBox;
-    if(obj->bbSize.N==4){
-      f->shape->size = obj->bbSize;
+    if(obj->boxSize.N==4){
+      f->shape->size = obj->boxSize;
     }else{
       f->shape->size = ARR(.1, .1, .1, .01);
     }

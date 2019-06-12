@@ -45,10 +45,8 @@ struct Object{
   byteA color;
 
   //3D shape
-  arr bbCenter; //bounding box
-  arr bbSize; //bounding box
-
   rai::Transformation pose=0;
+  arr boxSize; //bounding box
   rai::Mesh mesh;
 
   void write(ostream& os) const;

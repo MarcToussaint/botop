@@ -27,16 +27,16 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
   //..now we only have stable unexplained pixellabels left
 
   //-- compute contours
-  std::vector<std::vector<cv::Point> > cv_contours;
+  std::vector<std::vector<cv::Point> > contours;
   cv::Mat cv_labels = CV(pixelLabels);
   cv::Mat bin = (cv_labels == PL_unexplained);
-  cv::findContours(bin, cv_contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
+  cv::findContours(bin, contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
 
   int boxSizeLimit=10;
   int sizeLimit=100;
 
   //-- approximate contours with polygons + get bounding rects and circles
-  uint C  = cv_contours.size();
+  uint C  = contours.size();
   std::vector<std::vector<cv::Point> > contours_poly(C);
   std::vector<std::vector<cv::Point> > contours_hull(C);
   std::vector<cv::Rect> boundRect(C);
@@ -46,11 +46,11 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
   std::vector<int> label(C);
   uint numPercepts=0;
   for(uint i=0; i<C; i++){
-    cv::approxPolyDP( cv::Mat(cv_contours[i]), contours_poly[i], 3, true );
+    cv::approxPolyDP( cv::Mat(contours[i]), contours_poly[i], 3, true );
     cv::convexHull( cv::Mat(contours_poly[i]), contours_hull[i], false );
 
-    boundRect[i] = cv::boundingRect( cv::Mat(contours_poly[i]) );
-    size[i] = cv::contourArea(cv::Mat(contours_poly[i]));
+    boundRect[i] = cv::boundingRect( cv::Mat(contours[i]) );
+    size[i] = cv::contourArea(cv::Mat(contours[i]));
     cv::minEnclosingCircle( cv::Mat(contours_poly[i]), center[i], radius[i] );
 
     if(size[i]>sizeLimit &&
@@ -68,7 +68,7 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
   for(uint i=0; i<C; i++){
     if(label[i]>=0){
       cv::Scalar col(PL_novelPercepts+label[i]);
-      cv::drawContours(cv_pixelLabels, contours_poly, i, col, CV_FILLED); //POLY!
+      cv::drawContours(cv_pixelLabels, contours, i, col, CV_FILLED); //POLY!
     }
   }
 
@@ -97,17 +97,13 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
   if(verbose>0){
     cv::imshow("labels after exNovel", cv_pixelLabels);
 
-//    is implicit in labels
-//    cv::Mat cv_countUnexplained = CV(countUnexplained);
-//    cv::imshow("unexplained", cv_countUnexplained);
-
     cv::Mat cv_color = CV(cam_color).clone();
-    for(uint i=0,k=0; i<cv_contours.size(); i++){
+    for(uint i=0,k=0; i<contours.size(); i++){
       if(label[i]>=0){
         byte col[3];
         id2color(col, k+1);
         cv::Scalar colo(col[0], col[1], col[2]);
-        cv::drawContours( cv_color, contours_poly, i, colo, 2, 8);
+        cv::drawContours( cv_color, contours, i, colo, 2, 8);
         cv::drawContours( cv_color, contours_hull, i, colo, 2, 8);
         rectangle( cv_color, boundRect[i].tl(), boundRect[i].br(), colo, 2, 8, 0 );
         circle( cv_color, center[i], (int)radius[i], colo, 2, 8, 0 );

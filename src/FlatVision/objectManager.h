@@ -40,10 +40,7 @@ struct ObjectManager{
 
   void removeUnhealthyObject(rai::KinematicWorld& C);
 
-  bool mergePerceptIntoObjects(FlatPercept& perc,
-                               const byteA& labels,
-                               const byteA& cam_color, const floatA& cam_depth,
-                               const byteA& model_segments, const floatA& model_depth);
+  void syncWithConfig(rai::KinematicWorld& C);
 
 
   //-- display tools
@@ -52,8 +49,6 @@ struct ObjectManager{
                           const byteA& labels, const floatA& cam_depth,
                           const arr& cam_pose, const arr& cam_fxypxy,
                           rai::KinematicWorld& config);
-
-  void syncWithConfig(rai::KinematicWorld& C);
 
   void displayLabels(const byteA& labels,
                      const byteA& cam_color);
