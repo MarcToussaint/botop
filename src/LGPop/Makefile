@@ -3,9 +3,9 @@ BASE2 = ..
 NAME   = $(shell basename `pwd`)
 OUTPUT = lib$(NAME).so
 
-DEPEND = Core Control Perception Franka RealSense FlatVision
+DEPEND = Core Perception Franka RealSense FlatVision NewControl
 
-PYBIND = 1
+PYBIND = 0
 
 SRCS = $(shell find . -maxdepth 1 -name '*.cpp' )
 OBJS = $(SRCS:%.cpp=%.o)

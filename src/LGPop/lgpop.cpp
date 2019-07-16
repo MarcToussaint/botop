@@ -47,9 +47,11 @@ LGPop::LGPop(OpMode _opMode)
 
   armPoseCalib.set() = zeros(2,6);
 
+  // init ctrl_state msg
   {
     auto set = ctrl_state.set();
-    rawModel.getJointState(set->q, set->qdot);
+    rawModel.getJointState(set->q, set->qDot);
+    set->tauExternal.resize(set->q.N).setZero();
   }
 }
 
@@ -63,19 +65,17 @@ void LGPop::runRobotControllers(OpMode _ctrlOpMode){
     ptr<Thread> G_emul = make_shared<GripperEmulator>();
     processes.append({F_emul, G_emul});
   }else{
-    //ptr<Thread> F_right = make_shared<FrankaThread>(ctrl_ref, ctrl_state, 0, franka_getJointIndices(rawModel,'R'));
-    ptr<Thread> F_left =  make_shared<FrankaThread>(ctrl_ref, ctrl_state, 1, franka_getJointIndices(rawModel,'L'));
-    //self->G_right = make_shared<FrankaGripper>(0);
-    self->G_left =  make_shared<FrankaGripper>(1);
-    processes.append({/*F_right,*/ F_left,
-                      /*std::dynamic_pointer_cast<Thread>(self->G_right),*/
-                      std::dynamic_pointer_cast<Thread>(self->G_left)});
+    ptr<Thread> F_right = make_shared<FrankaThreadNew>(ctrl_ref, ctrl_state, 0, franka_getJointIndices(rawModel,'R'));
+    ptr<Thread> F_left =  make_shared<FrankaThreadNew>(ctrl_ref, ctrl_state, 1, franka_getJointIndices(rawModel,'L'));
+    ptr<Thread> G_right = make_shared<FrankaGripper>(0);
+    ptr<Thread> G_left =  make_shared<FrankaGripper>(1);
+    processes.append({F_right, F_left, G_right, G_left});
   }
 }
 
 void LGPop::runTaskController(int verbose){
-  self->controller = make_shared<TaskControlThread>(ctrl_config, ctrl_ref, ctrl_state, ctrl_tasks);
-  processes.append(std::dynamic_pointer_cast<Thread>(self->controller));
+  ptr<Thread> TC = make_shared<TaskControlThread>(ctrl_config, ctrl_ref, ctrl_state, ctrl_tasks, new TaskControlMethodInverseKinematics(ctrl_config.get()));
+  processes.append(TC);
   if(verbose){
     ctrl_config.name() = "ctrl_config";
     ptr<Thread> view = make_shared<KinViewer>(ctrl_config, .1);
@@ -194,10 +194,10 @@ bool LGPop::execGripper(rai::OpenClose openClose, rai::LeftRight leftRight){
 }
 
 ptr<CtrlTask> LGPop::execPath(const arr& path, const arr& times, StringA joints, bool _wait){
-  ptr<CtrlTask> ctrlpath = addCtrlTask(ctrl_tasks, ctrl_config, "path", FS_qItself, joints, make_shared<MotionProfile_Path>(path, times));
+  /*ptr<CtrlTask> ctrlpath = addCtrlTask(ctrl_tasks, ctrl_config, "path", FS_qItself, joints, make_shared<MotionProfile_Path>(path, times));
   if(_wait) wait(+ctrlpath);
   rai::wait();
-  return ctrlpath;
+  return ctrlpath;*/
 }
 
 void LGPop::reportCycleTimes(){

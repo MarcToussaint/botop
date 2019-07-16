@@ -3,8 +3,8 @@
 #include <Kin/kin.h>
 #include <Kin/frame.h>
 
-#include <Control/ctrlMsg.h>
-#include <Control/TaskControlThread.h>
+#include <NewControl/ctrlMsgs.h>
+#include <NewControl/TaskControlThread.h>
 
 #include <Perception/percept.h>
 #include <FlatVision/helpers.h>
@@ -28,8 +28,8 @@ struct LGPop{
 
   //-- control variables
   Var<rai::KinematicWorld> ctrl_config; //real-synced configuration
-  Var<CtrlMsg> ctrl_ref;                //control reference
-  Var<CtrlMsg> ctrl_state;              //control state
+  Var<CtrlCmdMsg> ctrl_ref;                //control reference
+  Var<CtrlStateMsg> ctrl_state;              //control state
   Var<CtrlTaskL> ctrl_tasks;            //set of control tasks
 
   //-- camera variables
