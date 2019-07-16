@@ -41,7 +41,7 @@ void FlatVisionThread::step(){
   }
 
   //-- crop
-  uint cL=30,cR=30,cT=30,cB=30;
+  uint cL=95, cR=80, cT=50, cB=30;
   _cam_color = _cam_color.sub(cT,-cB,cL,-cR,0,-1);
   _cam_depth = _cam_depth.sub(cT,-cB,cL,-cR);
   _model_segments = _model_segments.sub(cT,-cB,cL,-cR);
@@ -50,6 +50,7 @@ void FlatVisionThread::step(){
   _cam_fxypxy(3) -= cT;
 
   //-- background
+  exBackground.computeBackground = updateBackground;
   exBackground.compute(labels, _cam_color, _cam_depth);
 
   //-- robot
@@ -113,7 +114,7 @@ void FlatVisionThread::step(){
                                    _cam_color, _cam_depth);
 
   //adapt objects based on novel pixels
-  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _cam_pose, _cam_fxypxy);
+  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _cam_pose, _cam_fxypxy, exBackground.background);
 
   if(syncToConfig){
     objectManager.removeUnhealthyObject(config.set());

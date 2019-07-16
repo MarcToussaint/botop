@@ -66,10 +66,14 @@ struct LGPop{
 
   void perception_setSyncToConfig(bool _syncToConfig);
 
+  void perception_updateBackgroundModel(bool update);
+  void saveBackgroundModel(const char* name = "backgroundModel");
+  void loadBackgroundModel(const char* name = "backgroundModel");
+
   void pauseProcess(const char* name, bool resume=false);
 
   //--
-  bool execGripper(rai::OpenClose, rai::LeftRight);
+  bool execGripper(rai::OpenClose openClose, rai::LeftRight leftRight);
   ptr<CtrlTask> execPath(const arr& path, const arr& times, StringA joints, bool wait);
 
 

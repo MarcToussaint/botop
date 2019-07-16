@@ -12,6 +12,11 @@ struct ExplainBackground {
   byteA countDeeper;
   floatA valueDeeper;
 
+  bool computeBackground = true;
+
   void compute(byteA& pixelLabels,
                const byteA& cam_color, const floatA& cam_depth);
+
+  void saveBackgroundModel(const char* name = "backgroundModel");
+  void loadBackgroundModel(const char* name = "backgroundModel");
 };

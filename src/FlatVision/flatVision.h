@@ -28,6 +28,8 @@ struct FlatVisionThread : Thread {
   int verbose=1;
   bool syncToConfig=true;
 
+  bool updateBackground = true;
+
   //methods
   ExplainBackground exBackground;
   ExplainRobotPart exRobot;

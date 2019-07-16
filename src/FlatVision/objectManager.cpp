@@ -93,7 +93,8 @@ void ObjectManager::renderFlatObject(int H, int W){
 
 void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
                                      const byteA& cam_color, const floatA& cam_depth,
-                                     const arr& cam_pose, const arr& cam_fxypxy){
+                                     const arr& cam_pose, const arr& cam_fxypxy,
+                                     const floatA& background){
   auto O = objects.set();
 
   //-- loop through objects
@@ -127,6 +128,9 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
     //-- object rect
     obj->rect = nonZeroRect(obj->mask, .5);
 
+    double averageDepthBackground = 0.0;
+    uint averageDepthBackgroundCounter = 0;
+
     //-- adapt depth and color
     for(int x=obj->rect(0);x<obj->rect(2);x++) for(int y=obj->rect(1);y<obj->rect(3);y++){
       if(pixelLabels(y,x)==obj->pixelLabel){
@@ -137,33 +141,44 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
           byte& c = obj->color(y,x,i);
           c = (1.-alpha)*c + alpha * cam_color(y,x,i);
         }
+        averageDepthBackground += background(y, x);
+        averageDepthBackgroundCounter++;
       }
+    }
+
+    if(averageDepthBackgroundCounter > 0) {
+      averageDepthBackground = averageDepthBackground/(double)averageDepthBackgroundCounter;
+    } else {
+      averageDepthBackground = 0.0;
     }
 
     //-- object's min, max, avg depth and size
     recomputeObjMinMaxAvgDepthSize(obj);
 
-    //-- compute rotated bounding box
-    computePolyAndRotatedBoundingBox(obj->polygon, obj->rotatedBBox, obj->mask);
+    if(obj->size < 400.) {
+      obj->unhealthy++;
+    } else {
+      //-- compute rotated bounding box
+      computePolyAndRotatedBoundingBox(obj->polygon, obj->rotatedBBox, obj->mask);
 
-    //-- compute 3D center
-    arr center = {obj->rotatedBBox(0), obj->rotatedBBox(1), obj->depth_avg};
-    depthData2point(center, cam_fxypxy);
+      //-- compute 3D center
+      arr center = {obj->rotatedBBox(0), obj->rotatedBBox(1), obj->depth_avg};
+      depthData2point(center, cam_fxypxy);
 
-    //-- compute 3D transform
-    obj->pose.setZero();
-    obj->pose.pos = center;
-    obj->pose.rot.setRadZ(-obj->rotatedBBox(4)*RAI_PI/180.);
-    if(cam_pose.N) obj->pose = rai::Transformation(cam_pose) * obj->pose;
+      //-- compute 3D transform
+      obj->pose.setZero();
+      obj->pose.pos = center;
+      obj->pose.rot.setRadZ(-obj->rotatedBBox(4)*RAI_PI/180.);
+      if(cam_pose.N) obj->pose = rai::Transformation(cam_pose) * obj->pose;
 
-    //-- set shape
-    arr size = {cam_fxypxy(2)+obj->rotatedBBox(2), cam_fxypxy(3)-obj->rotatedBBox(3), obj->depth_avg};
-    depthData2point(size, cam_fxypxy);
-    obj->boxSize = {size(0), size(1), 0.5*(obj->depth_max-obj->depth_min), 0.001};
+      //-- set shape
+      arr size = {cam_fxypxy(2)+obj->rotatedBBox(2), cam_fxypxy(3)-obj->rotatedBBox(3), obj->depth_avg};
+      depthData2point(size, cam_fxypxy);
+      obj->boxSize = {size(0), size(1), averageDepthBackground-obj->depth_min, 0.001};
 
-    //-- is healthy or should be killed?
-    if(obj->size<400.) obj->unhealthy++;
-    else if(obj->unhealthy>0) obj->unhealthy--;
+      //-- is healthy?
+      if(obj->unhealthy>0) obj->unhealthy--;
+    }
   }
 }
 
