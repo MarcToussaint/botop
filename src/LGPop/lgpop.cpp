@@ -65,7 +65,7 @@ void LGPop::runRobotControllers(bool simuMode){
 }
 
 void LGPop::runTaskController(int verbose){
-  ptr<Thread> TC = make_shared<TaskControlThread>(ctrl_config, ctrl_ref, ctrl_state, ctrl_tasks, new TaskControlMethodProjectedAcceleration);
+  ptr<Thread> TC = make_shared<TaskControlThread>(ctrl_config, ctrl_ref, ctrl_state, ctrl_tasks, new TaskControlMethodInverseKinematics(ctrl_config.get()));
   processes.append(TC);
   if(verbose){
     ctrl_config.name() = "ctrl_config";
