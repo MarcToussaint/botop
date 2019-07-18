@@ -36,7 +36,7 @@ struct ObjectManager{
 
   void adaptFlatObjects(byteA& pixelLabels,
                         const byteA& cam_color, const floatA& cam_depth,
-                        const arr& cam_pose, const arr& cam_fxypxy, const floatA& background);
+                        const arr& cam_pose, const arr& cam_PInv, const floatA& background);
 
   void removeUnhealthyObject(rai::KinematicWorld& C);
 

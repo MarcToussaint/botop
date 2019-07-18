@@ -21,7 +21,7 @@ struct FlatVisionThread : Thread {
   Var<byteA> model_segments;
   Var<floatA> model_depth;
   Var<arr> cam_pose;
-  Var<arr> cam_Fxypxy;
+  Var<arr> cam_PInv;
   //-- calibration variables
   Var<arr> armPoseCalib; //(2x6 matrix: (dx,dy,dz, rx,ry,rz) (with trans and infinitesimal rot; for both arms)
   //parameters
@@ -43,7 +43,7 @@ struct FlatVisionThread : Thread {
                    Var<byteA>& _model_segments,
                    Var<floatA> _model_depth,
                    Var<arr>& _cameraPose,
-                   Var<arr>& _cameraFxypxy,
+                   Var<arr>& _cameraPInv,
                    Var<arr>& _armPoseCalib,
                    int _verbose=1);
   ~FlatVisionThread(){

@@ -256,7 +256,14 @@ void computePolyAndRotatedBoundingBox(intA& polygon, floatA& rotatedBBox, const 
   //-- compute rotated bb for largest
   cv::RotatedRect minRect;
   minRect = cv::minAreaRect( cv::Mat(contours[largest]) );
-  rotatedBBox = ARRAY<float>(minRect.center.x, minRect.center.y, minRect.size.width, minRect.size.height, minRect.angle);
+  cv::Point2f vertices[4];
+  minRect.points(vertices);
+  rotatedBBox = ARRAY<float>(minRect.center.x, minRect.center.y,
+                             vertices[0].x, vertices[0].y,
+                             vertices[1].x, vertices[1].y,
+                             vertices[2].x, vertices[2].y,
+                             minRect.angle);
+
   std::vector<cv::Point> contours_hull;
   cv::convexHull( cv::Mat(contours_hull), contours[largest], false );
   conv_pointVec_arr(polygon, contours_hull);
@@ -269,4 +276,12 @@ void conv_pointVec_arr(intA& pts, const std::vector<cv::Point>& cv_pts){
     pts(j,1) = cv_pts[j].y;
   }
 
+}
+
+arr projectPointFromCameraToWorld(arr x, const arr& PInv) {
+  x(0) *= x(2);
+  x(1) *= x(2);
+  // make homogeneous coordinate
+  x.append(1.0);
+  return PInv*x;
 }

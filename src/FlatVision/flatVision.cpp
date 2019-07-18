@@ -4,7 +4,7 @@ FlatVisionThread::FlatVisionThread(Var<rai::KinematicWorld>& _config,
                                    Var<rai::Array<ptr<Object>>>& _objects,
                                    Var<byteA>& _color, Var<floatA>& _depth,
                                    Var<byteA>& _model_segments, Var<floatA> _model_depth,
-                                   Var<arr>& _cameraPose, Var<arr>& _cameraFxypxy, Var<arr>& _armPoseCalib,
+                                   Var<arr>& _cameraPose, Var<arr>& _cameraPInv, Var<arr>& _armPoseCalib,
                                    int _verbose)
   : Thread("FlatVision", -1.),
     config(this, _config),
@@ -14,7 +14,7 @@ FlatVisionThread::FlatVisionThread(Var<rai::KinematicWorld>& _config,
     model_segments(this, _model_segments),
     model_depth(this, _model_depth),
     cam_pose(this, _cameraPose),
-    cam_Fxypxy(this, _cameraFxypxy),
+    cam_PInv(this, _cameraPInv),
     armPoseCalib(this, _armPoseCalib),
     verbose(_verbose),
     objectManager(_objects){
@@ -32,7 +32,7 @@ void FlatVisionThread::step(){
   floatA _cam_depth = cam_depth.get();
   byteA _model_segments = model_segments.get();
   floatA _model_depth = model_depth.get();
-  arr _cam_fxypxy = cam_Fxypxy.get();
+  arr _cam_PInv = cam_PInv.get();
   arr _cam_pose = cam_pose.get();
 
   //not ready yet?
@@ -40,18 +40,26 @@ void FlatVisionThread::step(){
     return;
   }
 
+
   //-- crop
-  uint cL=95, cR=80, cT=50, cB=30;
+  //uint cL=95, cR=80, cT=50, cB=30;
+  uint cL=95, cR=80, cT=80, cB=10;
   _cam_color = _cam_color.sub(cT,-cB,cL,-cR,0,-1);
   _cam_depth = _cam_depth.sub(cT,-cB,cL,-cR);
   _model_segments = _model_segments.sub(cT,-cB,cL,-cR);
   _model_depth = _model_depth.sub(cT,-cB,cL,-cR);
-  _cam_fxypxy(2) -= cL;
-  _cam_fxypxy(3) -= cT;
+
+  // TODO this assumes that the calibration was done with the already cropped image!
+  // This of course can be fixed easily in the project method, which should get the cropping parameters
+
+//  _cam_fxypxy(2) -= cL;
+//  _cam_fxypxy(3) -= cT;
+
 
   //-- background
   exBackground.computeBackground = updateBackground;
   exBackground.compute(labels, _cam_color, _cam_depth);
+
 
   //-- robot
 #if 0
@@ -114,7 +122,7 @@ void FlatVisionThread::step(){
                                    _cam_color, _cam_depth);
 
   //adapt objects based on novel pixels
-  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _cam_pose, _cam_fxypxy, exBackground.background);
+  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _cam_pose, _cam_PInv, exBackground.background);
 
   if(syncToConfig){
     objectManager.removeUnhealthyObject(config.set());

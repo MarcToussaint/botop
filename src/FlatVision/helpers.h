@@ -39,7 +39,7 @@ struct Object{
   double depth_avg=0., depth_min=0., depth_max=0.;
   intA rect;
   intA polygon;
-  floatA rotatedBBox;  //(center, size, angle)
+  floatA rotatedBBox;  //(center, v1, v2, v3, angle)
   floatA mask; //has size (rect(2),rect(3)); number \in[0,1] indicate where object should be
   floatA depth;
   byteA color;
@@ -70,6 +70,9 @@ void pixelColorNormalizeIntensity(byteA&);
 arr getPCLforLabels(PixelLabel label,
                     const byteA& labels, const floatA& cam_depth,
                     const arr& cam_pose, const arr& fxypxy);
+
+
+arr projectPointFromCameraToWorld(arr x, const arr& PInv);
 
 namespace cv{
   template<typename _T> class Point_;

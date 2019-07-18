@@ -93,7 +93,7 @@ void ObjectManager::renderFlatObject(int H, int W){
 
 void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
                                      const byteA& cam_color, const floatA& cam_depth,
-                                     const arr& cam_pose, const arr& cam_fxypxy,
+                                     const arr& cam_pose, const arr& cam_PInv,
                                      const floatA& background){
   auto O = objects.set();
 
@@ -161,20 +161,29 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
       //-- compute rotated bounding box
       computePolyAndRotatedBoundingBox(obj->polygon, obj->rotatedBBox, obj->mask);
 
-      //-- compute 3D center
-      arr center = {obj->rotatedBBox(0), obj->rotatedBBox(1), obj->depth_avg};
-      depthData2point(center, cam_fxypxy);
-
       //-- compute 3D transform
+
+      arr tmp = ARR(obj->rotatedBBox(0), obj->rotatedBBox(1), obj->depth_avg);
+      arr topCenter = projectPointFromCameraToWorld(tmp, cam_PInv);
+
+      double objHeight = fabs(obj->depth_avg - averageDepthBackground);
+
+      arr center = topCenter;
+      center(2) -= objHeight/2.0;
+
       obj->pose.setZero();
       obj->pose.pos = center;
-      obj->pose.rot.setRadZ(-obj->rotatedBBox(4)*RAI_PI/180.);
-      if(cam_pose.N) obj->pose = rai::Transformation(cam_pose) * obj->pose;
+      obj->pose.rot.setRadZ(-obj->rotatedBBox(8)*RAI_PI/180.);
 
-      //-- set shape
-      arr size = {cam_fxypxy(2)+obj->rotatedBBox(2), cam_fxypxy(3)-obj->rotatedBBox(3), obj->depth_avg};
-      depthData2point(size, cam_fxypxy);
-      obj->boxSize = {size(0), size(1), averageDepthBackground-obj->depth_min, 0.001};
+      arr v1 = projectPointFromCameraToWorld(ARR(obj->rotatedBBox(2), obj->rotatedBBox(3), obj->depth_avg), cam_PInv);
+      arr v2 = projectPointFromCameraToWorld(ARR(obj->rotatedBBox(4), obj->rotatedBBox(5), obj->depth_avg), cam_PInv);
+      arr v3 = projectPointFromCameraToWorld(ARR(obj->rotatedBBox(6), obj->rotatedBBox(7), obj->depth_avg), cam_PInv);
+
+      double h = length(v1.sub(0,1)-v2.sub(0,1));
+      double w = length(v2.sub(0,1)-v3.sub(0,1));
+
+      obj->boxSize = {w, h, objHeight, 0.001};
+
 
       //-- is healthy?
       if(obj->unhealthy>0) obj->unhealthy--;
@@ -361,6 +370,7 @@ void ObjectManager::syncWithConfig(rai::KinematicWorld& C){
     }else{
       f->shape->size = ARR(.1, .1, .1, .01);
     }
+    f->shape->cont = 1;
     f->shape->createMeshes();
 //    f->shape->mesh() = obj->mesh;
 //    f->shape->mesh().C = ARR(1., .5, .0, .5);
