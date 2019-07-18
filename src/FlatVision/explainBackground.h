@@ -5,7 +5,7 @@
 struct ExplainBackground {
   //parameters
   int verbose=1;
-  float threshold=.01;
+  float threshold=.02;
   float farThreshold=1.1;
   //filter states
   floatA background;
