@@ -32,8 +32,8 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
   cv::Mat bin = (cv_labels == PL_unexplained);
   cv::findContours(bin, contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
 
-  int boxSizeLimit=10;
-  int sizeLimit=100;
+  int boxSizeLimit=20;
+  int sizeLimit=300;
 
   //-- approximate contours with polygons + get bounding rects and circles
   uint C  = contours.size();
@@ -106,7 +106,7 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
         cv::drawContours( cv_color, contours, i, colo, 2, 8);
         cv::drawContours( cv_color, contours_hull, i, colo, 2, 8);
         rectangle( cv_color, boundRect[i].tl(), boundRect[i].br(), colo, 2, 8, 0 );
-        circle( cv_color, center[i], (int)radius[i], colo, 2, 8, 0 );
+//        circle( cv_color, center[i], (int)radius[i], colo, 2, 8, 0 );
         k++;
       }
     }
