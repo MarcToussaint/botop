@@ -16,6 +16,8 @@ namespace rai {
   enum LeftRight { _left, _right };
 }
 
+struct RosCamera;
+
 struct LGPop{
   enum OpMode { NoMode, SimulationMode, RealMode };
 
@@ -36,7 +38,7 @@ struct LGPop{
   Var<floatA> cam_depth; //camera output
   Var<byteA> cam_color;  //camera output
   Var<arr> cam_pose;     //camera pose
-  Var<arr> cam_Fxypxy;   //camera parameters
+  Var<arr> cam_PInv;   //camera inverse projection matrix 3x4
 
   //-- model camera (predicated images) variables
   Var<byteA> model_segments; //output of model camera (segment IDs)
@@ -50,6 +52,8 @@ struct LGPop{
 
   //-- list of all processes
   rai::Array<ptr<Thread>> processes;
+
+  ptr<RosCamera> rosCamera;
 
 
 

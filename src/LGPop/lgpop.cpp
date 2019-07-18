@@ -14,6 +14,8 @@
 
 #include <RealSense/RealSenseThread.h>
 
+#include <RosCom/rosCamera.h>
+
 #include <Perception/perceptViewer.h>
 #include <Perception/perceptSyncer.h>
 
@@ -31,7 +33,7 @@ struct self_LGPop{
 LGPop::LGPop(OpMode _opMode)
   : opMode(_opMode), self(make_shared<self_LGPop>()){
 
-  rawModel.addFile(rai::raiPath("../model/pandaStation.g"));
+  rawModel.addFile(rai::raiPath("../model/pandaStation/pandaStation.g"));
   rawModel.optimizeTree();
   q_home = rawModel.getJointState();
 
@@ -85,15 +87,29 @@ void LGPop::runTaskController(int verbose){
 
 void LGPop::runCamera(int verbose){
   if(opMode==RealMode){
-    auto cam = make_shared<RealSenseThread>(cam_color, cam_depth);
+//    auto cam = make_shared<RealSenseThread>(cam_color, cam_depth);
+    rosCamera = make_shared<RosCamera>(cam_color, cam_depth, "cameraRosNode", "/camera/rgb/image_raw", "/camera/depth/image_rect");
+
+
+    arr PInv;
+    PInv.append(~ARR(0.00185984, -3.59963e-06, -0.418472, -0.014174));
+    PInv.append(~ARR(-1.40775e-05, -0.00186816, 0.276088, 0.330471));
+    PInv.append(~ARR(7.62193e-06, 3.40333e-05, -1.00571, 1.81469));
+
+    cam_PInv.set() = PInv;
+
+    /*
+    arr PInv;
+    PInv.append(~ARR(0.00186173, -4.21766e-06, -0.41852));
+    PInv.append(~ARR(-1.30519e-05, -0.00186546, 0.274969));
+    PInv.append(~ARR(2.44997e-06, 3.35638e-05, -1.00856));
+    arr pBias = ARR(-0.0145503, 0.330771, 1.81722);
+    */
+
     cam_depth.waitForNextRevision();
-    cam_Fxypxy.set() = cam->depth_fxypxy;
-    cout <<"RS calib=" <<cam_Fxypxy.get()() <<endl;
-    processes.append(std::dynamic_pointer_cast<Thread>(cam));
   }
   if(opMode==SimulationMode){
     auto cam = make_shared<rai::Sim_CameraView>(sim_config, cam_color, cam_depth, .1, "camera");
-    cam_Fxypxy.set() = cam->getFxypxy();
     processes.append(std::dynamic_pointer_cast<Thread>(cam));
   }
   if(verbose){
@@ -125,7 +141,7 @@ void LGPop::runPerception(int verbose){
   self->flatVision =
       make_shared<FlatVisionThread>(ctrl_config, objects,
                                     cam_color, cam_depth, model_segments, model_depth,
-                                    cam_pose, cam_Fxypxy, armPoseCalib, verbose);
+                                    cam_pose, cam_PInv, armPoseCalib, verbose);
   self->flatVision->name="explainPixels";
   processes.append(std::dynamic_pointer_cast<Thread>(self->flatVision));
 }
