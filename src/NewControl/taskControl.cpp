@@ -317,7 +317,8 @@ ActStatus MotionProfile_Path::update(arr& yRef, arr& ydotRef, double tau, const 
 CtrlTask::CtrlTask(const char* name, const ptr<Feature>& _map)
   : name(name), active(true), map(_map) {
   status.set() = AS_init;
-  //  ref = new MotionProfile_PD();
+  kp = 0.0;
+  kd = 0.0;
 }
 
 CtrlTask::CtrlTask(const char* name, const ptr<Feature>& _map, const ptr<MotionProfile>& _ref)
@@ -490,6 +491,10 @@ void TaskControlMethodProjectedAcceleration::calculate(CtrlCmdMsg &ctrlCmdMsg, c
 
   for(CtrlTask* t: tasks) {
     if(t->active && t->ref) {
+      if(t->kp < 0 || t->kd < 0) {
+        HALT("Who has chosen instable gains?")
+      }
+
       arr JTC = ~t->J_y*t->C;
       A += JTC*t->J_y;
 
