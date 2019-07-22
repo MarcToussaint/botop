@@ -6,7 +6,6 @@
 #include <NewControl/ctrlMsgs.h>
 #include <NewControl/TaskControlThread.h>
 
-#include <Perception/percept.h>
 #include <FlatVision/helpers.h>
 
 #include <Franka/franka.h>
@@ -24,6 +23,7 @@ struct LGPop{
   OpMode opMode;
   rai::KinematicWorld rawModel; //should be constant, and unchanged from loaded model
   arr q_home; //pose of loaded model
+  arr q_freeView; // pose of robot arms such that there is clear view on the table
 
   //-- simulation variables (when run in simulationMode)
   Var<rai::KinematicWorld> sim_config; //real-synced configuration
@@ -55,7 +55,7 @@ struct LGPop{
 
   ptr<RosCamera> rosCamera;
 
-
+  TaskControlInterface* tci;
 
   LGPop(OpMode _opMode=SimulationMode);
 
@@ -81,6 +81,8 @@ struct LGPop{
   ptr<CtrlTask> execPath(const arr& path, const arr& times, StringA joints, bool wait);
 
 
+  std::shared_ptr<CtrlTask> home();
+  std::shared_ptr<CtrlTask> moveToFreeView();
 
   void reportCycleTimes();
 

@@ -36,6 +36,7 @@ LGPop::LGPop(OpMode _opMode)
   rawModel.addFile(rai::raiPath("../model/pandaStation/pandaStation.g"));
   rawModel.optimizeTree();
   q_home = rawModel.getJointState();
+  q_freeView = q_home;
 
   ctrl_config.set() = rawModel;
 
@@ -54,10 +55,11 @@ LGPop::LGPop(OpMode _opMode)
     auto set = ctrl_state.set();
     rawModel.getJointState(set->q, set->qDot);
     set->tauExternal.resize(set->q.N).setZero();
-  }
+  } 
 }
 
 LGPop::~LGPop(){
+  delete tci;
   reportCycleTimes();
 }
 
@@ -69,11 +71,14 @@ void LGPop::runRobotControllers(OpMode _ctrlOpMode){
   }else{
     ptr<Thread> F_right = make_shared<FrankaThreadNew>(ctrl_ref, ctrl_state, 0, franka_getJointIndices(rawModel,'R'));
     ptr<Thread> F_left =  make_shared<FrankaThreadNew>(ctrl_ref, ctrl_state, 1, franka_getJointIndices(rawModel,'L'));
-    ptr<Thread> G_right = make_shared<FrankaGripper>(0);
-    ptr<Thread> G_left =  make_shared<FrankaGripper>(1);
-    processes.append({F_right, F_left, G_right, G_left});
+    self->G_right = make_shared<FrankaGripper>(0);
+    self->G_right->name = "gripperRight";
+    self->G_left =  make_shared<FrankaGripper>(1);
+    self->G_left->name = "gripperLeft";
+    processes.append({F_right, F_left, std::dynamic_pointer_cast<Thread>(self->G_right), std::dynamic_pointer_cast<Thread>(self->G_left)});
   }
 }
+
 
 void LGPop::runTaskController(int verbose){
   ptr<Thread> TC = make_shared<TaskControlThread>(ctrl_config, ctrl_ref, ctrl_state, ctrl_tasks, new TaskControlMethodInverseKinematics(ctrl_config.get()));
@@ -83,6 +88,9 @@ void LGPop::runTaskController(int verbose){
     ptr<Thread> view = make_shared<KinViewer>(ctrl_config, .1);
     processes.append(view);
   }
+
+  tci = new TaskControlInterface(ctrl_config, ctrl_tasks);
+  tci->ctrl_tasks.waitForRevisionGreaterThan(20);
 }
 
 void LGPop::runCamera(int verbose){
@@ -203,7 +211,11 @@ bool LGPop::execGripper(rai::OpenClose openClose, rai::LeftRight leftRight){
     }
 
   } else if(leftRight == rai::_right) {
-
+    if(openClose == rai::_open) {
+      self->G_right->open(0.072, 0.1);
+    } else {
+      self->G_right->close();
+    }
   } else {
     HALT("weird")
   }
@@ -214,6 +226,12 @@ ptr<CtrlTask> LGPop::execPath(const arr& path, const arr& times, StringA joints,
   if(_wait) wait(+ctrlpath);
   rai::wait();
   return ctrlpath;*/
+}
+
+std::shared_ptr<CtrlTask> LGPop::moveToFreeView() {
+  auto t = tci->addCtrlTask("qItself", FS_qItself, {}, make_shared<MotionProfile_Sine>(q_freeView, 5.0));
+  wait(+t);
+  return t;
 }
 
 void LGPop::reportCycleTimes(){
