@@ -33,7 +33,7 @@ void ExplainNovelPercepts::compute(byteA& pixelLabels,
   cv::findContours(bin, contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
 
   int boxSizeLimit=20;
-  int sizeLimit=300;
+  int sizeLimit=500;
 
   //-- approximate contours with polygons + get bounding rects and circles
   uint C  = contours.size();
