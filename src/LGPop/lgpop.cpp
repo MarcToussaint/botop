@@ -214,14 +214,14 @@ bool LGPop::execGripper(rai::OpenClose openClose, rai::LeftRight leftRight) {
   if(opMode == LGPop::SimulationMode) return true;
   if(leftRight == rai::_left) {
     if(openClose == rai::_open) {
-      self->G_left->open(0.072, 0.1);
+      self->G_left->open(0.075, 0.1);
     } else {
       self->G_left->close();
     }
 
   } else if(leftRight == rai::_right) {
     if(openClose == rai::_open) {
-      self->G_right->open(0.072, 0.1);
+      self->G_right->open(0.075, 0.1);
     } else {
       self->G_right->close();
     }

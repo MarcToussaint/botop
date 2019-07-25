@@ -39,7 +39,7 @@ bool FrankaGripper::close(double force, double width, double speed){
     LOG(-1) <<"width " <<width <<" is too large (max:" <<maxWidth <<')';
     width = maxWidth - .001;
   }
-  bool ret = gripper->grasp(width, speed, force);
+  bool ret = gripper->grasp(width, speed, force, 0.08, 0.08);
 //  if(!ret) LOG(-1) <<"grasp failed" <<endl;
   return ret;
 }

@@ -170,7 +170,7 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
 
       arr center = topCenter;
       center(2) -= objHeight/2.0;
-      center(2) += 0.001; // HACK: move up a little bit to get out of collision
+      center(2) += 0.003; // HACK: move up a little bit to get out of collision
 
       obj->pose.setZero();
       obj->pose.pos = center;
