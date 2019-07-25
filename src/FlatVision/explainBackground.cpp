@@ -74,15 +74,29 @@ void ExplainBackground::compute(byteA& pixelLabels,
 }
 
 void ExplainBackground::saveBackgroundModel(const char* name) {
-  FILE(STRING(name << ".background")) << background;
-  FILE(STRING(name << ".countDeeper")) << countDeeper;
-  FILE(STRING(name << ".valueDeeper")) << valueDeeper;
+  ofstream f1(STRING(name << ".background"));
+  ofstream f2(STRING(name << ".countDeeper"));
+  ofstream f3(STRING(name << ".valueDeeper"));
+  background.write(f1, " ", "\n", "  ");
+  countDeeper.write(f2, " ", "\n", "  ");
+  valueDeeper.write(f3, " ", "\n", "  ");
+//  FILE(STRING(name << ".background")) << background;
+//  FILE(STRING(name << ".countDeeper")) << countDeeper;
+//  FILE(STRING(name << ".valueDeeper")) << valueDeeper;
+
 }
 
 void ExplainBackground::loadBackgroundModel(const char* name) {
-  background << FILE(STRING(name << ".background"));
-  countDeeper << FILE(STRING(name << ".countDeeper"));
-  valueDeeper << FILE(STRING(name << ".valueDeeper"));
+  ifstream f1(STRING(name << ".background"));
+  ifstream f2(STRING(name << ".countDeeper"));
+  ifstream f3(STRING(name << ".valueDeeper"));
+  background.read(f1);
+  countDeeper.read(f2);
+  valueDeeper.read(f3);
+  //  background << FILE(STRING(name << ".background"));
+//  cout << background.d0 << " " << background.d1 << endl;
+//  countDeeper << FILE(STRING(name << ".countDeeper"));
+//  valueDeeper << FILE(STRING(name << ".valueDeeper"));
 }
 
 

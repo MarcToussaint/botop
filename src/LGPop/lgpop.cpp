@@ -119,6 +119,14 @@ void LGPop::runCamera(int verbose){
   if(opMode==SimulationMode){
     auto cam = make_shared<rai::Sim_CameraView>(sim_config, cam_color, cam_depth, .1, "camera");
     processes.append(std::dynamic_pointer_cast<Thread>(cam));
+
+    arr PInv;
+    PInv.append(~ARR(0.00310267, -4.8012e-08, -0.69714, -0.0136218));
+    PInv.append(~ARR(2.46959e-07, -0.00310676, 0.309154, 0.330402));
+    PInv.append(~ARR(1.22987e-10, 2.93568e-10, -1, 1.81456));
+
+
+    cam_PInv.set() = PInv;
   }
   if(verbose){
     cam_color.name() = "cam_color";
@@ -202,7 +210,8 @@ void LGPop::pauseProcess(const char* name, bool resume){
   }
 }
 
-bool LGPop::execGripper(rai::OpenClose openClose, rai::LeftRight leftRight){
+bool LGPop::execGripper(rai::OpenClose openClose, rai::LeftRight leftRight) {
+  if(opMode == LGPop::SimulationMode) return true;
   if(leftRight == rai::_left) {
     if(openClose == rai::_open) {
       self->G_left->open(0.072, 0.1);
@@ -287,3 +296,4 @@ void LGPop::sim_addRandomBox(const char* name){
 
   sim_config.set()->addObject(name, "table", rai::ST_ssBox, size, color, pos, rot.getArr4d());
 }
+

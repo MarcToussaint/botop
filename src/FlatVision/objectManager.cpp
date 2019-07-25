@@ -170,6 +170,7 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
 
       arr center = topCenter;
       center(2) -= objHeight/2.0;
+      center(2) += 0.001; // HACK: move up a little bit to get out of collision
 
       obj->pose.setZero();
       obj->pose.pos = center;
@@ -208,6 +209,8 @@ rai::Frame *getFrame(rai::KinematicWorld& C, rai::Frame *frame_guess, const char
     new rai::Shape(*f);
     f->shape->type() = rai::ST_mesh;
     f->shape->visual = true;
+    Graph& g = f->ats.newSubgraph({"logical"});
+    g.getNew<bool>({"object"}) = true;
     LOG(0) <<"creating new shape '" <<name <<"'";
   }
   return f;
@@ -298,7 +301,7 @@ void ObjectManager::assignPerceptsToObjects(rai::Array<FlatPercept>& flats,
         }
       }
 
-      PixelLabel bestObjLabel = (PixelLabel)counts.maxIndex();
+      PixelLabel bestObjLabel = (PixelLabel)counts.argmax();
       if(bestObjLabel==PL_unexplained) continue; //with next percept
 
       uint matchCount = counts(bestObjLabel);
