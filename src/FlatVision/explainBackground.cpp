@@ -14,7 +14,8 @@ void ExplainBackground::compute(byteA& pixelLabels,
   //-- initialize pixel labels
   for(uint i=0;i<cam_depth.N;i++){
     pixelLabels.p[i] = PL_unexplained;
-    if(cam_depth.p[i]<.4) pixelLabels.p[i]=PL_nosignal;
+    if(cam_depth.p[i] < .4) pixelLabels.p[i]=PL_nosignal;
+    if(std::isnan(cam_depth.p[i])) pixelLabels.p[i]=PL_nosignal;
     if(cam_depth.p[i]>farThreshold) pixelLabels.p[i]=PL_toofar;
   }
 
