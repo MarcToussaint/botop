@@ -202,6 +202,15 @@ void LGPop::loadBackgroundModel(const char *name) {
   }
 }
 
+void LGPop::stopPerception() {
+  for(ptr<Thread>& thread: processes) {
+    std::shared_ptr<FlatVisionThread> flatVision = std::dynamic_pointer_cast<FlatVisionThread>(thread);
+    if(flatVision){
+      flatVision->threadClose();
+    }
+  }
+}
+
 void LGPop::pauseProcess(const char* name, bool resume){
   for(ptr<Thread>& thread: processes) {
     if(thread->name==name){

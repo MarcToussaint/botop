@@ -3,7 +3,7 @@ BASE2 = ..
 NAME   = $(shell basename `pwd`)
 OUTPUT = lib$(NAME).so
 
-DEPEND = Core Perception Franka RealSense FlatVision NewControl
+DEPEND = Core Perception Franka RealSense FlatVision NewControl RosCom
 
 PYBIND = 0
 

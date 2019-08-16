@@ -74,6 +74,8 @@ struct LGPop{
   void saveBackgroundModel(const char* name = "backgroundModel");
   void loadBackgroundModel(const char* name = "backgroundModel");
 
+  void stopPerception();
+
   void pauseProcess(const char* name, bool resume=false);
 
   //--
