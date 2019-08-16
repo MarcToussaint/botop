@@ -101,7 +101,7 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
   for(std::shared_ptr<Object>& obj:O()){
 
     obj->age++;
-    double alpha=.5; //adaptation rate
+    double alpha=.1; //adaptation rate
 //    if(obj->age>10) alpha=.1;
 //    if(obj->age>50) alpha=.01;
 
@@ -118,7 +118,7 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
       if(pixelLabels(y,x)==obj->pixelLabel
          || pixelLabels(y,x)==(PL_closeToObject|obj->pixelLabel)){
         m = (1.-alpha)*m + alpha * 1.;
-      }else if(pixelLabels(y,x)==PL_background || pixelLabels(y,x)==PL_noise){ //!= obj->pixelLabel is wrong: obj can be occluded by another... have an 'occluded mask' for every object??
+      }else if(pixelLabels(y,x)==PL_background || pixelLabels(y,x)==PL_noise || pixelLabels(y,x)==PL_nosignal){ //!= obj->pixelLabel is wrong: obj can be occluded by another... have an 'occluded mask' for every object??
         m = (1.-alpha)*m + alpha * 0.;
       }else{
         //don't adapt when PL_closeToObject to ANOTHER object
@@ -133,10 +133,12 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
 
     //-- adapt depth and color
     for(int x=obj->rect(0);x<obj->rect(2);x++) for(int y=obj->rect(1);y<obj->rect(3);y++){
+//      obj->depth = cam_depth;
       if(pixelLabels(y,x)==obj->pixelLabel){
         float& d = obj->depth(y,x);
-        if(d<.1) d = cam_depth(y,x); //d was previously no signal depth
-        else if(cam_depth(y,x)>.1) d = (1.-alpha)*d + alpha * cam_depth(y,x);
+        if(d < 0.4) d = cam_depth(y,x); //d was previously no signal depth
+        else if(cam_depth(y,x) > 0.4) d = (1.-alpha)*d + alpha * cam_depth(y,x);
+
         for(uint i=0;i<3;i++){
           byte& c = obj->color(y,x,i);
           c = (1.-alpha)*c + alpha * cam_color(y,x,i);
@@ -152,21 +154,56 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
       averageDepthBackground = 0.0;
     }
 
+    // this perception pipeline now assumes the object is a box
+
+
     //-- object's min, max, avg depth and size
     recomputeObjMinMaxAvgDepthSize(obj);
 
     if(obj->size < 400.) {
       obj->unhealthy++;
     } else {
-      //-- compute rotated bounding box
+
+      for(int x=obj->rect(0);x<obj->rect(2);x++) for(int y=obj->rect(1);y<obj->rect(3);y++){
+        float& m = obj->mask(y, x);
+        float& d = obj->depth(y,x);
+        if(d > .4){
+          if(m > .5){
+            if(fabs(obj->depth_minFiltered - d) > 0.008) {
+              m = 0.0;
+            }
+          }
+        }
+      }
+
+      cout << obj->depth_minFiltered << endl;
+
       computePolyAndRotatedBoundingBox(obj->polygon, obj->rotatedBBox, obj->mask);
+
+      // TODO the following until //.. should be moved outside this method
+      byteA colorValues;
+      colorValues.append(~rai::Array<byte>({0, 230, 150}));
+      colorValues.append(~rai::Array<byte>({60, 230, 150}));
+      colorValues.append(~rai::Array<byte>({120, 230, 150}));
+      colorValues.reshape(colorValues.d0, 1, 3);
+      cv::Mat tmp;
+      cv::cvtColor(CV(colorValues), tmp, CV_HSV2RGB);
+      cv::cvtColor(tmp, tmp, CV_RGB2Lab);
+
+      arr fixedColors;
+      for(int i = 0; i < tmp.rows; i++) {
+        fixedColors.append(~ARR(tmp.row(i).at<byte>(0), tmp.row(i).at<byte>(1), tmp.row(i).at<byte>(2)));
+      }
+      //..
+
+      determineObjectMainColor(obj, fixedColors);
 
       //-- compute 3D transform
 
-      arr tmp = ARR(obj->rotatedBBox(0), obj->rotatedBBox(1), obj->depth_avg);
-      arr topCenter = projectPointFromCameraToWorld(tmp, cam_PInv);
+      arr topCenterCameraCoords = ARR(obj->rotatedBBox(0), obj->rotatedBBox(1), obj->depth_minFiltered);
+      arr topCenter = projectPointFromCameraToWorld(topCenterCameraCoords, cam_PInv);
 
-      double objHeight = fabs(obj->depth_avg - averageDepthBackground);
+      double objHeight = fabs(obj->depth_minFiltered - averageDepthBackground);
 
       arr center = topCenter;
       center(2) -= objHeight/2.0;
@@ -378,6 +415,20 @@ void ObjectManager::syncWithConfig(rai::KinematicWorld& C){
 //    f->shape->mesh() = obj->mesh;
 //    f->shape->mesh().C = ARR(1., .5, .0, .5);
     f->ats.getNew<int>("label") = PL_objects+obj->object_ID;
+
+    rai::String colorName;
+    if(obj->colorIndex == 0) {
+      colorName = "redColor";
+      f->shape->mesh().C = ARR(1.0, 0.0, 0.0, 1.0);
+    } else if(obj->colorIndex == 1) {
+      colorName = "greenColor";
+      f->shape->mesh().C = ARR(0.0, 1.0, 0.0, 1.0);
+    } else if(obj->colorIndex == 2) {
+      colorName = "blueColor";
+      f->shape->mesh().C = ARR(0.0, 0.0, 1.0, 1.0);
+    }
+
+    f->ats.getNode("logical")->graph().getNew<bool>(colorName) = true;
   }
 }
 

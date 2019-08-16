@@ -40,14 +40,16 @@ intA nonZeroRect(floatA& mask, double threshold){
 
 void recomputeObjMinMaxAvgDepthSize(ptr<Object> obj){
   double D=0., S=0., Dmin=2., Dmax=0.;
+  floatA depthTmp;
   for(int x=obj->rect(0);x<obj->rect(2);x++) for(int y=obj->rect(1);y<obj->rect(3);y++){
     float& m = obj->mask(y, x);
     float& d = obj->depth(y,x);
 
-    if(d>.1){
-      if(m>.5){
+    if(d > .4){
+      if(m > .5){
         if(d>Dmax) Dmax=d;
         if(d<Dmin) Dmin=d;
+        depthTmp.insertInSorted(d); // TODO this is horribly inefficient, but a simple sort gives me memory errors?!?!?!?!?!
       }
       D += m*d;
       S += m;
@@ -57,6 +59,18 @@ void recomputeObjMinMaxAvgDepthSize(ptr<Object> obj){
   obj->size = S;
   obj->depth_min = Dmin;
   obj->depth_max = Dmax;
+
+  float lowerPercentile = 0.05;
+  float upperPercentile = 0.1;
+  uint indexL = floor(lowerPercentile*(float)depthTmp.N);
+  uint indexU = floor(upperPercentile*(float)depthTmp.N);
+  if(depthTmp.N) {
+    floatA tmpA = depthTmp.sub(indexL, indexU);
+    float smallestDepthFiltered = sum(tmpA)/float(tmpA.N);
+    obj->depth_minFiltered = smallestDepthFiltered;
+  } else {
+    obj->depth_minFiltered = obj->depth_max;
+  }
 }
 
 void create3DfromFlat(std::shared_ptr<Object> obj, NovelObjectType type, const arr& fxypxy){
@@ -285,3 +299,26 @@ arr projectPointFromCameraToWorld(arr x, const arr& PInv) {
   x.append(1.0);
   return PInv*x;
 }
+
+void determineObjectMainColor(std::shared_ptr<Object> obj, const arr& fixedColors) {
+  cv::Mat cv_mask = CV(obj->mask);
+  cv::Mat bin = (cv_mask >= .9f);
+  cv::Mat convertedColor;
+  cv::cvtColor(CV(obj->color), convertedColor, CV_BGR2Lab);
+  cv::Scalar mean = cv::mean(convertedColor, bin);
+
+  double minDistance = std::numeric_limits<double>::infinity();
+  uint index = 0;
+  for(uint i = 0; i < fixedColors.d0; i++) {
+    double n = 0.0;
+    for(uint j = 0; j < 3; j++) {
+      n += (fixedColors(i,j)-mean(j))*(fixedColors(i,j)-mean(j));
+    }
+    if(n < minDistance) {
+      minDistance = n;
+      index = i;
+    }
+  }
+  obj->colorIndex = index;
+}
+

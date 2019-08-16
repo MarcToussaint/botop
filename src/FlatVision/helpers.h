@@ -36,7 +36,7 @@ struct Object{
 
   //2D shape
   double size=0.;
-  double depth_avg=0., depth_min=0., depth_max=0.;
+  double depth_avg=0., depth_min=0., depth_max=0., depth_minFiltered = 0.;
   intA rect;
   intA polygon;
   floatA rotatedBBox;  //(center, v1, v2, v3, angle)
@@ -48,6 +48,8 @@ struct Object{
   rai::Transformation pose=0;
   arr boxSize; //bounding box
   rai::Mesh mesh;
+
+  uint colorIndex;
 
   void write(ostream& os) const;
 };
@@ -64,6 +66,8 @@ void extendRect(intA& rect, int pad, int H, int W);
 void computePolyAndRotatedBoundingBox(intA& polygon, floatA& rotatedBBox, const floatA& mask);
 
 void recomputeObjMinMaxAvgDepthSize(ptr<Object> obj);
+
+void determineObjectMainColor(std::shared_ptr<Object> obj, const arr& fixedColors);
 
 void pixelColorNormalizeIntensity(byteA&);
 
