@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Perception/opencv.h>
 #include <Kin/kin.h>
 #include <Kin/frame.h>
 
@@ -37,8 +38,9 @@ struct LGPop{
   //-- camera variables
   Var<floatA> cam_depth; //camera output
   Var<byteA> cam_color;  //camera output
-  Var<arr> cam_pose;     //camera pose
   Var<arr> cam_PInv;   //camera inverse projection matrix 3x4
+  Var<uintA> cam_crop; //cropping of cameraView left, right, top, bottom
+
 
   //-- model camera (predicated images) variables
   Var<byteA> model_segments; //output of model camera (segment IDs)
@@ -66,7 +68,7 @@ struct LGPop{
   void runTaskController(int verbose=0);
   void runCamera(int verbose=0);
   void runPerception(int verbose=0);
-  void runCalibration();
+  void runCalibration(rai::LeftRight leftRight);
 
   void perception_setSyncToConfig(bool _syncToConfig);
 

@@ -93,7 +93,7 @@ void ObjectManager::renderFlatObject(int H, int W){
 
 void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
                                      const byteA& cam_color, const floatA& cam_depth,
-                                     const arr& cam_pose, const arr& cam_PInv,
+                                     const uintA& cam_crop, const arr& cam_PInv,
                                      const floatA& background){
   auto O = objects.set();
 

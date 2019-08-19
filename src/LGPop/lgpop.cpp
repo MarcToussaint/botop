@@ -1,5 +1,7 @@
 #include "lgpop.h"
 
+#include <CameraCalibration/cameraCalibration.h>
+
 #include <iomanip>
 
 #include <Gui/viewer.h>
@@ -20,6 +22,7 @@
 #include <Perception/perceptSyncer.h>
 
 #include <FlatVision/flatVision.h>
+
 
 struct self_LGPop{
   ptr<FrankaGripper> G_right;
@@ -46,7 +49,7 @@ LGPop::LGPop(OpMode _opMode)
     processes.append( make_shared<KinViewer>(sim_config) );
   }
 
-  cam_pose.set() = rawModel["camera"]->X.getArr7d();
+//  cam_pose.set() = rawModel["camera"]->X.getArr7d();
 
   armPoseCalib.set() = zeros(2,6);
 
@@ -100,9 +103,19 @@ void LGPop::runCamera(int verbose){
 
 
     arr PInv;
-    PInv.append(~ARR(0.00185984, -3.59963e-06, -0.418472, -0.014174));
+    /*PInv.append(~ARR(0.00185984, -3.59963e-06, -0.418472, -0.014174));
     PInv.append(~ARR(-1.40775e-05, -0.00186816, 0.276088, 0.330471));
     PInv.append(~ARR(7.62193e-06, 3.40333e-05, -1.00571, 1.81469));
+*/
+
+    PInv.append(~ARR(0.00186463, -6.38537e-06, -0.419071, -0.0145604));
+    PInv.append(~ARR(-1.45655e-05, -0.00186804, 0.252649, 0.330979));
+    PInv.append(~ARR(4.51965e-06, 7.21979e-05, -1.01518, 1.81644));
+
+
+
+
+
 
     cam_PInv.set() = PInv;
 
@@ -113,6 +126,9 @@ void LGPop::runCamera(int verbose){
     PInv.append(~ARR(2.44997e-06, 3.35638e-05, -1.00856));
     arr pBias = ARR(-0.0145503, 0.330771, 1.81722);
     */
+
+    uintA crop = {95, 80, 80, 10};
+    cam_crop.set() = crop;
 
     cam_depth.waitForNextRevision();
   }
@@ -157,14 +173,88 @@ void LGPop::runPerception(int verbose){
   self->flatVision =
       make_shared<FlatVisionThread>(ctrl_config, objects,
                                     cam_color, cam_depth, model_segments, model_depth,
-                                    cam_pose, cam_PInv, armPoseCalib, verbose);
+                                    cam_crop, cam_PInv, armPoseCalib, verbose);
   self->flatVision->name="explainPixels";
   processes.append(std::dynamic_pointer_cast<Thread>(self->flatVision));
 }
 
-void LGPop::runCalibration(){
-  NIY;
+void LGPop::runCalibration(rai::LeftRight leftRight) {
+  rai::KinematicWorld K;
+  K.addFile(rai::raiPath("../model/pandaStation/cameraCalibration.g"));
+
+  arr q0;
+  if(leftRight == rai::_right) {
+    q0 = {0.0, 0.0, -0.5, 1.0, 0.0,  0.1, -1.7, -1.3, 0.0, 1.6, 2.0, 1.7, 0.0, -1.6};
+  } else {
+    q0 = {0.0, 0.0, 1.0, -0.5, -0.1, 0.0, -1.3, -1.7, -1.6, 0.0, 1.7, 2.0, 0.0, 0.0};
+  }
+
+  {
+    auto t = tci->addCtrlTaskSineMP("calib", FS_qItself, {}, 5.0, 300.0, 30.0);
+    t->setTarget(q0);
+    wait(+t);
+  }
+
+  K.setJointState(ctrl_state.get()->q);
+
+  K.watch(true);
+
+  arr hsvFilter = ARR(60, 101, 100, 82, 255, 255).reshape(2, 3);
+
+  char LR;
+  if(leftRight == rai::_right) {
+    LR = 'R';
+  } else {
+    LR = 'L';
+  }
+
+  CameraCalibration cc(K, STRING("calibrationVolume" << LR), STRING("calibrationMarker" << LR), cam_crop.get());
+  cc.set_q0(q0);
+  cc.hsvFilter = hsvFilter;
+
+  arr targets = cc.generateTargets({4});
+  for(uint i = 0; i < targets.d0; i++) {
+    cc.updateWorldState(ctrl_config.get());
+    arr path = cc.generatePathToTarget(targets[i], leftRight == rai::_right);
+    if(!path.N) continue;
+
+    {
+      auto t = tci->addCtrlTaskSineMP("calib", FS_qItself, {}, 5.0, 300.0, 30.0);
+      t->setTarget(path[path.d0-1]);
+      wait(+t);
+    }
+
+    rai::wait(1.0);
+
+    cc.updateWorldState(ctrl_config.get());
+
+    cc.captureDataPoint(cam_color.get(), cam_depth.get());
+
+    rai::system("mkdir -p cameraCalibrationData");
+    rai::String fileName;
+    fileName << "cameraCalibrationData/";
+    if(opMode == SimulationMode) {
+      fileName << "simulation";
+    } else {
+      fileName << "real";
+    }
+    if(leftRight == rai::_right) {
+      fileName << "_right";
+    } else {
+      fileName << "_left";
+    }
+    cc.saveData(fileName);
+  }
+
+  cout << endl << cc.computePInv(cc.XData, cc.xData) << endl << endl;
+
+  cc.calibrateCamera();
+  cout << cc.I << endl<< endl;
+  cout << cc.R << endl<< endl;
+  cout << cc.t << endl<< endl;
 }
+
+
 
 void LGPop::perception_setSyncToConfig(bool _syncToConfig){
   for(ptr<Thread>& thread: processes) {

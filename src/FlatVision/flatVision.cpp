@@ -4,7 +4,7 @@ FlatVisionThread::FlatVisionThread(Var<rai::KinematicWorld>& _config,
                                    Var<rai::Array<ptr<Object>>>& _objects,
                                    Var<byteA>& _color, Var<floatA>& _depth,
                                    Var<byteA>& _model_segments, Var<floatA> _model_depth,
-                                   Var<arr>& _cameraPose, Var<arr>& _cameraPInv, Var<arr>& _armPoseCalib,
+                                   Var<uintA>& _cameraCrop, Var<arr>& _cameraPInv, Var<arr>& _armPoseCalib,
                                    int _verbose)
   : Thread("FlatVision", -1.),
     config(this, _config),
@@ -13,7 +13,7 @@ FlatVisionThread::FlatVisionThread(Var<rai::KinematicWorld>& _config,
     cam_depth(this, _depth, true),
     model_segments(this, _model_segments),
     model_depth(this, _model_depth),
-    cam_pose(this, _cameraPose),
+    cam_crop(this, _cameraCrop),
     cam_PInv(this, _cameraPInv),
     armPoseCalib(this, _armPoseCalib),
     verbose(_verbose),
@@ -33,7 +33,6 @@ void FlatVisionThread::step(){
   byteA _model_segments = model_segments.get();
   floatA _model_depth = model_depth.get();
   arr _cam_PInv = cam_PInv.get();
-  arr _cam_pose = cam_pose.get();
 
   //not ready yet?
   if(_cam_depth.nd!=2 || _model_segments.nd!=2){
@@ -43,7 +42,11 @@ void FlatVisionThread::step(){
 
   //-- crop
   //uint cL=95, cR=80, cT=50, cB=30;
-  uint cL=95, cR=80, cT=80, cB=10;
+
+  //uint cL=95, cR=80, cT=80, cB=10;
+  uintA _camCrop = cam_crop.get();
+  uint cL = _camCrop(0), cR = _camCrop(1), cT = _camCrop(2), cB = _camCrop(3);
+
   _cam_color = _cam_color.sub(cT,-cB,cL,-cR,0,-1);
   _cam_depth = _cam_depth.sub(cT,-cB,cL,-cR);
   _model_segments = _model_segments.sub(cT,-cB,cL,-cR);
@@ -122,7 +125,7 @@ void FlatVisionThread::step(){
                                    _cam_color, _cam_depth);
 
   //adapt objects based on novel pixels
-  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _cam_pose, _cam_PInv, exBackground.background);
+  objectManager.adaptFlatObjects(labels, _cam_color, _cam_depth, _camCrop, _cam_PInv, exBackground.background);
 
   if(syncToConfig){
     objectManager.removeUnhealthyObject(config.set());
