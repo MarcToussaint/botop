@@ -169,14 +169,14 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
         float& d = obj->depth(y,x);
         if(d > .4){
           if(m > .5){
-            if(fabs(obj->depth_minFiltered - d) > 0.008) {
+            if(fabs(obj->depth_minFiltered - d) > 0.01) {
               m = 0.0;
             }
           }
         }
       }
 
-      cout << obj->depth_minFiltered << endl;
+//      cout << obj->depth_minFiltered << endl;
 
       computePolyAndRotatedBoundingBox(obj->polygon, obj->rotatedBBox, obj->mask);
 
@@ -185,6 +185,7 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
       colorValues.append(~rai::Array<byte>({0, 230, 150}));
       colorValues.append(~rai::Array<byte>({60, 230, 150}));
       colorValues.append(~rai::Array<byte>({120, 230, 150}));
+      colorValues.append(~rai::Array<byte>({30, 230, 150}));
       colorValues.reshape(colorValues.d0, 1, 3);
       cv::Mat tmp;
       cv::cvtColor(CV(colorValues), tmp, CV_HSV2RGB);
@@ -203,16 +204,21 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
       arr topCenterCameraCoords = ARR(obj->rotatedBBox(0), obj->rotatedBBox(1), obj->depth_minFiltered);
       arr topCenter = projectPointFromCameraToWorld(topCenterCameraCoords, cam_PInv);
 
-      double objHeight = fabs(obj->depth_minFiltered - averageDepthBackground);
+      /*double objHeight = fabs(obj->depth_minFiltered - averageDepthBackground);
 
+      arr center = topCenter;
+      center(2) -= objHeight/2.0;
+      center(2) += 0.005; // HACK: move up a little bit to get out of collision
+      */
+
+      double objHeight = fabs(topCenter(2) - (0.769 + 0.018/2.0));
       arr center = topCenter;
       center(2) -= objHeight/2.0;
       center(2) += 0.003; // HACK: move up a little bit to get out of collision
 
+
       obj->pose.setZero();
       obj->pose.pos = center;
-      obj->pose.rot.setRadZ(-obj->rotatedBBox(8)*RAI_PI/180.);
-
       arr v1 = projectPointFromCameraToWorld(ARR(obj->rotatedBBox(2), obj->rotatedBBox(3), obj->depth_avg), cam_PInv);
       arr v2 = projectPointFromCameraToWorld(ARR(obj->rotatedBBox(4), obj->rotatedBBox(5), obj->depth_avg), cam_PInv);
       arr v3 = projectPointFromCameraToWorld(ARR(obj->rotatedBBox(6), obj->rotatedBBox(7), obj->depth_avg), cam_PInv);
@@ -220,7 +226,24 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
       double h = length(v1.sub(0,1)-v2.sub(0,1));
       double w = length(v2.sub(0,1)-v3.sub(0,1));
 
-      obj->boxSize = {w, h, objHeight, 0.001};
+      double rotDeg = -obj->rotatedBBox(8);
+
+      if(rotDeg >= 45.0) {
+        rotDeg -= 90.0;
+        obj->boxSize = {h, w, objHeight, 0.001};
+      } else if(rotDeg <= -45.0) {
+        rotDeg += 90.0;
+        obj->boxSize = {h, w, objHeight, 0.001};
+      } else {
+        obj->boxSize = {w, h, objHeight, 0.001};
+      }
+
+      obj->pose.rot.setRadZ(rotDeg*RAI_PI/180.);
+
+      cout << obj->object_ID << ": " << rotDeg << endl;
+
+//      obj->pose.rot.setRadZ(-obj->rotatedBBox(8)*RAI_PI/180.);
+//      obj->boxSize = {w, h, objHeight, 0.001};
 
 
       //-- is healthy?
@@ -419,16 +442,22 @@ void ObjectManager::syncWithConfig(rai::KinematicWorld& C){
     rai::String colorName;
     if(obj->colorIndex == 0) {
       colorName = "redColor";
-      f->shape->mesh().C = ARR(1.0, 0.0, 0.0, 1.0);
+      f->shape->mesh().C = ARR(1.0, 0.0, 0.0, 1.0); 
     } else if(obj->colorIndex == 1) {
       colorName = "greenColor";
       f->shape->mesh().C = ARR(0.0, 1.0, 0.0, 1.0);
     } else if(obj->colorIndex == 2) {
       colorName = "blueColor";
       f->shape->mesh().C = ARR(0.0, 0.0, 1.0, 1.0);
+    } else if(obj->colorIndex == 3) {
+      colorName = "yellowColor";
+      f->shape->mesh().C = ARR(1.0, 1.0, 0.0, 1.0);
     }
 
+    f->ats.getNew<arr>("color") = f->shape->mesh().C;
+
     f->ats.getNode("logical")->graph().getNew<bool>(colorName) = true;
+    f->ats.getNew<bool>("vision") = true;
   }
 }
 

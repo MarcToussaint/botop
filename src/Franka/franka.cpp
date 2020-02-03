@@ -219,7 +219,7 @@ FrankaThreadNew::FrankaThreadNew(Var<CtrlCmdMsg>& _ctrl, Var<CtrlStateMsg>& _sta
   qIndices_max = qIndices.max();
 
   //-- basic Kp Kd settings for reference control mode
-  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", ARR(15., 15., 15., 10., 5., 5., 3.));
+  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", ARR(18., 18., 18., 13., 8., 8., 6.));
   Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", ARR(.8, .8, .7, .7, .1, .1, .1));
   LOG(0) << "FRANKA: Kp_freq=" << Kp_freq << " Kd_ratio=" << Kd_ratio;
 

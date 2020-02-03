@@ -59,7 +59,7 @@ struct LGPop{
 
   TaskControlInterface* tci;
 
-  LGPop(OpMode _opMode=SimulationMode);
+  LGPop(OpMode _opMode=SimulationMode, const char* worldFileName = nullptr);
 
   ~LGPop();
 

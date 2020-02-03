@@ -33,23 +33,26 @@ struct self_LGPop{
 
 };
 
-LGPop::LGPop(OpMode _opMode)
+LGPop::LGPop(OpMode _opMode, const char* worldFileName)
   : opMode(_opMode), self(make_shared<self_LGPop>()){
 
-  rawModel.addFile(rai::raiPath("../model/pandaStation/pandaStation.g"));
+  if(worldFileName) {
+    rawModel.addFile(worldFileName);
+  } else {
+    rawModel.addFile(rai::raiPath("../model/pandaStation/pandaStation.g"));
+  }
+
   rawModel.optimizeTree();
   q_home = rawModel.getJointState();
   q_freeView = q_home;
 
   ctrl_config.set() = rawModel;
 
-  if(true || opMode==SimulationMode){
+  if(opMode==SimulationMode){
     sim_config.set() = rawModel;
     sim_config.name() = "HIDDEN SIMULATION config";
     processes.append( make_shared<KinViewer>(sim_config) );
   }
-
-//  cam_pose.set() = rawModel["camera"]->X.getArr7d();
 
   armPoseCalib.set() = zeros(2,6);
 
@@ -103,31 +106,18 @@ void LGPop::runCamera(int verbose){
 
 
     arr PInv;
-    /*PInv.append(~ARR(0.00185984, -3.59963e-06, -0.418472, -0.014174));
-    PInv.append(~ARR(-1.40775e-05, -0.00186816, 0.276088, 0.330471));
-    PInv.append(~ARR(7.62193e-06, 3.40333e-05, -1.00571, 1.81469));
-*/
 
-    PInv.append(~ARR(0.00186463, -6.38537e-06, -0.419071, -0.0145604));
-    PInv.append(~ARR(-1.45655e-05, -0.00186804, 0.252649, 0.330979));
-    PInv.append(~ARR(4.51965e-06, 7.21979e-05, -1.01518, 1.81644));
+    //PInv.append(~ARR(0.00186463, -6.38537e-06, -0.419071, -0.0145604));
+    //PInv.append(~ARR(-1.45655e-05, -0.00186804, 0.252649, 0.330979));
+    //PInv.append(~ARR(4.51965e-06, 7.21979e-05, -1.01518, 1.81644));
+    //uintA crop = {95, 80, 80, 10};
 
-
-
-
-
+    PInv.append(~ARR(0.00186622, -9.56714e-06, -0.586458, -0.0151291));
+    PInv.append(~ARR(-1.23487e-05, -0.00186911, 0.307741, 0.330753));
+    PInv.append(~ARR(6.61791e-06, 7.68097e-05, -1.01703, 1.81519));
+    uintA crop = {5, 30, 50, 13};
 
     cam_PInv.set() = PInv;
-
-    /*
-    arr PInv;
-    PInv.append(~ARR(0.00186173, -4.21766e-06, -0.41852));
-    PInv.append(~ARR(-1.30519e-05, -0.00186546, 0.274969));
-    PInv.append(~ARR(2.44997e-06, 3.35638e-05, -1.00856));
-    arr pBias = ARR(-0.0145503, 0.330771, 1.81722);
-    */
-
-    uintA crop = {95, 80, 80, 10};
     cam_crop.set() = crop;
 
     cam_depth.waitForNextRevision();
