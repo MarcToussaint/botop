@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include <Kin/taskMaps.h>
 #include <Algo/spline.h>
 #include <Core/thread.h>
 #include <NewControl/ctrlMsgs.h>

@@ -36,7 +36,7 @@ struct TaskControlThread : Thread {
   ~TaskControlThread();
 
   arr whatsTheForce(const ptr<CtrlTask>& t);
-  
+
   void step();
 };
 

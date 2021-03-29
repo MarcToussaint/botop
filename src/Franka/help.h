@@ -1,20 +1,24 @@
 #include <Kin/kin.h>
+#include <Kin/frame.h>
 #include <FlatVision/helpers.h>
 
-inline uintA franka_getJointIndices(const rai::KinematicWorld& K, char L_or_R){
-  StringA joints;
+inline uintA franka_getJointIndices(const rai::Configuration& K, char L_or_R){
+  StringA jointNames;
   for(uint i=1;i<=7;i++){
-    joints.append(STRING(L_or_R <<"_panda_joint" <<i));
+    jointNames.append(STRING(L_or_R <<"_panda_joint" <<i));
   }
-  return  K.getQindicesByNames(joints);
+  FrameL joints = K.getFrames(jointNames);
+  uintA qIndices(7);
+  for(uint i=0;i<joints.N;i++) qIndices(i) = joints(i)->joint->qIndex;
+  return qIndices;
 }
 
 
-inline byteA franka_getFrameMaskMap(const rai::KinematicWorld& K){
+inline byteA franka_getFrameMaskMap(const rai::Configuration& K){
   byteA frameMaskMap(K.frames.N); //map each frame in the image to a mask byte (here just 0 or 0xff)
   frameMaskMap.setZero();
   for(rai::Frame *f:K.frames){
-    if(f->shape && f->shape->visual){
+    if(f->shape){
       if(f->getUpwardLink()->name.startsWith("L_")){
         frameMaskMap(f->ID)=PL_robot;
       }
@@ -32,14 +36,14 @@ inline byteA franka_getFrameMaskMap(const rai::KinematicWorld& K){
   return frameMaskMap;
 }
 
-inline void franka_setFrameMaskMapLabels(rai::KinematicWorld& K){
+inline void franka_setFrameMaskMapLabels(rai::Configuration& K){
   for(rai::Frame *f:K.frames){
-    if(f->shape && f->shape->visual){
+    if(f->shape){
       if(f->getUpwardLink()->name.startsWith("L_")){
-        f->ats.getNew<int>("label") = PL_robot;
+        f->ats->getNew<int>("label") = PL_robot;
       }
       if(f->getUpwardLink()->name.startsWith("R_")){
-        f->ats.getNew<int>("label") = PL_robot+1;
+        f->ats->getNew<int>("label") = PL_robot+1;
       }
     }
   }

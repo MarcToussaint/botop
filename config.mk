@@ -16,4 +16,10 @@ ROS = 1
 BULLET = 0
 FCL = 0
 PYBIND = 0
-ROS_VERSION = kinetic
+ROS = 0
+ROS_VERSION = melodic
+REALSENSE = 0
+CERES = 0
+NLOPT = 0
+IPOPT = 0
+

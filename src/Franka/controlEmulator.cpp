@@ -3,8 +3,16 @@
 #include <Kin/frame.h>
 
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
+void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio) {
+  CHECK(decayTime>0. && dampingRatio>=0., "this does not define proper gains!");
+  double lambda = decayTime*dampingRatio/(-log(.1));
+//  double lambda = decayTime/(-log(.1)); //assume the damping ratio always 1. -- just so that setting ratio to zero still gives a reasonable value
+  double freq = 1./lambda;
+  Kp = freq*freq;
+  Kd = 2.*dampingRatio*freq;
+}
 
-ControlEmulator::ControlEmulator(Var<rai::KinematicWorld>& _sim_config,
+ControlEmulator::ControlEmulator(Var<rai::Configuration>& _sim_config,
                                  Var<CtrlCmdMsg>& _ctrl_ref,
                                  Var<CtrlStateMsg>& _ctrl_state,
                                  const StringA& joints,
@@ -14,7 +22,7 @@ ControlEmulator::ControlEmulator(Var<rai::KinematicWorld>& _sim_config,
     ctrl_ref(_ctrl_ref),
     ctrl_state(_ctrl_state),
     tau(_tau){
-  //        rai::KinematicWorld K(rai::raiPath("../rai-robotModels/panda/panda.g"));
+  //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
   {
@@ -25,7 +33,7 @@ ControlEmulator::ControlEmulator(Var<rai::KinematicWorld>& _sim_config,
       q_indices.resize(joints.N);
       uint i=0;
       for(auto& s:joints){
-        rai::Frame *f = K->getFrameByName(s);
+        rai::Frame *f = K->getFrame(s);
         CHECK(f, "frame '" <<s <<"' does not exist");
         CHECK(f->joint, "frame '" <<s <<"' is not a joint");
         CHECK(f->joint->qDim()==1, "joint '" <<s <<"' is not 1D");
@@ -64,7 +72,7 @@ void ControlEmulator::step(){
 
   //-- publish to sim_config
   {
-    sim_config.set()->setJointState(q, qdot);
+    sim_config.set()->setJointState(q);
   }
 
 
