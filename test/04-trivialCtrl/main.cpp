@@ -11,7 +11,6 @@
 #include <Franka/help.h>
 
 
-
 struct MyThread : Thread {
   Var<rai::Configuration> ctrl_config;
   Var<CtrlCmdMsg> ctrl_ref;
@@ -110,8 +109,8 @@ void testNew() {
     set->tauExternal.setZero();
   }
 
-  //ControlEmulator robot(K, ctrlRef, ctrlState);
-  FrankaThreadNew robotR(ctrlRef, ctrlState, 0, franka_getJointIndices(K.get()(),'R'));
+  ControlEmulator robot(K, ctrlRef, ctrlState);
+//  FrankaThreadNew robotR(ctrlRef, ctrlState, 0, franka_getJointIndices(K.get()(),'R'));
 
   MyThread mine(K, ctrlRef, ctrlState);
 
