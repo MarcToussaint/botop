@@ -10,11 +10,30 @@
 #include <Franka/gripper.h>
 #include <Franka/help.h>
 
+struct ControlLoop {
+  virtual void initialize(const arr& q_real, const arr& qDot_real) {}
 
-struct MyThread : Thread {
+  virtual void stepReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real){ NIY; }
+
+  virtual void step(CtrlCmdMsg& ctrlCmdMesg, const arr& q_real, const arr& qDot_real){
+    stepReference(ctrlCmdMesg.qRef, ctrlCmdMesg.qDotRef, ctrlCmdMesg.qDDotRef, q_real, qDot_real);
+  }
+};
+
+struct TrivialZeroControl : ControlLoop{
+  virtual void stepReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real){
+    qRef = q_real;
+    qDotRef = qDot_real;
+    qDDotRef.resize(qRef.N).setZero();
+  }
+};
+
+struct ControlThread : Thread {
   Var<rai::Configuration> ctrl_config;
   Var<CtrlCmdMsg> ctrl_ref;
   Var<CtrlStateMsg> ctrl_state;
+
+  shared_ptr<ControlLoop> ctrlLoop;
 
   arr q_real, qdot_real, tauExternal; //< real state
   arr q0; //< homing pose
@@ -23,13 +42,15 @@ struct MyThread : Thread {
   bool requiresInitialSync;
   int verbose;
 
-  MyThread(const Var<rai::Configuration>& _ctrl_config,
-                    const Var<CtrlCmdMsg>& _ctrl_ref,
-                    const Var<CtrlStateMsg>& _ctrl_state)
-      : Thread("TaskControlThread", .01),
+  ControlThread(const Var<rai::Configuration>& _ctrl_config,
+                const Var<CtrlCmdMsg>& _ctrl_ref,
+                const Var<CtrlStateMsg>& _ctrl_state,
+                const shared_ptr<ControlLoop>& _ctrlLoop)
+      : Thread("ControlThread", .01),
       ctrl_config(this, _ctrl_config),
       ctrl_ref(this, _ctrl_ref),
       ctrl_state(this, _ctrl_state),
+      ctrlLoop(_ctrlLoop),
       requiresInitialSync(true),
       verbose(0)
   {
@@ -46,7 +67,7 @@ struct MyThread : Thread {
 
     threadLoop();
   };
-  ~MyThread(){
+  ~ControlThread(){
       threadClose();
   }
 
@@ -54,7 +75,7 @@ struct MyThread : Thread {
 };
 
 
-void MyThread::step() {
+void ControlThread::step() {
   //-- initial initialization
   if(requiresInitialSync){
     if(ctrl_state.getRevision()>1) {
@@ -64,6 +85,7 @@ void MyThread::step() {
         qdot_real = state->qDot;
       }
       ctrl_config.set()->setJointState(q_real);
+      ctrlLoop->initialize(q_real, qdot_real);
       requiresInitialSync = false;
     } else{
       LOG(0) << "waiting for ctrl_state messages...";
@@ -86,17 +108,19 @@ void MyThread::step() {
   //-- update kinematic world for controller
   ctrl_config.set()->setJointState(q_real);
 
-//  CtrlCmdMsg ctrlCmdMsg;
-//  ctrlCmdMsg.qDotRef = {.01,.0,.0,.0,.0,.0,.0};
-//  ctrl_ref.set() = ctrlCmdMsg;
+  //-- call the given ctrlLoop
+  CtrlCmdMsg ctrlCmdMsg;
+  ctrlLoop->step(ctrlCmdMsg, q_real, qdot_real);
+  ctrl_ref.set() = ctrlCmdMsg;
 }
 
 
 void testNew() {
   Var<rai::Configuration> K;
   K.set()->addFile(rai::raiPath("../model/pandaSingle.g"));
-  //K.set()()["R_panda_finger_joint1"]->joint->makeRigid();
-  //K.set()()["L_panda_finger_joint1"]->joint->makeRigid();
+  K.set()()["R_panda_finger_joint1"]->setJoint(rai::JT_rigid);
+  K.set()()["R_panda_finger_joint2"]->setJoint(rai::JT_rigid);
+//  K.set()()["L_panda_finger_joint1"]->joint->makeRigid();
   K.set()->optimizeTree();
   K.set()->watch(true);
 
@@ -112,7 +136,7 @@ void testNew() {
   ControlEmulator robot(K, ctrlRef, ctrlState);
 //  FrankaThreadNew robotR(ctrlRef, ctrlState, 0, franka_getJointIndices(K.get()(),'R'));
 
-  MyThread mine(K, ctrlRef, ctrlState);
+  ControlThread mine(K, ctrlRef, ctrlState, make_shared<TrivialZeroControl>());
 
   cout <<ctrlState.get()->q << endl;
 
