@@ -75,9 +75,6 @@ void ControlEmulator::step(){
     sim_config.set()->setJointState(q);
   }
 
-
-
-
   //-- get current ctrl
   arr q_ref, qdot_ref, qDDotRef, KpRef, KdRef, P_compliance; // TODO Kp, Kd, u_b and also read out the correct indices
   ControlType controlType;
@@ -102,18 +99,19 @@ void ControlEmulator::step(){
     if(q_ref.N == 0) return;
 
     double k_p, k_d;
-    naturalGains(k_p, k_d, .2, 1.);
-//    qdd_des = k_p * (q_ref - q) + k_d * (qdot_ref - qdot);
-    q = q_ref;
-    qdot = qdot_ref;
+    naturalGains(k_p, k_d, .02, 1.);
+    qdd_des = k_p * (q_ref - q) + k_d * (qdot_ref - qdot);
+//    q = q_ref;
+//    qdot = qdot_ref;
 
   } else if(controlType == ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
     qdd_des = qDDotRef - KpRef*q - KdRef*qdot;
   }
 
-
   //-- directly integrate
   q += .5 * tau * qdot;
   qdot += tau * qdd_des;
   q += .5 * tau * qdot;
+
+  cout <<"R q_real: " <<q.modRaw() <<" q_ref: " <<q_ref.modRaw() <<endl;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Core/thread.h>
-#include <NewControl/ctrlMsgs.h>
+#include <Control/CtrlMsgs.h>
 #include <Kin/kin.h>
 
 struct ControlEmulator : Thread{

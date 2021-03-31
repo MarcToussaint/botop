@@ -11,17 +11,36 @@
 #include <Franka/help.h>
 
 #include <Control/control.h>
+#include <Control/CtrlThread.h>
+#include <Control/splineRunner.h>
 
-struct ControlLoop {
-  virtual void initialize(const arr& q_real, const arr& qDot_real) {}
+void testUnrollControl(uint T, rai::Configuration& C, CtrlSet& CS, CtrlSolver& ctrl){
+  arr q=C.getJointState();
+  arr qDot = zeros(q.N);
+  for(uint t=0;t<T;t++){
+    ctrl.set(CS);
+    ctrl.update(q,qDot,C);
+    arr q_new = ctrl.solve();
+    qDot = (q_new-q)/ctrl.tau;
+    q = q_new;
+    C.setJointState(q);
+    C.stepSwift();
 
-  virtual void stepReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real){ NIY; }
-
-  virtual void step(CtrlCmdMsg& ctrlCmdMsg, const arr& q_real, const arr& qDot_real){
-    ctrlCmdMsg.controlType=ControlType::configRefs;
-    stepReference(ctrlCmdMsg.qRef, ctrlCmdMsg.qDotRef, ctrlCmdMsg.qDDotRef, q_real, qDot_real);
+    ctrl.report();
+    C.watch(false, STRING("t:" <<t));
+    rai::wait(.01);
+//    if(pos->status>AS_running) break;
+    if(!CS.canBeInitiated(ctrl.komo.pathConfig)){
+      cout <<"*** IS INFEASIBLE ***" <<endl;
+      rai::wait();
+    }
+    if(CS.isConverged(ctrl.komo.pathConfig)){
+      cout <<"*** IS CONVERGED ***" <<endl;
+      rai::wait();
+      break;
+    }
   }
-};
+}
 
 struct TrivialZeroControl : ControlLoop {
   virtual void stepReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real){
@@ -31,18 +50,39 @@ struct TrivialZeroControl : ControlLoop {
   }
 };
 
+struct SplineControlLoop : ControlLoop {
+  Var<rai::SplineRunner> sp;
+  double startTime, lastTime;
+  SplineControlLoop(const arr& x, const arr& t, const arr& x0) {
+    sp.set()->set(x, t, x0, false);
+  }
+
+  virtual void initialize(const arr& q_real, const arr& qDot_real) {
+    startTime = rai::realTime();
+    lastTime = startTime;
+  }
+
+  virtual void stepReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real){
+    double now = rai::realTime();
+
+    qRef = sp.set()->run(now-lastTime, qDotRef);
+    qDDotRef.resize(qRef.N).setZero();
+    lastTime = now;
+  }
+};
+
 struct ClassicCtrlSetController : ControlLoop {
   CtrlSet CS;
   CtrlSolver ctrl;
 
-  ClassicCtrlSetController(const rai::Configuration& C, double tau=.01, uint k_order=1)
+  ClassicCtrlSetController(const rai::Configuration& C, double tau=.01, uint k_order=2)
     : ctrl(C, tau, k_order){
     //control costs
-//    CS.add_qControlObjective(2, 1e-2*sqrt(tau), ctrl.komo.world);
+    CS.add_qControlObjective(2, 1e-2*sqrt(tau), ctrl.komo.world);
     CS.add_qControlObjective(1, 1e-1*sqrt(tau), ctrl.komo.world);
 
     //position carrot (is transient!)
-    auto pos = CS.addObjective(make_feature(FS_positionDiff, {"endeffR", "target"}, ctrl.komo.world, {1e0}), OT_sos, .02);
+    auto pos = CS.addObjective(make_feature(FS_positionDiff, {"endeffR", "target"}, ctrl.komo.world, {1e0}), OT_eq, .02);
 
     //collision constraint
     //CS.addObjective(make_feature<F_AccumulatedCollisions>({"ALL"}, C, {1e2}), OT_eq);
@@ -52,101 +92,17 @@ struct ClassicCtrlSetController : ControlLoop {
     ctrl.set(CS);
     ctrl.komo.world.setJointState(q_real);
     ctrl.komo.world.watch();
-    ctrl.update(ctrl.komo.world);
+    ctrl.update(q_real, qDot_real, ctrl.komo.world);
     qRef = ctrl.solve();
-//    cout <<q_real <<' ' <<qRef <<endl;
     qDotRef.resize(qRef.N).setZero();
+    qDotRef = .5*(qRef - q_real)/ctrl.tau;
     qDDotRef.resize(qRef.N).setZero();
+//    cout <<"C q_real: " <<q_real.modRaw() <<" q_ref: " <<qRef.modRaw() <<endl;
   }
 };
 
 
 
-struct ControlThread : Thread {
-  Var<rai::Configuration> ctrl_config;
-  Var<CtrlCmdMsg> ctrl_ref;
-  Var<CtrlStateMsg> ctrl_state;
-
-  shared_ptr<ControlLoop> ctrlLoop;
-
-  arr q_real, qdot_real, tauExternal; //< real state
-  arr q0; //< homing pose
-  //arr Hmetric;
-
-  bool requiresInitialSync;
-  int verbose;
-
-  ControlThread(const Var<rai::Configuration>& _ctrl_config,
-                const Var<CtrlCmdMsg>& _ctrl_ref,
-                const Var<CtrlStateMsg>& _ctrl_state,
-                const shared_ptr<ControlLoop>& _ctrlLoop)
-      : Thread("ControlThread", .01),
-      ctrl_config(this, _ctrl_config),
-      ctrl_ref(this, _ctrl_ref),
-      ctrl_state(this, _ctrl_state),
-      ctrlLoop(_ctrlLoop),
-      requiresInitialSync(true),
-      verbose(0)
-  {
-
-    double hyper = rai::getParameter<double>("hyperSpeed", -1.);
-    if(hyper>0.) this->metronome.reset(.01/hyper);
-
-    //memorize the "NULL position", which is the initial model position
-    q0 = ctrl_config.get()->getJointState();
-    q_real = q0;
-    qdot_real = zeros(q0.N);
-
-    //Hmetric = rai::getParameter<double>("Hrate", .1)*ctrl_config.get()->getHmetric();
-
-    threadLoop();
-  };
-  ~ControlThread(){
-      threadClose();
-  }
-
-  void step();
-};
-
-
-void ControlThread::step() {
-  //-- initial initialization
-  if(requiresInitialSync){
-    if(ctrl_state.getRevision()>1) {
-      {
-        auto state = ctrl_state.get();
-        q_real = state->q;
-        qdot_real = state->qDot;
-      }
-      ctrl_config.set()->setJointState(q_real);
-      ctrlLoop->initialize(q_real, qdot_real);
-      requiresInitialSync = false;
-    } else{
-      LOG(0) << "waiting for ctrl_state messages...";
-      return;
-    }
-  }
-
-  //-- read current state
-  CtrlStateMsg ctrlStateMsg;
-  {
-    auto state = ctrl_state.get();
-    ctrlStateMsg = ctrl_state();
-    if(state->q.N){
-      q_real = state->q;
-      qdot_real = state->qDot;
-      tauExternal = state->tauExternal;
-    }
-  }
-
-  //-- update kinematic world for controller
-  ctrl_config.set()->setJointState(q_real);
-
-  //-- call the given ctrlLoop
-  CtrlCmdMsg ctrlCmdMsg;
-  ctrlLoop->step(ctrlCmdMsg, q_real, qdot_real);
-  ctrl_ref.set() = ctrlCmdMsg;
-}
 
 
 void testNew() {
@@ -160,6 +116,11 @@ void testNew() {
     Cset->watch(true);
   }
 
+//  {
+//    ClassicCtrlSetController tmp(C.get());
+//    testUnrollControl(1000, C.set(), tmp.CS, tmp.ctrl);
+//  }
+
   Var<CtrlCmdMsg> ctrlRef;
   Var<CtrlStateMsg> ctrlState;
   {
@@ -169,10 +130,17 @@ void testNew() {
     set->tauExternal.setZero();
   }
 
-  ControlEmulator robot(C, ctrlRef, ctrlState);
+
+  ControlEmulator robot(C, ctrlRef, ctrlState, {}, .001);
 //  FrankaThreadNew robotR(ctrlRef, ctrlState, 0, franka_getJointIndices(K.get()(),'R'));
 
-  ControlThread mine(C, ctrlRef, ctrlState, make_shared<ClassicCtrlSetController>(C.get()));
+  arr q0 = C.get()->getJointState();
+  arr qT = q0;
+  qT(1) += 1.;
+  auto sp = make_shared<SplineControlLoop>(cat(q0, qT).reshape(2,-1), arr{0., 2.}, q0);
+
+  ControlThread mine(C, ctrlRef, ctrlState, sp);
+//  ControlThread mine(C, ctrlRef, ctrlState, make_shared<ClassicCtrlSetController>(C.get()));
 //  ControlThread mine(C, ctrlRef, ctrlState, make_shared<TrivialZeroControl>());
 
   KinViewer viewer(C, 0.05);

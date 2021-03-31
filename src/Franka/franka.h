@@ -3,7 +3,7 @@
 #include <Core/array.h>
 #include <Core/thread.h>
 #include <Control/ctrlMsg.h>
-#include <NewControl/ctrlMsgs.h>
+#include <Control/CtrlMsgs.h>
 
 struct FrankaThread : Thread{
   Var<CtrlMsg> ctrl;
