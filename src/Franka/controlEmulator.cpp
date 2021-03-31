@@ -17,7 +17,7 @@ ControlEmulator::ControlEmulator(Var<rai::Configuration>& _sim_config,
                                  Var<CtrlStateMsg>& _ctrl_state,
                                  const StringA& joints,
                                  double _tau)
-  : Thread("FrankaThread", _tau),
+  : Thread("FrankaThread_Emulated", _tau),
     sim_config(_sim_config),
     ctrl_ref(_ctrl_ref),
     ctrl_state(_ctrl_state),
@@ -94,7 +94,6 @@ void ControlEmulator::step(){
   }
 
 
-  arr u = zeros(7);
   arr qdd_des = zeros(7);
 
   //-- construct torques from control message depending on the control type
@@ -104,15 +103,14 @@ void ControlEmulator::step(){
 
     double k_p, k_d;
     naturalGains(k_p, k_d, .2, 1.);
-    qdd_des = k_p * (q_ref - q) + k_d * (qdot_ref - qdot);
-    u = qdd_des;
+//    qdd_des = k_p * (q_ref - q) + k_d * (qdot_ref - qdot);
+    q = q_ref;
+    qdot = qdot_ref;
 
   } else if(controlType == ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
-    u = qDDotRef - KpRef*q - KdRef*qdot;
+    qdd_des = qDDotRef - KpRef*q - KdRef*qdot;
   }
 
-
-  qdd_des = u;
 
   //-- directly integrate
   q += .5 * tau * qdot;

@@ -10,23 +10,57 @@
 #include <Franka/gripper.h>
 #include <Franka/help.h>
 
+#include <Control/control.h>
+
 struct ControlLoop {
   virtual void initialize(const arr& q_real, const arr& qDot_real) {}
 
   virtual void stepReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real){ NIY; }
 
-  virtual void step(CtrlCmdMsg& ctrlCmdMesg, const arr& q_real, const arr& qDot_real){
-    stepReference(ctrlCmdMesg.qRef, ctrlCmdMesg.qDotRef, ctrlCmdMesg.qDDotRef, q_real, qDot_real);
+  virtual void step(CtrlCmdMsg& ctrlCmdMsg, const arr& q_real, const arr& qDot_real){
+    ctrlCmdMsg.controlType=ControlType::configRefs;
+    stepReference(ctrlCmdMsg.qRef, ctrlCmdMsg.qDotRef, ctrlCmdMsg.qDDotRef, q_real, qDot_real);
   }
 };
 
-struct TrivialZeroControl : ControlLoop{
+struct TrivialZeroControl : ControlLoop {
   virtual void stepReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real){
     qRef = q_real;
-    qDotRef = qDot_real;
+    qDotRef.resize(qRef.N).setZero();
     qDDotRef.resize(qRef.N).setZero();
   }
 };
+
+struct ClassicCtrlSetController : ControlLoop {
+  CtrlSet CS;
+  CtrlSolver ctrl;
+
+  ClassicCtrlSetController(const rai::Configuration& C, double tau=.01, uint k_order=1)
+    : ctrl(C, tau, k_order){
+    //control costs
+//    CS.add_qControlObjective(2, 1e-2*sqrt(tau), ctrl.komo.world);
+    CS.add_qControlObjective(1, 1e-1*sqrt(tau), ctrl.komo.world);
+
+    //position carrot (is transient!)
+    auto pos = CS.addObjective(make_feature(FS_positionDiff, {"endeffR", "target"}, ctrl.komo.world, {1e0}), OT_sos, .02);
+
+    //collision constraint
+    //CS.addObjective(make_feature<F_AccumulatedCollisions>({"ALL"}, C, {1e2}), OT_eq);
+  }
+
+  virtual void stepReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real){
+    ctrl.set(CS);
+    ctrl.komo.world.setJointState(q_real);
+    ctrl.komo.world.watch();
+    ctrl.update(ctrl.komo.world);
+    qRef = ctrl.solve();
+//    cout <<q_real <<' ' <<qRef <<endl;
+    qDotRef.resize(qRef.N).setZero();
+    qDDotRef.resize(qRef.N).setZero();
+  }
+};
+
+
 
 struct ControlThread : Thread {
   Var<rai::Configuration> ctrl_config;
@@ -116,31 +150,32 @@ void ControlThread::step() {
 
 
 void testNew() {
-  Var<rai::Configuration> K;
-  K.set()->addFile(rai::raiPath("../model/pandaSingle.g"));
-  K.set()()["R_panda_finger_joint1"]->setJoint(rai::JT_rigid);
-  K.set()()["R_panda_finger_joint2"]->setJoint(rai::JT_rigid);
-//  K.set()()["L_panda_finger_joint1"]->joint->makeRigid();
-  K.set()->optimizeTree();
-  K.set()->watch(true);
+  Var<rai::Configuration> C;
+  {
+    auto Cset = C.set();
+    Cset->addFile(rai::raiPath("../model/pandaSingle.g"));
+    Cset->getFrame("R_panda_finger_joint1")->setJoint(rai::JT_rigid);
+    Cset->getFrame("R_panda_finger_joint2")->setJoint(rai::JT_rigid);
+    Cset->addFrame("target") -> setPosition(Cset->getFrame("endeffR")->getPosition() + arr{0,.0,-.5});
+    Cset->watch(true);
+  }
 
   Var<CtrlCmdMsg> ctrlRef;
   Var<CtrlStateMsg> ctrlState;
   {
     auto set = ctrlState.set();
-    set->q = K.get()->getJointState();
-    set->tauExternal.resize(K.get()->getJointStateDimension());
+    set->q = C.get()->getJointState();
+    set->tauExternal.resize(C.get()->getJointStateDimension());
     set->tauExternal.setZero();
   }
 
-  ControlEmulator robot(K, ctrlRef, ctrlState);
+  ControlEmulator robot(C, ctrlRef, ctrlState);
 //  FrankaThreadNew robotR(ctrlRef, ctrlState, 0, franka_getJointIndices(K.get()(),'R'));
 
-  ControlThread mine(K, ctrlRef, ctrlState, make_shared<TrivialZeroControl>());
+  ControlThread mine(C, ctrlRef, ctrlState, make_shared<ClassicCtrlSetController>(C.get()));
+//  ControlThread mine(C, ctrlRef, ctrlState, make_shared<TrivialZeroControl>());
 
-  cout <<ctrlState.get()->q << endl;
-
-  KinViewer viewer(K, 0.05);
+  KinViewer viewer(C, 0.05);
 
   rai::wait();
 }

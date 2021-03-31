@@ -1,7 +1,7 @@
 BASE = ../../rai
 BASE2 = ../../src
 
-DEPEND = Core Algo Gui Geo Kin Franka 
+DEPEND = Core Algo Gui Geo Kin Franka Control
 
 OPENCV = 1
 
