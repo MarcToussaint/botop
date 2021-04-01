@@ -138,17 +138,19 @@ void testNew() {
   }
 
 
-  ControlEmulator robot(C, ctrlRef, ctrlState, {}, .001);
-//  FrankaThreadNew robotR(ctrlRef, ctrlState, 0, franka_getJointIndices(K.get()(),'R'));
+//  ControlEmulator robot(C, ctrlRef, ctrlState, {}, .001);
+  FrankaThreadNew robotR(ctrlRef, ctrlState, 0, franka_getJointIndices(C.get()(),'R'));
+  robotR.writeData = true;
 
-  arr q0 = C.get()->getJointState();
+  ctrlState.waitForRevisionGreaterThan(10);
+  arr q0 = ctrlState.get()->q;
   arr qT = q0;
   qT(1) += .5;
-  auto sp = make_shared<SplineControlLoop>(cat(qT, qT, q0).reshape(3,-1), arr{2., 2., 5.}, q0);
+  auto sp = make_shared<SplineControlLoop>(cat(qT, qT, q0).reshape(3,-1), arr{5., 5., 10.}, q0);
 
+//  ControlThread mine(C, ctrlRef, ctrlState, make_shared<TrivialZeroControl>());
   ControlThread mine(C, ctrlRef, ctrlState, sp);
 //  ControlThread mine(C, ctrlRef, ctrlState, make_shared<ClassicCtrlSetController>(C.get()));
-//  ControlThread mine(C, ctrlRef, ctrlState, make_shared<TrivialZeroControl>());
 
   KinViewer viewer(C, 0.05);
 

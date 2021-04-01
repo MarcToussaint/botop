@@ -228,8 +228,8 @@ FrankaThreadNew::FrankaThreadNew(Var<rai::CtrlCmdMsg>& _ctrl, Var<rai::CtrlState
   ipAddress = frankaIpAddresses[whichRobot];
 
   //-- start thread and wait for first state signal
-  threadStep();  //this is not looping! The step method passes a callback to robot.control, which is blocking until stop becomes true
-  while(firstTime) rai::wait(.01);
+  threadStep();  //this is not looping! The step method passes a callback to robot.control, which is blocking! (that's why we use a thread) until stop becomes true
+  while(requiresInitialization) rai::wait(.01);
 }
 
 FrankaThreadNew::~FrankaThreadNew(){
@@ -280,9 +280,6 @@ void FrankaThreadNew::step(){
   }
 
 
-
-
-
   // define callback for the torque control loop
   std::function<franka::Torques(const franka::RobotState&, franka::Duration)>
       torque_control_callback = [&](const franka::RobotState& robot_state,
@@ -315,9 +312,11 @@ void FrankaThreadNew::step(){
       controlType = ref->controlType;
 
       //get the reference from the callback (e.g., sampling a spline reference)
-      CHECK(ref->ref, "the reference function is not set!");
+
       arr ref_qRef, ref_qDotRef, ref_qDDotRef;
-      ref->ref(ref_qRef, ref_qDotRef, ref_qDDotRef, rai::realTime());
+      if(ref->ref){
+        ref->ref(ref_qRef, ref_qDotRef, ref_qDDotRef, rai::realTime());
+      }
 
       if(ref_qRef.N >= 7) q_ref.resize(7).setZero();
       if(ref_qDotRef.N >= 7) qdot_ref.resize(7).setZero();
@@ -343,7 +342,7 @@ void FrankaThreadNew::step(){
 
     }
 
-    firstTime=false;
+    requiresInitialization=false;
 
     arr u = zeros(7); // torques send to the robot
 
@@ -430,6 +429,14 @@ void FrankaThreadNew::step(){
       //u *= 0.0; // useful for testing new stuff without braking the robot
     }
 
+    //-- data log?
+    if(writeData){
+      if(!dataFile.is_open()) dataFile.open("z.panda.dat");
+      dataFile <<rai::realTime() <<' ';
+      q.writeRaw(dataFile);
+      q_ref.writeRaw(dataFile);
+      dataFile <<endl;
+    }
 
     std::array<double, 7> u_array = {0., 0., 0., 0., 0., 0., 0.};
     std::copy(u.begin(), u.end(), u_array.begin());

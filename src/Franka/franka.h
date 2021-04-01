@@ -24,20 +24,25 @@ private:
 
 
 struct FrankaThreadNew : Thread{
+  // input/output messages
   Var<rai::CtrlCmdMsg> ctrl;
   Var<rai::CtrlStateMsg> ctrl_state;
-  bool stop=false, firstTime=true;
-  arr Kp_freq, Kd_ratio;
+
+  bool writeData=false;
+
+  FrankaThreadNew(Var<rai::CtrlCmdMsg>& _ctrl, Var<rai::CtrlStateMsg>& _state, uint whichRobot=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6});
+  ~FrankaThreadNew();
+
+private:
+  bool stop=false, requiresInitialization=true; //stop -> send end to libfranka; requiresInitialization -> waits in constructor until first contact/initialization
+  arr Kp_freq, Kd_ratio; //read from rai.cfg
   const char* ipAddress;
 
   uintA qIndices;
   uint qIndices_max=0;
 
   uint steps=0;
+  ofstream dataFile;
 
-  FrankaThreadNew(Var<rai::CtrlCmdMsg>& _ctrl, Var<rai::CtrlStateMsg>& _state, uint whichRobot=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6});
-  ~FrankaThreadNew();
-
-private:
   void step();
 };
