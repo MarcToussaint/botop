@@ -62,12 +62,19 @@ struct SplineControlLoop : ControlLoop {
     lastTime = startTime;
   }
 
-  virtual void stepReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real){
-    double now = rai::realTime();
+  virtual void step(rai::CtrlCmdMsg& ctrlCmdMsg, const arr& q_real, const arr& qDot_real, double time){
+    ctrlCmdMsg.controlType=rai::ControlType::configRefs;
+    ctrlCmdMsg.ref = std::bind(&SplineControlLoop::eval, this,
+                               std::placeholders::_1,
+                               std::placeholders::_2,
+                               std::placeholders::_3,
+                               std::placeholders::_4);
+  }
 
-    qRef = sp.set()->run(now-lastTime, qDotRef);
+  virtual void eval(arr& qRef, arr& qDotRef, arr& qDDotRef, double time){
+    qRef = sp.set()->run(time-lastTime, qDotRef);
     qDDotRef.resize(qRef.N).setZero();
-    lastTime = now;
+    lastTime = time;
   }
 };
 
@@ -121,8 +128,8 @@ void testNew() {
 //    testUnrollControl(1000, C.set(), tmp.CS, tmp.ctrl);
 //  }
 
-  Var<CtrlCmdMsg> ctrlRef;
-  Var<CtrlStateMsg> ctrlState;
+  Var<rai::CtrlCmdMsg> ctrlRef;
+  Var<rai::CtrlStateMsg> ctrlState;
   {
     auto set = ctrlState.set();
     set->q = C.get()->getJointState();
@@ -136,8 +143,8 @@ void testNew() {
 
   arr q0 = C.get()->getJointState();
   arr qT = q0;
-  qT(1) += 1.;
-  auto sp = make_shared<SplineControlLoop>(cat(q0, qT).reshape(2,-1), arr{0., 2.}, q0);
+  qT(1) += .5;
+  auto sp = make_shared<SplineControlLoop>(cat(qT, qT, q0).reshape(3,-1), arr{2., 2., 5.}, q0);
 
   ControlThread mine(C, ctrlRef, ctrlState, sp);
 //  ControlThread mine(C, ctrlRef, ctrlState, make_shared<ClassicCtrlSetController>(C.get()));

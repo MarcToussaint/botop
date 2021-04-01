@@ -6,16 +6,16 @@
 
 struct ControlEmulator : Thread{
   Var<rai::Configuration> sim_config;
-  Var<CtrlCmdMsg> ctrl_ref;
-  Var<CtrlStateMsg> ctrl_state;
+  Var<rai::CtrlCmdMsg> ctrl_ref;
+  Var<rai::CtrlStateMsg> ctrl_state;
 
   double tau;
   arr q,qdot;
   uintA q_indices;
 
   ControlEmulator(Var<rai::Configuration>& _sim_config,
-                  Var<CtrlCmdMsg>& _ctrl_ref,
-                  Var<CtrlStateMsg>& _ctrl_state,
+                  Var<rai::CtrlCmdMsg>& _ctrl_ref,
+                  Var<rai::CtrlStateMsg>& _ctrl_state,
                   const StringA& joints={},
                   double _tau=.001);
   ~ControlEmulator();

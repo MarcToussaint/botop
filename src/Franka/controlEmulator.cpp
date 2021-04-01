@@ -13,8 +13,8 @@ void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio)
 }
 
 ControlEmulator::ControlEmulator(Var<rai::Configuration>& _sim_config,
-                                 Var<CtrlCmdMsg>& _ctrl_ref,
-                                 Var<CtrlStateMsg>& _ctrl_state,
+                                 Var<rai::CtrlCmdMsg>& _ctrl_ref,
+                                 Var<rai::CtrlStateMsg>& _ctrl_state,
                                  const StringA& joints,
                                  double _tau)
   : Thread("FrankaThread_Emulated", _tau),
@@ -77,14 +77,20 @@ void ControlEmulator::step(){
 
   //-- get current ctrl
   arr q_ref, qdot_ref, qDDotRef, KpRef, KdRef, P_compliance; // TODO Kp, Kd, u_b and also read out the correct indices
-  ControlType controlType;
+  rai::ControlType controlType;
   {
     auto ref = ctrl_ref.get();
 
     controlType = ref->controlType;
-    q_ref = ref->qRef;
-    qdot_ref = ref->qDotRef;
-    qDDotRef = ref->qDDotRef;
+
+    if(!ref->ref){
+      q_ref = q;
+      qdot_ref.resize(q.N).setZero();
+    }else{
+      //get the reference from the callback (e.g., sampling a spline reference)
+      ref->ref(q_ref, qdot_ref, qDDotRef, rai::realTime());
+    }
+
     KpRef = ref->Kp;
     KdRef = ref->Kd;
     P_compliance = ref->P_compliance;
@@ -95,7 +101,7 @@ void ControlEmulator::step(){
 
   //-- construct torques from control message depending on the control type
 
-  if(controlType == ControlType::configRefs) { // plain qRef, qDotRef references
+  if(controlType == rai::ControlType::configRefs) { // plain qRef, qDotRef references
     if(q_ref.N == 0) return;
 
     double k_p, k_d;
@@ -104,7 +110,7 @@ void ControlEmulator::step(){
 //    q = q_ref;
 //    qdot = qdot_ref;
 
-  } else if(controlType == ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
+  } else if(controlType == rai::ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
     qdd_des = qDDotRef - KpRef*q - KdRef*qdot;
   }
 
@@ -113,5 +119,5 @@ void ControlEmulator::step(){
   qdot += tau * qdd_des;
   q += .5 * tau * qdot;
 
-  cout <<"R q_real: " <<q.modRaw() <<" q_ref: " <<q_ref.modRaw() <<endl;
+  cout <<"R " <<rai::realTime() <<" q_real: " <<q.modRaw() <<" q_ref: " <<q_ref.modRaw() <<endl;
 }

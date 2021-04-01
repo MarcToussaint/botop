@@ -209,7 +209,7 @@ void FrankaThread::step(){
 
 
 
-FrankaThreadNew::FrankaThreadNew(Var<CtrlCmdMsg>& _ctrl, Var<CtrlStateMsg>& _state, uint whichRobot, const uintA& _qIndices)
+FrankaThreadNew::FrankaThreadNew(Var<rai::CtrlCmdMsg>& _ctrl, Var<rai::CtrlStateMsg>& _state, uint whichRobot, const uintA& _qIndices)
   : Thread("FrankaThread"),
     ctrl(_ctrl),
     ctrl_state(_state),
@@ -267,15 +267,15 @@ void FrankaThreadNew::step(){
     while(stateset->q.N<=qIndices_max) stateset->q.append(0.);
     while(stateset->qDot.N<=qIndices_max) stateset->qDot.append(0.);
     while(stateset->tauExternal.N<=qIndices_max) stateset->tauExternal.append(0.);
-    while(ref->qRef.N<=qIndices_max) ref->qRef.append(0.);
-    while(ref->qDotRef.N<=qIndices_max) ref->qDotRef.append(0.);
+//    while(ref->qRef.N<=qIndices_max) ref->qRef.append(0.);
+//    while(ref->qDotRef.N<=qIndices_max) ref->qDotRef.append(0.);
 
     for(uint i=0; i < 7; i++){
       stateset->q(qIndices(i)) = q(i);
       stateset->qDot(qIndices(i)) = qdot(i);
       stateset->tauExternal(qIndices(i)) = 0.;
-      ref->qRef(qIndices(i)) = q(i);
-      ref->qDotRef(qIndices(i)) = 0.;
+//      ref->qRef(qIndices(i)) = q(i);
+//      ref->qDotRef(qIndices(i)) = 0.;
     }
   }
 
@@ -308,30 +308,33 @@ void FrankaThreadNew::step(){
 
     //-- get current ctrl command
     arr q_ref, qdot_ref, qDDotRef, KpRef, KdRef, P_compliance; // TODO Kp, Kd and also read out the correct indices
-    ControlType controlType;
+    rai::ControlType controlType;
     {
       auto ref = ctrl.get();
 
       controlType = ref->controlType;
 
+      //get the reference from the callback (e.g., sampling a spline reference)
+      CHECK(ref->ref, "the reference function is not set!");
+      arr ref_qRef, ref_qDotRef, ref_qDDotRef;
+      ref->ref(ref_qRef, ref_qDotRef, ref_qDDotRef, rai::realTime());
 
-      if(ref->qRef.N >= 7) q_ref.resize(7);
-      if(ref->qDotRef.N >= 7) qdot_ref.resize(7);
-      if(ref->qDDotRef.N >= 7) qDDotRef.resize(7);
+      if(ref_qRef.N >= 7) q_ref.resize(7).setZero();
+      if(ref_qDotRef.N >= 7) qdot_ref.resize(7).setZero();
+      if(ref_qDDotRef.N >= 7) qDDotRef.resize(7).setZero();
       if(ref->Kp.d0 >= 7 && ref->Kp.d1 >=7 && ref->Kp.d0 == ref->Kp.d1) KpRef.resize(7, 7);
       if(ref->Kd.d0 >= 7 && ref->Kd.d1 >=7 && ref->Kd.d0 == ref->Kd.d1) KdRef.resize(7, 7);
 
       for(uint i = 0; i < 7; i++) {
-        if(ref->qRef.N >= 7) q_ref(i) = ref->qRef(qIndices(i));
-        if(ref->qDotRef.N >= 7) qdot_ref(i) = ref->qDotRef(qIndices(i));
-        if(ref->qDDotRef.N >= 7) qDDotRef(i) = ref->qDDotRef(qIndices(i));
+        if(ref_qRef.N >= 7) q_ref(i) = ref_qRef(qIndices(i));
+        if(ref_qDotRef.N >= 7) qdot_ref(i) = ref_qDotRef(qIndices(i));
+        if(ref_qDDotRef.N >= 7) qDDotRef(i) = ref_qDDotRef(qIndices(i));
 
         for(uint j = 0; j < 7; j++) {
           if(ref->Kp.d0 >= 7 && ref->Kp.d1 >=7 && ref->Kp.d0 == ref->Kp.d1) KpRef(i, j) = ref->Kp(qIndices(i), qIndices(j));
           if(ref->Kd.d0 >= 7 && ref->Kd.d1 >=7 && ref->Kd.d0 == ref->Kd.d1) KdRef(i, j) = ref->Kd(qIndices(i), qIndices(j));
         }
       }
-
 
       if(ref->P_compliance.N) {
         HALT("NOT IMPLEMENTED YET (at least properly)")
@@ -345,7 +348,7 @@ void FrankaThreadNew::step(){
     arr u = zeros(7); // torques send to the robot
 
     //-- construct torques from control message depending on the control type
-    if(controlType == ControlType::configRefs) { // plain qRef, qDotRef references
+    if(controlType == rai::ControlType::configRefs) { // plain qRef, qDotRef references
       arr qdd_des = zeros(7);
       //check for correct ctrl otherwise do something...
       if(q_ref.N!=7){
@@ -384,7 +387,7 @@ void FrankaThreadNew::step(){
       u = qdd_des;
       if(P_compliance.N) u = P_compliance * u;
 
-    } else if(controlType == ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
+    } else if(controlType == rai::ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
       CHECK_EQ(KpRef.nd, 2, "")
       CHECK_EQ(KpRef.d0, 7, "")
       CHECK_EQ(KpRef.d1, 7, "")
