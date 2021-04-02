@@ -50,9 +50,38 @@ struct TrivialZeroControl : ControlLoop {
   }
 };
 
+struct  SplineCtrlReference {
+  Var<rai::Spline> spline;
+  double startTime, lastTime;
+  SplineCtrlReference(const arr& x, const arr& t) {
+    spline.set()->set(2, x, t);
+  }
+
+  void initialize(const arr& q_real, const arr& qDot_real) {
+    startTime = rai::realTime();
+  }
+
+  void eval(arr& qRef, arr& qDotRef, arr& qDDotRef, double time){
+    auto splineGet = spline.get();
+    qRef = splineGet->eval(time-startTime);
+    if(!!qDotRef) qDotRef = splineGet->eval(time-startTime, 1);
+    if(!!qDDotRef) qDDotRef = splineGet->eval(time-startTime, 2);
+  }
+
+  rai::ReferenceFunction getRef(){
+    return std::bind(&SplineCtrlReference::eval, this,
+                     std::placeholders::_1,
+                     std::placeholders::_2,
+                     std::placeholders::_3,
+                     std::placeholders::_4);
+  }
+};
+
 struct SplineControlLoop : ControlLoop {
   Var<rai::SplineRunner> sp;
+
   double startTime, lastTime;
+
   SplineControlLoop(const arr& x, const arr& t, const arr& x0) {
     sp.set()->set(x, t, x0, false);
   }
@@ -113,15 +142,13 @@ struct ClassicCtrlSetController : ControlLoop {
 
 
 void testNew() {
-  Var<rai::Configuration> C;
-  {
-    auto Cset = C.set();
-    Cset->addFile(rai::raiPath("../model/pandaSingle.g"));
-    Cset->getFrame("R_panda_finger_joint1")->setJoint(rai::JT_rigid);
-    Cset->getFrame("R_panda_finger_joint2")->setJoint(rai::JT_rigid);
-    Cset->addFrame("target") -> setPosition(Cset->getFrame("endeffR")->getPosition() + arr{0,.0,-.5});
-    Cset->watch(true);
-  }
+  //-- setup a configuration
+  rai::Configuration C;
+  C.addFile(rai::raiPath("../model/pandaSingle.g"));
+  C.getFrame("R_panda_finger_joint1")->setJoint(rai::JT_rigid);
+  C.getFrame("R_panda_finger_joint2")->setJoint(rai::JT_rigid);
+  C.addFrame("target") -> setPosition(C["endeffR"]->getPosition() + arr{0,.0,-.5});
+  C.watch(true);
 
 //  {
 //    ClassicCtrlSetController tmp(C.get());
@@ -132,29 +159,38 @@ void testNew() {
   Var<rai::CtrlStateMsg> ctrlState;
   {
     auto set = ctrlState.set();
-    set->q = C.get()->getJointState();
-    set->tauExternal.resize(C.get()->getJointStateDimension());
+    set->q = C.getJointState();
+    set->tauExternal.resize(C.getJointStateDimension());
     set->tauExternal.setZero();
   }
 
-
-//  ControlEmulator robot(C, ctrlRef, ctrlState, {}, .001);
-  FrankaThreadNew robotR(ctrlRef, ctrlState, 0, franka_getJointIndices(C.get()(),'R'));
-  robotR.writeData = true;
+  ControlEmulator robot(C, ctrlRef, ctrlState, {}, .001);
+//  FrankaThreadNew robot(ctrlRef, ctrlState, 0, franka_getJointIndices(C.get()(),'R'));
+  robot.writeData = true;
 
   ctrlState.waitForRevisionGreaterThan(10);
   arr q0 = ctrlState.get()->q;
   arr qT = q0;
   qT(1) += .5;
-  auto sp = make_shared<SplineControlLoop>(cat(qT, qT, q0).reshape(3,-1), arr{5., 5., 10.}, q0);
+//  auto sp = make_shared<SplineControlLoop>(cat(qT, qT, q0).reshape(3,-1), arr{2., 2., 4.}, q0);
+  auto sp = make_shared<SplineCtrlReference>(cat(q0, qT, qT, q0).reshape(4,-1), arr{0., 2., 2., 4.});
+
+  sp->initialize({}, {});
+  ctrlRef.set()->ref = sp->getRef();
+
+  for(;;){
+    if(C.watch(false,STRING("time: "<<rai::realTime()))=='q') break;
+    C.setJointState(ctrlState.get()->q);
+    rai::wait(.1);
+  }
 
 //  ControlThread mine(C, ctrlRef, ctrlState, make_shared<TrivialZeroControl>());
-  ControlThread mine(C, ctrlRef, ctrlState, sp);
+//  ControlThread mine(C, ctrlRef, ctrlState, sp);
 //  ControlThread mine(C, ctrlRef, ctrlState, make_shared<ClassicCtrlSetController>(C.get()));
 
-  KinViewer viewer(C, 0.05);
+//  KinViewer viewer(mine.ctrl_config, 0.05);
 
-  rai::wait();
+//  rai::wait();
 }
 
 

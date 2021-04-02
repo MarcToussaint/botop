@@ -299,7 +299,7 @@ bool MotionProfile_PD::isConverged(double _tolerance) {
 
 MotionProfile_Path::MotionProfile_Path(const arr& path, double executionTime) : executionTime(executionTime), phase(0.) {
   CHECK_EQ(path.nd, 2,"need a properly shaped path!");
-  spline.points = path;
+  spline.knotPoints = path;
   spline.setUniformNonperiodicBasis();
 }
 

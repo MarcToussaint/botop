@@ -5,6 +5,7 @@
 #include <Control/ctrlMsg.h>
 #include <Control/CtrlMsgs.h>
 
+//TODO: remove this old one:
 struct FrankaThread : Thread{
   Var<CtrlMsg> ctrl;
   Var<CtrlMsg> ctrl_state;

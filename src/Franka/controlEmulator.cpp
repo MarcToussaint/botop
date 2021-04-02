@@ -12,13 +12,12 @@ void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio)
   Kd = 2.*dampingRatio*freq;
 }
 
-ControlEmulator::ControlEmulator(Var<rai::Configuration>& _sim_config,
+ControlEmulator::ControlEmulator(const rai::Configuration& C,
                                  Var<rai::CtrlCmdMsg>& _ctrl_ref,
                                  Var<rai::CtrlStateMsg>& _ctrl_state,
                                  const StringA& joints,
                                  double _tau)
   : Thread("FrankaThread_Emulated", _tau),
-    sim_config(_sim_config),
     ctrl_ref(_ctrl_ref),
     ctrl_state(_ctrl_state),
     tau(_tau){
@@ -26,14 +25,13 @@ ControlEmulator::ControlEmulator(Var<rai::Configuration>& _sim_config,
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
   {
-    auto K = sim_config.set();
-    q = K->getJointState();
+    q = C.getJointState();
     qdot.resize(q.N).setZero();
     if(joints.N){
       q_indices.resize(joints.N);
       uint i=0;
       for(auto& s:joints){
-        rai::Frame *f = K->getFrame(s);
+        rai::Frame *f = C.getFrame(s);
         CHECK(f, "frame '" <<s <<"' does not exist");
         CHECK(f->joint, "frame '" <<s <<"' is not a joint");
         CHECK(f->joint->qDim()==1, "joint '" <<s <<"' is not 1D");
@@ -71,29 +69,29 @@ void ControlEmulator::step(){
   }
 
   //-- publish to sim_config
-  {
-    sim_config.set()->setJointState(q);
-  }
+//  {
+//    sim_config.set()->setJointState(q);
+//  }
 
   //-- get current ctrl
   arr q_ref, qdot_ref, qDDotRef, KpRef, KdRef, P_compliance; // TODO Kp, Kd, u_b and also read out the correct indices
   rai::ControlType controlType;
   {
-    auto ref = ctrl_ref.get();
+    auto ctrl_refGet = ctrl_ref.get();
 
-    controlType = ref->controlType;
+    controlType = ctrl_refGet->controlType;
 
-    if(!ref->ref){
+    if(!ctrl_refGet->ref){
       q_ref = q;
       qdot_ref.resize(q.N).setZero();
     }else{
       //get the reference from the callback (e.g., sampling a spline reference)
-      ref->ref(q_ref, qdot_ref, qDDotRef, rai::realTime());
+      ctrl_refGet->ref->getReference(q_ref, qdot_ref, qDDotRef, q, qdot, rai::realTime());
     }
 
-    KpRef = ref->Kp;
-    KdRef = ref->Kd;
-    P_compliance = ref->P_compliance;
+    KpRef = ctrl_refGet->Kp;
+    KdRef = ctrl_refGet->Kd;
+    P_compliance = ctrl_refGet->P_compliance;
   }
 
 
@@ -119,5 +117,12 @@ void ControlEmulator::step(){
   qdot += tau * qdd_des;
   q += .5 * tau * qdot;
 
-  cout <<"R " <<rai::realTime() <<" q_real: " <<q.modRaw() <<" q_ref: " <<q_ref.modRaw() <<endl;
+  //-- data log?
+  if(writeData){
+    if(!dataFile.is_open()) dataFile.open("z.panda.dat");
+    dataFile <<rai::realTime() <<' ';
+    q.writeRaw(dataFile);
+    q_ref.writeRaw(dataFile);
+    dataFile <<endl;
+  }
 }

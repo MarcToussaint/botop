@@ -5,7 +5,6 @@
 #include <Kin/kin.h>
 
 struct ControlEmulator : Thread{
-  Var<rai::Configuration> sim_config;
   Var<rai::CtrlCmdMsg> ctrl_ref;
   Var<rai::CtrlStateMsg> ctrl_state;
 
@@ -13,7 +12,10 @@ struct ControlEmulator : Thread{
   arr q,qdot;
   uintA q_indices;
 
-  ControlEmulator(Var<rai::Configuration>& _sim_config,
+  bool writeData=false;
+  ofstream dataFile;
+
+  ControlEmulator(const rai::Configuration& _sim_config,
                   Var<rai::CtrlCmdMsg>& _ctrl_ref,
                   Var<rai::CtrlStateMsg>& _ctrl_state,
                   const StringA& joints={},

@@ -153,10 +153,10 @@ void Simulator::step(){
 
   //-- when reference is given, compute movement
   double maxPhase = 0.;
-  if(reference.points.N){
+  if(reference.knotPoints.N){
     //read out the new reference
     phase += dt;
-    maxPhase = reference.times.last();
+    maxPhase = reference.knotTimes.last();
     if(phase>maxPhase) phase=maxPhase;
     arr q_ref = reference.eval(phase);
     K_ref.setJointState(q_ref); //for display only
@@ -174,7 +174,7 @@ void Simulator::step(){
   }
 
   if(!(stepCount%10))
-    gl.update(STRING("step=" <<stepCount <<" phase=" <<phase <<" timeToGo=" <<maxPhase-phase <<" #ref=" <<reference.points.d0));
+    gl.update(STRING("step=" <<stepCount <<" phase=" <<phase <<" timeToGo=" <<maxPhase-phase <<" #ref=" <<reference.knotPoints.d0));
 
   stepCount++;
 }

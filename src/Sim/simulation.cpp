@@ -56,10 +56,10 @@ void Simulation::stepKin(){
   auto lock = self->threadLock();
 
   double maxPhase = 0.;
-  if(self->refSpline.points.N){
+  if(self->refSpline.knotPoints.N){
     //read out the new reference
     self->phase += self->dt;
-    maxPhase = self->refSpline.times.last();
+    maxPhase = self->refSpline.knotTimes.last();
     arr q_ref = self->refSpline.eval(self->phase);
     if(self->phase>maxPhase){ //clear spline buffer
       q_ref = self->refPoints[-1];
@@ -85,7 +85,7 @@ void Simulation::stepKin(){
   }
 
   if(!(self->stepCount%10))
-    self->gl.update(STRING("step=" <<self->stepCount <<" phase=" <<self->phase <<" timeToGo=" <<maxPhase-self->phase <<" #ref=" <<self->refSpline.points.d0));
+    self->gl.update(STRING("step=" <<self->stepCount <<" phase=" <<self->phase <<" timeToGo=" <<maxPhase-self->phase <<" #ref=" <<self->refSpline.knotPoints.d0));
 
   self->stepCount++;
 
@@ -262,7 +262,7 @@ double Simulation::getTimeToGo(){
   auto lock = self->threadLock();
 
   double maxPhase = 0.;
-  if(self->refSpline.points.N) maxPhase = self->refSpline.times.last();
+  if(self->refSpline.knotPoints.N) maxPhase = self->refSpline.knotTimes.last();
   return maxPhase - self->phase;
 }
 

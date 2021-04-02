@@ -307,22 +307,22 @@ void FrankaThreadNew::step(){
     arr q_ref, qdot_ref, qDDotRef, KpRef, KdRef, P_compliance; // TODO Kp, Kd and also read out the correct indices
     rai::ControlType controlType;
     {
-      auto ref = ctrl.get();
+      auto ctrlGet = ctrl.get();
 
-      controlType = ref->controlType;
+      controlType = ctrlGet->controlType;
 
       //get the reference from the callback (e.g., sampling a spline reference)
 
       arr ref_qRef, ref_qDotRef, ref_qDDotRef;
-      if(ref->ref){
-        ref->ref(ref_qRef, ref_qDotRef, ref_qDDotRef, rai::realTime());
+      if(ctrlGet->ref){
+        ctrlGet->ref->getReference(ref_qRef, ref_qDotRef, ref_qDDotRef, q, qdot, rai::realTime());
       }
 
       if(ref_qRef.N >= 7) q_ref.resize(7).setZero();
       if(ref_qDotRef.N >= 7) qdot_ref.resize(7).setZero();
       if(ref_qDDotRef.N >= 7) qDDotRef.resize(7).setZero();
-      if(ref->Kp.d0 >= 7 && ref->Kp.d1 >=7 && ref->Kp.d0 == ref->Kp.d1) KpRef.resize(7, 7);
-      if(ref->Kd.d0 >= 7 && ref->Kd.d1 >=7 && ref->Kd.d0 == ref->Kd.d1) KdRef.resize(7, 7);
+      if(ctrlGet->Kp.d0 >= 7 && ctrlGet->Kp.d1 >=7 && ctrlGet->Kp.d0 == ctrlGet->Kp.d1) KpRef.resize(7, 7);
+      if(ctrlGet->Kd.d0 >= 7 && ctrlGet->Kd.d1 >=7 && ctrlGet->Kd.d0 == ctrlGet->Kd.d1) KdRef.resize(7, 7);
 
       for(uint i = 0; i < 7; i++) {
         if(ref_qRef.N >= 7) q_ref(i) = ref_qRef(qIndices(i));
@@ -330,14 +330,14 @@ void FrankaThreadNew::step(){
         if(ref_qDDotRef.N >= 7) qDDotRef(i) = ref_qDDotRef(qIndices(i));
 
         for(uint j = 0; j < 7; j++) {
-          if(ref->Kp.d0 >= 7 && ref->Kp.d1 >=7 && ref->Kp.d0 == ref->Kp.d1) KpRef(i, j) = ref->Kp(qIndices(i), qIndices(j));
-          if(ref->Kd.d0 >= 7 && ref->Kd.d1 >=7 && ref->Kd.d0 == ref->Kd.d1) KdRef(i, j) = ref->Kd(qIndices(i), qIndices(j));
+          if(ctrlGet->Kp.d0 >= 7 && ctrlGet->Kp.d1 >=7 && ctrlGet->Kp.d0 == ctrlGet->Kp.d1) KpRef(i, j) = ctrlGet->Kp(qIndices(i), qIndices(j));
+          if(ctrlGet->Kd.d0 >= 7 && ctrlGet->Kd.d1 >=7 && ctrlGet->Kd.d0 == ctrlGet->Kd.d1) KdRef(i, j) = ctrlGet->Kd(qIndices(i), qIndices(j));
         }
       }
 
-      if(ref->P_compliance.N) {
+      if(ctrlGet->P_compliance.N) {
         HALT("NOT IMPLEMENTED YET (at least properly)")
-        P_compliance = ref->P_compliance;
+        P_compliance = ctrlGet->P_compliance;
       }
 
     }
