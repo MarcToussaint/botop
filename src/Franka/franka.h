@@ -26,8 +26,8 @@ private:
 
 struct FrankaThreadNew : Thread{
   // input/output messages
-  Var<rai::CtrlCmdMsg> ctrl;
-  Var<rai::CtrlStateMsg> ctrl_state;
+  Var<rai::CtrlCmdMsg> ctrlCmd;
+  Var<rai::CtrlStateMsg> ctrlState;
 
   bool writeData=false;
 

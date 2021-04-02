@@ -211,8 +211,8 @@ void FrankaThread::step(){
 
 FrankaThreadNew::FrankaThreadNew(Var<rai::CtrlCmdMsg>& _ctrl, Var<rai::CtrlStateMsg>& _state, uint whichRobot, const uintA& _qIndices)
   : Thread("FrankaThread"),
-    ctrl(_ctrl),
-    ctrl_state(_state),
+    ctrlCmd(_ctrl),
+    ctrlState(_state),
     qIndices(_qIndices) {
 
   CHECK_EQ(qIndices.N, 7, "");
@@ -256,24 +256,24 @@ void FrankaThreadNew::step(){
   // initialize state and ctrl with first state
   {
     franka::RobotState initial_state = robot.readOnce();
-    arr q, qdot;
-    q.setCarray(initial_state.q.begin(), initial_state.q.size());
-    qdot.setCarray(initial_state.dq.begin(), initial_state.dq.size());
+    arr q_real, qDot_real;
+    q_real.setCarray(initial_state.q.begin(), initial_state.q.size());
+    qDot_real.setCarray(initial_state.dq.begin(), initial_state.dq.size());
 
-    auto stateset = ctrl_state.set();
-    auto ref = ctrl.set();
+    auto stateSet = ctrlState.set();
+    auto cmdSet = ctrlCmd.set();
 
     // TODO really modify the complete state?
-    while(stateset->q.N<=qIndices_max) stateset->q.append(0.);
-    while(stateset->qDot.N<=qIndices_max) stateset->qDot.append(0.);
-    while(stateset->tauExternal.N<=qIndices_max) stateset->tauExternal.append(0.);
+    while(stateSet->q.N<=qIndices_max) stateSet->q.append(0.);
+    while(stateSet->qDot.N<=qIndices_max) stateSet->qDot.append(0.);
+    while(stateSet->tauExternal.N<=qIndices_max) stateSet->tauExternal.append(0.);
 //    while(ref->qRef.N<=qIndices_max) ref->qRef.append(0.);
 //    while(ref->qDotRef.N<=qIndices_max) ref->qDotRef.append(0.);
 
     for(uint i=0; i < 7; i++){
-      stateset->q(qIndices(i)) = q(i);
-      stateset->qDot(qIndices(i)) = qdot(i);
-      stateset->tauExternal(qIndices(i)) = 0.;
+      stateSet->q(qIndices(i)) = q_real(i);
+      stateSet->qDot(qIndices(i)) = qDot_real(i);
+      stateSet->tauExternal(qIndices(i)) = 0.;
 //      ref->qRef(qIndices(i)) = q(i);
 //      ref->qDotRef(qIndices(i)) = 0.;
     }
@@ -288,56 +288,56 @@ void FrankaThreadNew::step(){
     steps++;
 
     //-- get current state
-    arr q, qdot, torques;
-    q.setCarray(robot_state.q.begin(), robot_state.q.size());
-    qdot.setCarray(robot_state.dq.begin(), robot_state.dq.size());
-    torques.setCarray(robot_state.tau_ext_hat_filtered.begin(), robot_state.tau_ext_hat_filtered.size());
+    arr q_real, qDot_real, torques_real;
+    q_real.setCarray(robot_state.q.begin(), robot_state.q.size());
+    qDot_real.setCarray(robot_state.dq.begin(), robot_state.dq.size());
+    torques_real.setCarray(robot_state.tau_ext_hat_filtered.begin(), robot_state.tau_ext_hat_filtered.size());
 
     //publish state
     {
-      auto stateset = ctrl_state.set();
+      auto stateSet = ctrlState.set();
       for(uint i=0;i<7;i++){
-        stateset->q(qIndices(i)) = q(i);
-        stateset->qDot(qIndices(i)) = qdot(i);
-        stateset->tauExternal(qIndices(i)) = torques(i);
+        stateSet->q(qIndices(i)) = q_real(i);
+        stateSet->qDot(qIndices(i)) = qDot_real(i);
+        stateSet->tauExternal(qIndices(i)) = torques_real(i);
       }
     }
 
     //-- get current ctrl command
-    arr q_ref, qdot_ref, qDDotRef, KpRef, KdRef, P_compliance; // TODO Kp, Kd and also read out the correct indices
+    arr q_ref, qDot_ref, qDDot_ref, KpRef, KdRef, P_compliance; // TODO Kp, Kd and also read out the correct indices
     rai::ControlType controlType;
     {
-      auto ctrlGet = ctrl.get();
+      auto cmdGet = ctrlCmd.get();
 
-      controlType = ctrlGet->controlType;
+      controlType = cmdGet->controlType;
 
       //get the reference from the callback (e.g., sampling a spline reference)
 
-      arr ref_qRef, ref_qDotRef, ref_qDDotRef;
-      if(ctrlGet->ref){
-        ctrlGet->ref->getReference(ref_qRef, ref_qDotRef, ref_qDDotRef, q, qdot, rai::realTime());
+      arr cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref;
+      if(cmdGet->ref){
+        cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, q_real, qDot_real, rai::realTime());
       }
 
-      if(ref_qRef.N >= 7) q_ref.resize(7).setZero();
-      if(ref_qDotRef.N >= 7) qdot_ref.resize(7).setZero();
-      if(ref_qDDotRef.N >= 7) qDDotRef.resize(7).setZero();
-      if(ctrlGet->Kp.d0 >= 7 && ctrlGet->Kp.d1 >=7 && ctrlGet->Kp.d0 == ctrlGet->Kp.d1) KpRef.resize(7, 7);
-      if(ctrlGet->Kd.d0 >= 7 && ctrlGet->Kd.d1 >=7 && ctrlGet->Kd.d0 == ctrlGet->Kd.d1) KdRef.resize(7, 7);
+      if(cmd_q_ref.N >= 7) q_ref.resize(7).setZero();
+      if(cmd_qDot_ref.N >= 7) qDot_ref.resize(7).setZero();
+      if(cmd_qDDot_ref.N >= 7) qDDot_ref.resize(7).setZero();
+      if(cmdGet->Kp.d0 >= 7 && cmdGet->Kp.d1 >=7 && cmdGet->Kp.d0 == cmdGet->Kp.d1) KpRef.resize(7, 7);
+      if(cmdGet->Kd.d0 >= 7 && cmdGet->Kd.d1 >=7 && cmdGet->Kd.d0 == cmdGet->Kd.d1) KdRef.resize(7, 7);
 
       for(uint i = 0; i < 7; i++) {
-        if(ref_qRef.N >= 7) q_ref(i) = ref_qRef(qIndices(i));
-        if(ref_qDotRef.N >= 7) qdot_ref(i) = ref_qDotRef(qIndices(i));
-        if(ref_qDDotRef.N >= 7) qDDotRef(i) = ref_qDDotRef(qIndices(i));
+        if(cmd_q_ref.N >= 7) q_ref(i) = cmd_q_ref(qIndices(i));
+        if(cmd_qDot_ref.N >= 7) qDot_ref(i) = cmd_qDot_ref(qIndices(i));
+        if(cmd_qDDot_ref.N >= 7) qDDot_ref(i) = cmd_qDDot_ref(qIndices(i));
 
         for(uint j = 0; j < 7; j++) {
-          if(ctrlGet->Kp.d0 >= 7 && ctrlGet->Kp.d1 >=7 && ctrlGet->Kp.d0 == ctrlGet->Kp.d1) KpRef(i, j) = ctrlGet->Kp(qIndices(i), qIndices(j));
-          if(ctrlGet->Kd.d0 >= 7 && ctrlGet->Kd.d1 >=7 && ctrlGet->Kd.d0 == ctrlGet->Kd.d1) KdRef(i, j) = ctrlGet->Kd(qIndices(i), qIndices(j));
+          if(cmdGet->Kp.d0 >= 7 && cmdGet->Kp.d1 >=7 && cmdGet->Kp.d0 == cmdGet->Kp.d1) KpRef(i, j) = cmdGet->Kp(qIndices(i), qIndices(j));
+          if(cmdGet->Kd.d0 >= 7 && cmdGet->Kd.d1 >=7 && cmdGet->Kd.d0 == cmdGet->Kd.d1) KdRef(i, j) = cmdGet->Kd(qIndices(i), qIndices(j));
         }
       }
 
-      if(ctrlGet->P_compliance.N) {
+      if(cmdGet->P_compliance.N) {
         HALT("NOT IMPLEMENTED YET (at least properly)")
-        P_compliance = ctrlGet->P_compliance;
+        P_compliance = cmdGet->P_compliance;
       }
 
     }
@@ -348,7 +348,7 @@ void FrankaThreadNew::step(){
 
     //-- construct torques from control message depending on the control type
     if(controlType == rai::ControlType::configRefs) { // plain qRef, qDotRef references
-      arr qdd_des = zeros(7);
+      arr qDDot_des = zeros(7);
       //check for correct ctrl otherwise do something...
       if(q_ref.N!=7){
         cerr << "FRANKA: inconsistent ctrl q_ref message" << endl;
@@ -379,11 +379,11 @@ void FrankaThreadNew::step(){
       }
 
       if(q_ref.N==7){
-        qdd_des += Kp * (q_ref - q) + Kd % (qdot_ref - qdot);
+        qDDot_des += Kp * (q_ref - q_real) + Kd % (qDot_ref - qDot_real);
         // if(!(steps%50)) cout <<"dot_ref" <<qdot_ref <<endl;
       }
 
-      u = qdd_des;
+      u = qDDot_des;
       if(P_compliance.N) u = P_compliance * u;
 
     } else if(controlType == rai::ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
@@ -393,7 +393,7 @@ void FrankaThreadNew::step(){
       CHECK_EQ(KdRef.nd, 2, "")
       CHECK_EQ(KdRef.d0, 7, "")
       CHECK_EQ(KdRef.d1, 7, "")
-      CHECK_EQ(qDDotRef.N, 7, "")
+      CHECK_EQ(qDDot_ref.N, 7, "")
 
       arr M;
       M.setCarray(model.mass(robot_state).begin(), 49);
@@ -418,9 +418,9 @@ void FrankaThreadNew::step(){
 
       KpRef = M*KpRef;
       KdRef = M*KdRef;
-      qDDotRef = M*qDDotRef;
+      qDDot_ref = M*qDDot_ref;
 
-      u = qDDotRef - KpRef*q - KdRef*qdot;
+      u = qDDot_ref - KpRef*q_real - KdRef*qDot_real;
 
       //u(5) *= 2.0;
 
@@ -433,7 +433,7 @@ void FrankaThreadNew::step(){
     if(writeData){
       if(!dataFile.is_open()) dataFile.open("z.panda.dat");
       dataFile <<rai::realTime() <<' ';
-      q.writeRaw(dataFile);
+      q_real.writeRaw(dataFile);
       q_ref.writeRaw(dataFile);
       dataFile <<endl;
     }

@@ -13,10 +13,10 @@
 #include <Algo/spline.h>
 
 struct TrivialZeroReference : rai::ReferenceFeed {
-  void getReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real, double time){
-    qRef = q_real;
-    qDotRef.resize(qRef.N).setZero();
-    qDDotRef.resize(qRef.N).setZero();
+  void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double time){
+    q_ref = q_real;
+    qDot_ref.resize(q_ref.N).setZero();
+    qDDot_ref.resize(q_ref.N).setZero();
   }
 };
 
@@ -27,27 +27,47 @@ struct SplineCtrlReference : rai::ReferenceFeed {
     spline.set()->set(2, ~q_real, {rai::realTime()});
   }
 
-  void getReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real, double time){
-    auto splineGet = spline.get();
-    CHECK(splineGet->times.N, "spline was not initialized");
-    qRef = splineGet->eval(time);
-    if(!!qDotRef) qDotRef = splineGet->eval(time, 1);
-    if(!!qDDotRef) qDDotRef = splineGet->eval(time, 2);
+  void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double time){
+    if(!spline.get()->points.N) initialize(q_real, qDot_real);
+    spline.get() -> eval(q_ref, qDot_ref, qDDot_ref, time);
   }
 
-  void set(const arr& x, const arr& t, bool append=true){
-    auto splineSet = spline.set();
+  void waitForInitialized(){
+    while(!spline.get()->times.N) spline.waitForNextRevision();
+  }
+
+  void append(const arr& x, const arr& t, bool prependLast=true){
+    waitForInitialized();
     double now = rai::realTime();
+    arr _x(x), _t(t);
+    auto splineSet = spline.set();
+    if(prependLast){
+      _x.prepend(splineSet->points[-1]);
+      _t.prepend(0.);
+    }
     if(now > splineSet->end()){ //previous spline is done... create new one
-      splineSet->set(2, x, t+now);
+      splineSet->set(2, _x, _t+now);
     }else{ //previous spline still active... append
-      splineSet->append(x, t);
+      splineSet->append(_x, _t);
     }
   }
 
+  void override(const arr& x, const arr& t){
+    CHECK(t.first()>.1, "that's too harsh!");
+    waitForInitialized();
+    double now = rai::realTime();
+    arr x_now, xDot_now;
+    arr _x(x), _t(t);
+    auto splineSet = spline.set();
+    splineSet->eval(x_now, xDot_now, NoArr, now);
+    _x.prepend(x_now);
+    _t.prepend(0.);
+    splineSet->set(2, _x, _t+now, xDot_now);
+  }
+
   void moveTo(const arr& x, double t, bool append=true){
-    arr x0 = spline.get()->points[-1];
-    set(cat(x0, x).reshape(2,-1), {0., t});
+    if(append) this->append(~x, {t}, true);
+    else  override(~x, {t});
   }
 
 };
@@ -64,6 +84,7 @@ void testMoveTo() {
   C.addFrame("target") -> setPosition(C["endeffR"]->getPosition() + arr{0,.0,-.5});
   C.watch(true);
 
+  //TODO -> shouldn't be here...
   Var<rai::CtrlCmdMsg> ctrlRef;
   Var<rai::CtrlStateMsg> ctrlState;
   {
@@ -77,18 +98,17 @@ void testMoveTo() {
 //  FrankaThreadNew robot(ctrlRef, ctrlState, 0, franka_getJointIndices(C.get()(),'R'));
   robot.writeData = true;
 
+  //-- create 2 simple reference configurations
   ctrlState.waitForRevisionGreaterThan(10);
   arr q0 = ctrlState.get()->q;
   arr qT = q0;
   qT(1) += .5;
+
   auto sp = make_shared<SplineCtrlReference>();
-
-  sp->initialize(q0, {});
-  sp->set(cat(q0, qT, qT, q0).reshape(4,-1), arr{0., 2., 2., 4.});
-
   ctrlRef.set()->ref = sp;
 
-  //ctrlRef.set()->ref = make_shared<TrivialZeroReference>();
+  //1st motion:
+  sp->append(cat(qT, qT, q0).reshape(3,-1), arr{2., 2., 4.});
 
   for(;;){
     if(C.watch(false,STRING("time: "<<rai::realTime()))=='q') break;
@@ -96,10 +116,10 @@ void testMoveTo() {
     rai::wait(.1);
   }
 
-  sp->moveTo(qT, 1.);
+  //2nd motion:
+  sp->moveTo(qT, 1., false);
+  cout <<"OVERRIDE AT t=" <<rai::realTime() <<endl;
   sp->moveTo(q0, 1.);
-  sp->moveTo(qT, 1.);
-//  sp->append(arr{qT}.reshape(1,-1), {1.});
 
   for(;;){
     if(C.watch(false,STRING("time: "<<rai::realTime()))=='w') break;
@@ -107,10 +127,6 @@ void testMoveTo() {
     rai::wait(.1);
   }
 
-
-  //  KinViewer viewer(mine.ctrl_config, 0.05);
-
-  //  rai::wait();
 }
 
 //===========================================================================

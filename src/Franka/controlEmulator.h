@@ -5,11 +5,11 @@
 #include <Kin/kin.h>
 
 struct ControlEmulator : Thread{
-  Var<rai::CtrlCmdMsg> ctrl_ref;
-  Var<rai::CtrlStateMsg> ctrl_state;
+  Var<rai::CtrlCmdMsg> ctrlCmd;
+  Var<rai::CtrlStateMsg> ctrlState;
 
   double tau;
-  arr q,qdot;
+  arr q_real, qDot_real;
   uintA q_indices;
 
   bool writeData=false;

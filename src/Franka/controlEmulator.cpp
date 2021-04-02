@@ -18,15 +18,15 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
                                  const StringA& joints,
                                  double _tau)
   : Thread("FrankaThread_Emulated", _tau),
-    ctrl_ref(_ctrl_ref),
-    ctrl_state(_ctrl_state),
+    ctrlCmd(_ctrl_ref),
+    ctrlState(_ctrl_state),
     tau(_tau){
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
   {
-    q = C.getJointState();
-    qdot.resize(q.N).setZero();
+    q_real = C.getJointState();
+    qDot_real.resize(q_real.N).setZero();
     if(joints.N){
       q_indices.resize(joints.N);
       uint i=0;
@@ -39,13 +39,13 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
       }
       CHECK_EQ(i, joints.N, "");
     }else{
-      q_indices.setStraightPerm(q.N);
+      q_indices.setStraightPerm(q_real.N);
     }
   }
-  ctrl_state.set()->q = q;
-  ctrl_state.set()->qDot = qdot;
+  ctrlState.set()->q = q_real;
+  ctrlState.set()->qDot = qDot_real;
   threadLoop();
-  ctrl_state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
+  ctrlState.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
 }
 
 ControlEmulator::~ControlEmulator(){
@@ -56,15 +56,15 @@ void ControlEmulator::step(){
   //-- publish state
   {
     arr tauExternal;
-    tauExternal = zeros(q.N);
-    auto stateset = ctrl_state.set();
-    stateset->q.resize(q.N).setZero();
-    stateset->qDot.resize(qdot.N).setZero();
-    stateset->tauExternal.resize(q.N).setZero();
+    tauExternal = zeros(q_real.N);
+    auto stateSet = ctrlState.set();
+    stateSet->q.resize(q_real.N).setZero();
+    stateSet->qDot.resize(qDot_real.N).setZero();
+    stateSet->tauExternal.resize(q_real.N).setZero();
     for(uint i:q_indices){
-      stateset->q(i) = q(i);
-      stateset->qDot(i) = qdot(i);
-      stateset->tauExternal(i) = tauExternal(i);
+      stateSet->q(i) = q_real(i);
+      stateSet->qDot(i) = qDot_real(i);
+      stateSet->tauExternal(i) = tauExternal(i);
     }
   }
 
@@ -74,55 +74,55 @@ void ControlEmulator::step(){
 //  }
 
   //-- get current ctrl
-  arr q_ref, qdot_ref, qDDotRef, KpRef, KdRef, P_compliance; // TODO Kp, Kd, u_b and also read out the correct indices
+  arr cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, KpRef, KdRef, P_compliance; // TODO Kp, Kd, u_b and also read out the correct indices
   rai::ControlType controlType;
   {
-    auto ctrl_refGet = ctrl_ref.get();
+    auto cmdGet = ctrlCmd.get();
 
-    controlType = ctrl_refGet->controlType;
+    controlType = cmdGet->controlType;
 
-    if(!ctrl_refGet->ref){
-      q_ref = q;
-      qdot_ref.resize(q.N).setZero();
+    if(!cmdGet->ref){
+      cmd_q_ref = q_real;
+      cmd_qDot_ref.resize(q_real.N).setZero();
     }else{
       //get the reference from the callback (e.g., sampling a spline reference)
-      ctrl_refGet->ref->getReference(q_ref, qdot_ref, qDDotRef, q, qdot, rai::realTime());
+      cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, q_real, qDot_real, rai::realTime());
     }
 
-    KpRef = ctrl_refGet->Kp;
-    KdRef = ctrl_refGet->Kd;
-    P_compliance = ctrl_refGet->P_compliance;
+    KpRef = cmdGet->Kp;
+    KdRef = cmdGet->Kd;
+    P_compliance = cmdGet->P_compliance;
   }
 
 
-  arr qdd_des = zeros(7);
+  arr qDDot_des = zeros(7);
 
   //-- construct torques from control message depending on the control type
 
   if(controlType == rai::ControlType::configRefs) { // plain qRef, qDotRef references
-    if(q_ref.N == 0) return;
+    if(cmd_q_ref.N == 0) return;
 
     double k_p, k_d;
     naturalGains(k_p, k_d, .02, 1.);
-    qdd_des = k_p * (q_ref - q) + k_d * (qdot_ref - qdot);
+    qDDot_des = k_p * (cmd_q_ref - q_real) + k_d * (cmd_qDot_ref - qDot_real);
 //    q = q_ref;
 //    qdot = qdot_ref;
 
   } else if(controlType == rai::ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
-    qdd_des = qDDotRef - KpRef*q - KdRef*qdot;
+    qDDot_des = cmd_qDDot_ref - KpRef*q_real - KdRef*qDot_real;
   }
 
   //-- directly integrate
-  q += .5 * tau * qdot;
-  qdot += tau * qdd_des;
-  q += .5 * tau * qdot;
+  q_real += .5 * tau * qDot_real;
+  qDot_real += tau * qDDot_des;
+  q_real += .5 * tau * qDot_real;
 
   //-- data log?
   if(writeData){
     if(!dataFile.is_open()) dataFile.open("z.panda.dat");
     dataFile <<rai::realTime() <<' ';
-    q.writeRaw(dataFile);
-    q_ref.writeRaw(dataFile);
+    q_real.writeRaw(dataFile);
+    cmd_q_ref.writeRaw(dataFile);
     dataFile <<endl;
   }
 }
