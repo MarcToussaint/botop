@@ -13,13 +13,9 @@ void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio)
 }
 
 ControlEmulator::ControlEmulator(const rai::Configuration& C,
-                                 Var<rai::CtrlCmdMsg>& _ctrl_ref,
-                                 Var<rai::CtrlStateMsg>& _ctrl_state,
                                  const StringA& joints,
                                  double _tau)
   : Thread("FrankaThread_Emulated", _tau),
-    ctrlCmd(_ctrl_ref),
-    ctrlState(_ctrl_state),
     tau(_tau){
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
@@ -42,10 +38,10 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
       q_indices.setStraightPerm(q_real.N);
     }
   }
-  ctrlState.set()->q = q_real;
-  ctrlState.set()->qDot = qDot_real;
+  state.set()->q = q_real;
+  state.set()->qDot = qDot_real;
   threadLoop();
-  ctrlState.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
+  state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
 }
 
 ControlEmulator::~ControlEmulator(){
@@ -57,7 +53,7 @@ void ControlEmulator::step(){
   {
     arr tauExternal;
     tauExternal = zeros(q_real.N);
-    auto stateSet = ctrlState.set();
+    auto stateSet = state.set();
     stateSet->q.resize(q_real.N).setZero();
     stateSet->qDot.resize(qDot_real.N).setZero();
     stateSet->tauExternal.resize(q_real.N).setZero();
@@ -77,7 +73,7 @@ void ControlEmulator::step(){
   arr cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, KpRef, KdRef, P_compliance; // TODO Kp, Kd, u_b and also read out the correct indices
   rai::ControlType controlType;
   {
-    auto cmdGet = ctrlCmd.get();
+    auto cmdGet = cmd.get();
 
     controlType = cmdGet->controlType;
 

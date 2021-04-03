@@ -5,24 +5,22 @@
 #include <Kin/kin.h>
 
 struct ControlEmulator : Thread{
-  Var<rai::CtrlCmdMsg> ctrlCmd;
-  Var<rai::CtrlStateMsg> ctrlState;
-
-  double tau;
-  arr q_real, qDot_real;
-  uintA q_indices;
+  Var<rai::CtrlCmdMsg> cmd;
+  Var<rai::CtrlStateMsg> state;
 
   bool writeData=false;
-  ofstream dataFile;
 
   ControlEmulator(const rai::Configuration& _sim_config,
-                  Var<rai::CtrlCmdMsg>& _ctrl_ref,
-                  Var<rai::CtrlStateMsg>& _ctrl_state,
                   const StringA& joints={},
                   double _tau=.001);
   ~ControlEmulator();
 
 private:
+  double tau;
+  arr q_real, qDot_real;
+  uintA q_indices;
+  ofstream dataFile;
+
   void step();
 };
 
