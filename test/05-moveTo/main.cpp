@@ -20,6 +20,7 @@ void testMoveTo() {
 
   //-- start a robot thread
 //  ControlEmulator robot(C, {});
+  C.ensure_indexedJoints();
   FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   robot.writeData = true;
 

@@ -1,5 +1,6 @@
 #include <Franka/controlEmulator.h>
 #include <Franka/franka.h>
+#include <Franka/help.h>
 
 #include <Control/SplineCtrlFeed.h>
 
@@ -31,6 +32,7 @@ void testFastPath() {
       ->setShape(rai::ST_marker, {.1})
       .setPosition(center + arr{-.3,.0,-.2});
   C.watch(true);
+  arr q0 = C.getJointState();
 
   //compute a path
   KOMO komo;
@@ -50,16 +52,19 @@ void testFastPath() {
   komo.view(true);
 
   //-- start a robot thread
-  ControlEmulator robot(C, {});
-//  FrankaThreadNew robot(ctrlRef, ctrlState, 0, franka_getJointIndices(C.get()(),'R'));
+//  ControlEmulator robot(C, {});
+  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   robot.writeData = true;
 
   //-- define the reference feed to be a spline
   auto sp = make_shared<rai::SplineCtrlReference>();
   robot.cmd.set()->ref = sp;
 
+  //first move slowly to home!
+  sp->moveTo(q0, 2.);
+
   //send komo as spline:
-  for(double speed=.5;speed<=3.;speed+=.5){
+  for(double speed=.5;speed<=5.;speed+=.5){
     sp->append(komo.getPath_qOrg(), komo.getPath_times()/speed);
 
     for(;;){
