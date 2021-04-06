@@ -209,10 +209,8 @@ void FrankaThread::step(){
 
 
 
-FrankaThreadNew::FrankaThreadNew(Var<rai::CtrlCmdMsg>& _ctrl, Var<rai::CtrlStateMsg>& _state, uint whichRobot, const uintA& _qIndices)
+FrankaThreadNew::FrankaThreadNew(uint whichRobot, const uintA& _qIndices)
   : Thread("FrankaThread"),
-    ctrlCmd(_ctrl),
-    ctrlState(_state),
     qIndices(_qIndices) {
 
   CHECK_EQ(qIndices.N, 7, "");
@@ -260,8 +258,8 @@ void FrankaThreadNew::step(){
     q_real.setCarray(initial_state.q.begin(), initial_state.q.size());
     qDot_real.setCarray(initial_state.dq.begin(), initial_state.dq.size());
 
-    auto stateSet = ctrlState.set();
-    auto cmdSet = ctrlCmd.set();
+    auto stateSet = state.set();
+    auto cmdSet = cmd.set();
 
     // TODO really modify the complete state?
     while(stateSet->q.N<=qIndices_max) stateSet->q.append(0.);
@@ -287,6 +285,8 @@ void FrankaThreadNew::step(){
 
     steps++;
 
+    if(stop) return franka::MotionFinished(franka::Torques( std::array<double, 7>{0., 0., 0., 0., 0., 0., 0.}));
+
     //-- get current state
     arr q_real, qDot_real, torques_real;
     q_real.setCarray(robot_state.q.begin(), robot_state.q.size());
@@ -295,7 +295,7 @@ void FrankaThreadNew::step(){
 
     //publish state
     {
-      auto stateSet = ctrlState.set();
+      auto stateSet = state.set();
       for(uint i=0;i<7;i++){
         stateSet->q(qIndices(i)) = q_real(i);
         stateSet->qDot(qIndices(i)) = qDot_real(i);
@@ -307,7 +307,7 @@ void FrankaThreadNew::step(){
     arr q_ref, qDot_ref, qDDot_ref, KpRef, KdRef, P_compliance; // TODO Kp, Kd and also read out the correct indices
     rai::ControlType controlType;
     {
-      auto cmdGet = ctrlCmd.get();
+      auto cmdGet = cmd.get();
 
       controlType = cmdGet->controlType;
 

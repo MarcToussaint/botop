@@ -26,12 +26,12 @@ private:
 
 struct FrankaThreadNew : Thread{
   // input/output messages
-  Var<rai::CtrlCmdMsg> ctrlCmd;
-  Var<rai::CtrlStateMsg> ctrlState;
+  Var<rai::CtrlCmdMsg> cmd;
+  Var<rai::CtrlStateMsg> state;
 
   bool writeData=false;
 
-  FrankaThreadNew(Var<rai::CtrlCmdMsg>& _ctrl, Var<rai::CtrlStateMsg>& _state, uint whichRobot=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6});
+  FrankaThreadNew(uint whichRobot=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6});
   ~FrankaThreadNew();
 
 private:

@@ -2,12 +2,13 @@
 #include <Kin/frame.h>
 #include <FlatVision/helpers.h>
 
-inline uintA franka_getJointIndices(const rai::Configuration& K, char L_or_R){
+inline uintA franka_getJointIndices(const rai::Configuration& C, char L_or_R){
+  CHECK(C._state_indexedJoints_areGood , "need to ensure_q (indexed joints) before!");
   StringA jointNames;
   for(uint i=1;i<=7;i++){
     jointNames.append(STRING(L_or_R <<"_panda_joint" <<i));
   }
-  FrameL joints = K.getFrames(jointNames);
+  FrameL joints = C.getFrames(jointNames);
   uintA qIndices(7);
   for(uint i=0;i<joints.N;i++) qIndices(i) = joints(i)->joint->qIndex;
   return qIndices;

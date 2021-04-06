@@ -10,9 +10,9 @@
 #include <Franka/gripper.h>
 #include <Franka/help.h>
 
-#include <Control/control.h>
-#include <Control/CtrlThread.h>
-#include <Control/splineRunner.h>
+#include <Control/CtrlMsgs.h>
+
+#if 0
 
 void testUnrollControl(uint T, rai::Configuration& C, CtrlSet& CS, CtrlSolver& ctrl){
   arr q=C.getJointState();
@@ -137,8 +137,16 @@ struct ClassicCtrlSetController : ControlLoop {
   }
 };
 
+#endif
 
 
+struct ZeroReference : rai::ReferenceFeed {
+  virtual void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double time){
+     q_ref = q_real;
+     qDot_ref.resize(q_ref.N).setZero();
+     qDDot_ref.resize(q_ref.N).setZero();
+  }
+};
 
 
 void testNew() {
@@ -150,47 +158,19 @@ void testNew() {
   C.addFrame("target") -> setPosition(C["endeffR"]->getPosition() + arr{0,.0,-.5});
   C.watch(true);
 
-//  {
-//    ClassicCtrlSetController tmp(C.get());
-//    testUnrollControl(1000, C.set(), tmp.CS, tmp.ctrl);
-//  }
-
-  Var<rai::CtrlCmdMsg> ctrlRef;
-  Var<rai::CtrlStateMsg> ctrlState;
-  {
-    auto set = ctrlState.set();
-    set->q = C.getJointState();
-    set->tauExternal.resize(C.getJointStateDimension());
-    set->tauExternal.setZero();
-  }
-
-  ControlEmulator robot(C, ctrlRef, ctrlState, {}, .001);
-//  FrankaThreadNew robot(ctrlRef, ctrlState, 0, franka_getJointIndices(C.get()(),'R'));
+  C.ensure_indexedJoints();
+  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   robot.writeData = true;
 
-  ctrlState.waitForRevisionGreaterThan(10);
-  arr q0 = ctrlState.get()->q;
-  arr qT = q0;
-  qT(1) += .5;
-//  auto sp = make_shared<SplineControlLoop>(cat(qT, qT, q0).reshape(3,-1), arr{2., 2., 4.}, q0);
-  auto sp = make_shared<SplineCtrlReference>(cat(q0, qT, qT, q0).reshape(4,-1), arr{0., 2., 2., 4.});
-
-  sp->initialize({}, {});
-  ctrlRef.set()->ref = sp->getRef();
+  robot.cmd.set()->ref = make_shared<ZeroReference>();
 
   for(;;){
     if(C.watch(false,STRING("time: "<<rai::realTime()))=='q') break;
-    C.setJointState(ctrlState.get()->q);
+    C.setJointState(robot.state.get()->q);
     rai::wait(.1);
   }
 
-//  ControlThread mine(C, ctrlRef, ctrlState, make_shared<TrivialZeroControl>());
-//  ControlThread mine(C, ctrlRef, ctrlState, sp);
-//  ControlThread mine(C, ctrlRef, ctrlState, make_shared<ClassicCtrlSetController>(C.get()));
-
-//  KinViewer viewer(mine.ctrl_config, 0.05);
-
-//  rai::wait();
+  cout <<"bye bye" <<endl;
 }
 
 

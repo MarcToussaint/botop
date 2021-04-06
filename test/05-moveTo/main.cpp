@@ -1,5 +1,6 @@
 #include <Franka/controlEmulator.h>
 #include <Franka/franka.h>
+#include <Franka/help.h>
 
 #include <Control/SplineCtrlFeed.h>
 
@@ -18,8 +19,8 @@ void testMoveTo() {
 
 
   //-- start a robot thread
-  ControlEmulator robot(C, {});
-//  FrankaThreadNew robot(ctrlRef, ctrlState, 0, franka_getJointIndices(C.get()(),'R'));
+//  ControlEmulator robot(C, {});
+  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   robot.writeData = true;
 
   //-- create 2 simple reference configurations
