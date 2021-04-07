@@ -19,69 +19,73 @@ void testLeapCtrl() {
 
   //add a target in position space
   arr center = C["R_gripperCenter"]->getPosition();
-  C.addFrame("target")
+  rai::Frame& target =
+      C.addFrame("target")
       ->setShape(rai::ST_marker, {.1})
       .setPosition(center + arr{+.3,.0,+.2});
   C.watch(true);
-
-
-  LeapMPC leap(C,1.);
-  leap.komo.addObjective({2.}, FS_positionDiff, {"R_gripperCenter", "target"}, OT_eq, {1e2});
-
-  ofstream fil("z.dat");
-  for(uint k=0;k<100;k++){
-    leap.step(C);
-    C.setJointState(leap.x1);
-    C.watch(false);
-    fil <<C.eval(FS_positionDiff, {"R_gripperCenter", "target"}).y.modRaw() <<endl;
-    cout <<leap.tau <<endl;
-  }
-  gnuplot("plot 'z.dat' us 0:1, '' us 0:2, '' us 0:3");
-  rai::wait();
-
-  return;
-
-
-  //compute a path
-  KOMO komo;
-  komo.setModel(C, false);
-  komo.setTiming(5, 10, 2., 2);
-  komo.add_qControlObjective({}, 2, 1.);
-
-  komo.addObjective({1.}, FS_positionDiff, {"R_gripperCenter", "target1"}, OT_eq, {1e2});
-  komo.addObjective({2.}, FS_positionDiff, {"R_gripperCenter", "target2"}, OT_eq, {1e2});
-  komo.addObjective({3.}, FS_positionDiff, {"R_gripperCenter", "target3"}, OT_eq, {1e2});
-  komo.addObjective({4.}, FS_positionDiff, {"R_gripperCenter", "target4"}, OT_eq, {1e2});
-  komo.addObjective({5.}, make_shared<F_qItself>(C.getCtrlFramesAndScale(), true), {}, OT_eq, {1e2});
-  komo.addObjective({5.}, make_shared<F_qItself>(C.getCtrlFramesAndScale()), {}, OT_eq, {1e2}, {}, 1);
-
-  komo.optimize();
-
-  komo.view(true);
+  arr q0 = C.getJointState();
 
   //-- start a robot thread
+  C.ensure_indexedJoints();
   ControlEmulator robot(C, {});
-//  FrankaThreadNew robot(ctrlRef, ctrlState, 0, franka_getJointIndices(C.get()(),'R'));
+//  FrankaThreadNew robot(0, franka_getJointIndices(C.get()(),'R'));
   robot.writeData = true;
 
+  C.setJointState(robot.state.get()->q);
+
   //-- define the reference feed to be a spline
-  auto sp = make_shared<rai::SplineCtrlReference>();
+  std::shared_ptr<rai::SplineCtrlReference> sp = make_shared<rai::SplineCtrlReference>();
   robot.cmd.set()->ref = sp;
 
-  //send komo as spline:
-  for(double speed=.5;speed<=3.;speed+=.5){
-    sp->append(komo.getPath_qOrg(), komo.getPath_times()/speed);
+  LeapMPC leap(C,1.);
+  leap.komo.addObjective({1.}, FS_positionDiff, {"R_gripperCenter", "target"}, OT_eq, {1e2});
 
-    for(;;){
-      C.gl()->raiseWindow();
-      int key = C.watch(false,STRING("time: "<<rai::realTime() <<"\n[q or ESC to ABORT]"));
-      if(key==13) break;
-      if(key=='q' || key==27) return;
-      C.setJointState(robot.state.get()->q);
-      rai::wait(.1);
+  for(uint t=0;;t++){
+
+    if(!(t%100)){
+      switch(rnd(4)){
+        case 0: target.setPosition(center + arr{+.3,.0,+.2}); break;
+        case 1: target.setPosition(center + arr{-.3,.0,+.2}); break;
+        case 2: target.setPosition(center + arr{+.3,.0,-.2}); break;
+        case 3: target.setPosition(center + arr{-.3,.0,-.2}); break;
+      }
     }
-  }
 
+    arr q,qDot;
+    {
+      auto stateGet = robot.state.get();
+      q = stateGet->q;
+      qDot = stateGet->qDot;
+    }
+
+    leap.reinit(C);
+    leap.reinit(q,zeros(q.N));
+    leap.solve();
+    rai::Graph R = leap.komo.getReport();
+
+    double constraints = R.get<double>("ineq") + R.get<double>("eq");
+    double cost = R.get<double>("sos");
+//    double T=10.; //leap.tau.last();
+    double dist = length(q-leap.xT);
+    double vel = scalarProduct(qDot, leap.xT-q)/dist;
+    double alpha = .1;
+    double T = (sqrt(6.*alpha*dist+vel*vel) - vel)/alpha;
+
+    leap.komo.view(false, STRING("LEAP proposal T:"<<T <<"\n" <<R));
+
+    if(T>.2 && cost<1. && constraints<1e-3){
+      sp->moveTo(leap.xT, T, false);
+    }
+
+    C.setJointState(robot.state.get()->q);
+    C.gl()->raiseWindow();
+    int key = C.watch(false,STRING("time: "<<rai::realTime() <<"\n[q or ESC to ABORT]"));
+    if(key==13) break;
+    if(key=='q' || key==27) return;
+    rai::wait(.1);
+
+  }
 }
 
 //===========================================================================
