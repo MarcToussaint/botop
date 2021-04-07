@@ -64,7 +64,7 @@ void testFastPath() {
   sp->moveTo(q0, 2.);
 
   //send komo as spline:
-  for(double speed=.5;speed<=5.;speed+=.5){
+  for(double speed=1.;speed<=5.;speed+=.5){
     sp->append(komo.getPath_qOrg(), komo.getPath_times()/speed);
 
     for(;;){
@@ -82,6 +82,8 @@ void testFastPath() {
 //===========================================================================
 
 int main(int argc, char * argv[]){
+  rai::initCmdLine(argc, argv);
+
   testFastPath();
 
   return 0;

@@ -176,6 +176,8 @@ void testNew() {
 
 
 int main(int argc, char * argv[]){
+  rai::initCmdLine(argc, argv);
+
   testNew();
 
   return 0;

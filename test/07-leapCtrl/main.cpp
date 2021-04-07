@@ -1,5 +1,6 @@
 #include <Franka/controlEmulator.h>
 #include <Franka/franka.h>
+#include <Franka/help.h>
 
 #include <Control/SplineCtrlFeed.h>
 
@@ -28,8 +29,8 @@ void testLeapCtrl() {
 
   //-- start a robot thread
   C.ensure_indexedJoints();
-  ControlEmulator robot(C, {});
-//  FrankaThreadNew robot(0, franka_getJointIndices(C.get()(),'R'));
+//  ControlEmulator robot(C, {});
+  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   robot.writeData = true;
 
   C.setJointState(robot.state.get()->q);
@@ -43,7 +44,7 @@ void testLeapCtrl() {
 
   for(uint t=0;;t++){
 
-    if(!(t%100)){
+    if(!(t%10)){
       switch(rnd(4)){
         case 0: target.setPosition(center + arr{+.3,.0,+.2}); break;
         case 1: target.setPosition(center + arr{-.3,.0,+.2}); break;
@@ -75,7 +76,15 @@ void testLeapCtrl() {
     leap.komo.view(false, STRING("LEAP proposal T:"<<T <<"\n" <<R));
 
     if(T>.2 && cost<1. && constraints<1e-3){
-      sp->moveTo(leap.xT, T, false);
+      double now=rai::realTime();
+      {
+        auto stateGet = robot.state.get();
+        q = stateGet->q;
+        qDot = stateGet->qDot;
+      }
+      arr _x = cat(q, leap.xT).reshape(2,-1);
+      arr _t = {now, now+T};
+      sp->overrideHardRealTime(_x, _t, qDot);
     }
 
     C.setJointState(robot.state.get()->q);
@@ -83,7 +92,7 @@ void testLeapCtrl() {
     int key = C.watch(false,STRING("time: "<<rai::realTime() <<"\n[q or ESC to ABORT]"));
     if(key==13) break;
     if(key=='q' || key==27) return;
-    rai::wait(.1);
+    rai::wait(.3);
 
   }
 }
@@ -91,6 +100,8 @@ void testLeapCtrl() {
 //===========================================================================
 
 int main(int argc, char * argv[]){
+  rai::initCmdLine(argc, argv);
+
   testLeapCtrl();
 
   return 0;

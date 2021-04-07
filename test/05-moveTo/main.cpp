@@ -19,13 +19,12 @@ void testMoveTo() {
 
 
   //-- start a robot thread
-//  ControlEmulator robot(C, {});
   C.ensure_indexedJoints();
+//  ControlEmulator robot(C, {});
   FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   robot.writeData = true;
 
   //-- create 2 simple reference configurations
-  robot.state.waitForRevisionGreaterThan(10);
   arr q0 = robot.state.get()->q;
   arr qT = q0;
   qT(1) += .5;
@@ -49,7 +48,7 @@ void testMoveTo() {
   sp->moveTo(q0, 1.);
 
   for(;;){
-    if(C.watch(false,STRING("time: "<<rai::realTime()))=='w') break;
+    if(C.watch(false,STRING("time: "<<rai::realTime()))=='q') break;
     C.setJointState(robot.state.get()->q);
     rai::wait(.1);
   }
@@ -59,6 +58,8 @@ void testMoveTo() {
 //===========================================================================
 
 int main(int argc, char * argv[]){
+  rai::initCmdLine(argc, argv);
+
   testMoveTo();
 
   return 0;

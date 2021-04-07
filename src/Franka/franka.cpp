@@ -379,11 +379,25 @@ void FrankaThreadNew::step(){
       }
 
       if(q_ref.N==7){
-        qDDot_des += Kp * (q_ref - q_real) + Kd % (qDot_ref - qDot_real);
+//        qDDot_des += qDDot_ref;
+        qDDot_des += Kp * (q_ref - q_real);
+        qDDot_des += Kd % (qDot_ref - qDot_real);
         // if(!(steps%50)) cout <<"dot_ref" <<qdot_ref <<endl;
       }
 
       u = qDDot_des;
+
+      //-- add qDDot_ref term
+      if(absMax(qDDot_des)>0.){
+          arr M;
+          M.setCarray(model.mass(robot_state).begin(), 49);
+          M.reshape(7,7);
+
+          M += diag(ARR(0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2));
+
+          u += M*qDDot_ref;
+      }
+
       if(P_compliance.N) u = P_compliance * u;
 
     } else if(controlType == rai::ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
@@ -435,6 +449,8 @@ void FrankaThreadNew::step(){
       dataFile <<rai::realTime() <<' ';
       q_real.writeRaw(dataFile);
       q_ref.writeRaw(dataFile);
+      qDot_ref.writeRaw(dataFile);
+      qDDot_ref.writeRaw(dataFile);
       dataFile <<endl;
     }
 
