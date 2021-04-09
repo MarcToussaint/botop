@@ -44,6 +44,7 @@ private:
 
   uint steps=0;
   ofstream dataFile;
+  double ctrlTime=0.;
 
   void step();
 };

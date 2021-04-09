@@ -61,15 +61,17 @@ void testFastPath() {
   robot.cmd.set()->ref = sp;
 
   //first move slowly to home!
-  sp->moveTo(q0, 2.);
+  double ctrlTime = robot.state.get()->time;
+  sp->moveTo(q0, 2., ctrlTime, true);
 
   //send komo as spline:
   for(double speed=1.;speed<=5.;speed+=.5){
-    sp->append(komo.getPath_qOrg(), komo.getPath_times()/speed);
+    ctrlTime = robot.state.get()->time;
+    sp->append(komo.getPath_qOrg(), komo.getPath_times()/speed, ctrlTime, true);
 
     for(;;){
       C.gl()->raiseWindow();
-      int key = C.watch(false,STRING("time: "<<rai::realTime() <<"\n[q or ESC to ABORT]"));
+      int key = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
       if(key==13) break;
       if(key=='q' || key==27) return;
       C.setJointState(robot.state.get()->q);

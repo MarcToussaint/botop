@@ -53,9 +53,11 @@ void testLeapCtrl() {
       }
     }
 
+    double ctrlTime;
     arr q,qDot;
     {
       auto stateGet = robot.state.get();
+      ctrlTime = stateGet->time;
       q = stateGet->q;
       qDot = stateGet->qDot;
     }
@@ -87,13 +89,13 @@ void testLeapCtrl() {
       arr _t = {now, now+T};
       sp->overrideHardRealTime(_x, _t, qDot);
 #else
-      sp->override(~leap.xT, {T});
+      sp->override(~leap.xT, {T}, ctrlTime);
 #endif
     }
 
     C.setJointState(robot.state.get()->q);
     C.gl()->raiseWindow();
-    int key = C.watch(false,STRING("time: "<<rai::realTime() <<"\n[q or ESC to ABORT]"));
+    int key = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
     if(key==13) break;
     if(key=='q' || key==27) return;
     rai::wait(.1);

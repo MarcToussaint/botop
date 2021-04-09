@@ -287,15 +287,21 @@ void FrankaThreadNew::step(){
 
     if(stop) return franka::MotionFinished(franka::Torques( std::array<double, 7>{0., 0., 0., 0., 0., 0., 0.}));
 
-    //-- get current state
+    //-- get current state from libfranka
     arr q_real, qDot_real, torques_real;
     q_real.setCarray(robot_state.q.begin(), robot_state.q.size());
     qDot_real.setCarray(robot_state.dq.begin(), robot_state.dq.size());
     torques_real.setCarray(robot_state.tau_ext_hat_filtered.begin(), robot_state.tau_ext_hat_filtered.size());
 
-    //publish state
+    //-- get real time
+    ctrlTime += .001; //HARD CODED: 1kHz
+//    double now = rai::realTime();
+    double now = ctrlTime;
+
+    //-- publish state
     {
       auto stateSet = state.set();
+      stateSet->time = now;
       for(uint i=0;i<7;i++){
         stateSet->q(qIndices(i)) = q_real(i);
         stateSet->qDot(qIndices(i)) = qDot_real(i);
@@ -315,7 +321,7 @@ void FrankaThreadNew::step(){
 
       arr cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref;
       if(cmdGet->ref){
-        cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, q_real, qDot_real, rai::realTime());
+        cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, q_real, qDot_real, now);
       }
 
       if(cmd_q_ref.N >= 7) q_ref.resize(7).setZero();
@@ -343,6 +349,16 @@ void FrankaThreadNew::step(){
     }
 
     requiresInitialization=false;
+
+
+    //-- cap the reference difference
+    if(q_ref.N==7){
+        double err = length(q_ref - q_real);
+        if(err>.02){ //stall!
+            ctrlTime -= .001; //no progress in reference time!
+            cout <<"STALLING" <<endl;
+        }
+    }
 
     arr u = zeros(7); // torques send to the robot
 
@@ -423,7 +439,7 @@ void FrankaThreadNew::step(){
 
 #if 0
       M(4,4) = 0.2;
-      M(5,5) = 0.2;
+      M(5,5) = 0.2;../04-trivialCtrl/retired.cpp
       M(6,6) = 0.1;
 #else
       arr MDiag = diag(ARR(0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2));
@@ -446,7 +462,7 @@ void FrankaThreadNew::step(){
     //-- data log?
     if(writeData){
       if(!dataFile.is_open()) dataFile.open("z.panda.dat");
-      dataFile <<rai::realTime() <<' ';
+      dataFile <<now <<' ';
       q_real.writeRaw(dataFile);
       q_ref.writeRaw(dataFile);
       qDot_ref.writeRaw(dataFile);

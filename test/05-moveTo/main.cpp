@@ -34,21 +34,23 @@ void testMoveTo() {
   robot.cmd.set()->ref = sp;
 
   //1st motion:
-  sp->append(cat(qT, qT, q0).reshape(3,-1), arr{2., 2., 4.});
+  double ctrlTime = robot.state.get()->time;
+  sp->append(cat(qT, qT, q0).reshape(3,-1), arr{2., 2., 4.}, ctrlTime, true);
 
   for(;;){
-    if(C.watch(false,STRING("time: "<<rai::realTime()))=='q') break;
+    if(C.watch(false,STRING("time: "<<robot.state.get()->time))=='q') break;
     C.setJointState(robot.state.get()->q);
     rai::wait(.1);
   }
 
   //2nd motion:
-  sp->moveTo(qT, 1., false);
-  cout <<"OVERRIDE AT t=" <<rai::realTime() <<endl;
-  sp->moveTo(q0, 1.);
+  ctrlTime = robot.state.get()->time;
+  sp->moveTo(qT, 1., ctrlTime, false);
+  cout <<"OVERRIDE AT t=" <<ctrlTime <<endl;
+  sp->moveTo(q0, 1., ctrlTime, true);
 
   for(;;){
-    if(C.watch(false,STRING("time: "<<rai::realTime()))=='q') break;
+    if(C.watch(false,STRING("time: "<<robot.state.get()->time))=='q') break;
     C.setJointState(robot.state.get()->q);
     rai::wait(.1);
   }

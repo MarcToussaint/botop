@@ -49,11 +49,15 @@ ControlEmulator::~ControlEmulator(){
 }
 
 void ControlEmulator::step(){
+  //-- get real time
+  double now = rai::realTime();
+
   //-- publish state
   {
     arr tauExternal;
     tauExternal = zeros(q_real.N);
     auto stateSet = state.set();
+    stateSet->time=now;
     stateSet->q.resize(q_real.N).setZero();
     stateSet->qDot.resize(qDot_real.N).setZero();
     stateSet->tauExternal.resize(q_real.N).setZero();
@@ -82,7 +86,7 @@ void ControlEmulator::step(){
       cmd_qDot_ref.resize(q_real.N).setZero();
     }else{
       //get the reference from the callback (e.g., sampling a spline reference)
-      cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, q_real, qDot_real, rai::realTime());
+      cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, q_real, qDot_real, now);
     }
 
     KpRef = cmdGet->Kp;
@@ -116,7 +120,7 @@ void ControlEmulator::step(){
   //-- data log?
   if(writeData){
     if(!dataFile.is_open()) dataFile.open("z.panda.dat");
-    dataFile <<rai::realTime() <<' ';
+    dataFile <<now <<' ';
     q_real.writeRaw(dataFile);
     cmd_q_ref.writeRaw(dataFile);
     dataFile <<endl;
