@@ -61,7 +61,7 @@ void testLeapCtrl() {
     }
 
     leap.reinit(C);
-    leap.reinit(q,zeros(q.N));
+    leap.reinit(q, qDot); //zeros(q.N));
     leap.solve();
     rai::Graph R = leap.komo.getReport();
 
@@ -70,12 +70,13 @@ void testLeapCtrl() {
 //    double T=10.; //leap.tau.last();
     double dist = length(q-leap.xT);
     double vel = scalarProduct(qDot, leap.xT-q)/dist;
-    double alpha = .1;
+    double alpha = .7;
     double T = (sqrt(6.*alpha*dist+vel*vel) - vel)/alpha;
 
     leap.komo.view(false, STRING("LEAP proposal T:"<<T <<"\n" <<R));
 
     if(T>.2 && cost<1. && constraints<1e-3){
+#if 0
       double now=rai::realTime();
       {
         auto stateGet = robot.state.get();
@@ -85,6 +86,9 @@ void testLeapCtrl() {
       arr _x = cat(q, leap.xT).reshape(2,-1);
       arr _t = {now, now+T};
       sp->overrideHardRealTime(_x, _t, qDot);
+#else
+      sp->override(~leap.xT, {T});
+#endif
     }
 
     C.setJointState(robot.state.get()->q);
@@ -92,7 +96,7 @@ void testLeapCtrl() {
     int key = C.watch(false,STRING("time: "<<rai::realTime() <<"\n[q or ESC to ABORT]"));
     if(key==13) break;
     if(key=='q' || key==27) return;
-    rai::wait(.3);
+    rai::wait(.1);
 
   }
 }
