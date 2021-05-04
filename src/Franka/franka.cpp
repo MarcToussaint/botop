@@ -133,7 +133,9 @@ void FrankaThread::step(){
 
     //check for correct ctrl otherwise do something...
     if(q_ref.N!=7){
-      cerr <<"FRANKA: inconsistent ctrl q_ref message" <<endl;
+      if(!(steps%10)){
+        cerr <<"FRANKA: inconsistent ctrl q_ref message; steps: " <<steps <<endl;
+      }
       return std::array<double, 7>({0., 0., 0., 0., 0., 0., 0.});
     }
     if(P_compliance.N){
@@ -459,7 +461,7 @@ void FrankaThreadNew::step(){
     }
 
     //-- data log?
-    if(writeData){
+    if(writeData && !(steps%10)){
       if(!dataFile.is_open()) dataFile.open("z.panda.dat");
       dataFile <<ctrlTime <<' ';
       q_real.writeRaw(dataFile);
