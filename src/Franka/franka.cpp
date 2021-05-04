@@ -295,13 +295,12 @@ void FrankaThreadNew::step(){
 
     //-- get real time
     ctrlTime += .001; //HARD CODED: 1kHz
-//    double now = rai::realTime();
-    double now = ctrlTime;
+    //ctrlTime = rai::realTime();
 
     //-- publish state
     {
       auto stateSet = state.set();
-      stateSet->time = now;
+      stateSet->time = ctrlTime;
       for(uint i=0;i<7;i++){
         stateSet->q(qIndices(i)) = q_real(i);
         stateSet->qDot(qIndices(i)) = qDot_real(i);
@@ -321,7 +320,7 @@ void FrankaThreadNew::step(){
 
       arr cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref;
       if(cmdGet->ref){
-        cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, q_real, qDot_real, now);
+        cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, q_real, qDot_real, ctrlTime);
       }
 
       if(cmd_q_ref.N >= 7) q_ref.resize(7).setZero();
@@ -462,7 +461,7 @@ void FrankaThreadNew::step(){
     //-- data log?
     if(writeData){
       if(!dataFile.is_open()) dataFile.open("z.panda.dat");
-      dataFile <<now <<' ';
+      dataFile <<ctrlTime <<' ';
       q_real.writeRaw(dataFile);
       q_ref.writeRaw(dataFile);
       qDot_ref.writeRaw(dataFile);

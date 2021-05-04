@@ -1,0 +1,4 @@
+set style data lines
+#plot [:] 'z' us 2:5, '' us 2:13
+plot [:] 'z.panda.dat' us 0:3 t 'real', '' us 0:10 t 'ref'
+#plot 'z' us 0:4, '' us 0:8, '' us 0:12, '' us 0:16

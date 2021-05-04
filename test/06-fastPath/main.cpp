@@ -2,7 +2,7 @@
 #include <Franka/franka.h>
 #include <Franka/help.h>
 
-#include <Control/SplineCtrlFeed.h>
+#include <Algo/SplineCtrlFeed.h>
 
 #include <Kin/frame.h>
 
@@ -52,8 +52,8 @@ void testFastPath() {
   komo.view(true);
 
   //-- start a robot thread
-//  ControlEmulator robot(C, {});
-  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
+  ControlEmulator robot(C, {});
+//  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   robot.writeData = true;
 
   //-- define the reference feed to be a spline
@@ -71,7 +71,7 @@ void testFastPath() {
 
     for(;;){
       C.gl()->raiseWindow();
-      int key = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
+      int key = C.watch(false,STRING("time: "<<robot.state.get()->time <<"\n[q or ESC to ABORT]"));
       if(key==13) break;
       if(key=='q' || key==27) return;
       C.setJointState(robot.state.get()->q);

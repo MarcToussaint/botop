@@ -89,7 +89,7 @@ void testLeapCtrl() {
       arr _t = {now, now+T};
       sp->overrideHardRealTime(_x, _t, qDot);
 #else
-      sp->override(~leap.xT, {T}, ctrlTime);
+      sp->overrideSmooth(~leap.xT, {T}, ctrlTime);
 #endif
     }
 

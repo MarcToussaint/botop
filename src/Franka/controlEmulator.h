@@ -4,7 +4,7 @@
 #include <Control/CtrlMsgs.h>
 #include <Kin/kin.h>
 
-struct ControlEmulator : Thread{
+struct ControlEmulator : Thread {
   Var<rai::CtrlCmdMsg> cmd;
   Var<rai::CtrlStateMsg> state;
 
@@ -17,14 +17,13 @@ struct ControlEmulator : Thread{
 
 private:
   double tau;
+  double ctrlTime = 0.;
   arr q_real, qDot_real;
   uintA q_indices;
   ofstream dataFile;
 
   void step();
 };
-
-
 
 struct GripperEmulator : Thread{
   double q;

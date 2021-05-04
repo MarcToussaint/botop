@@ -13,11 +13,20 @@
 #include <Control/CtrlMsgs.h>
 
 
-
 struct ZeroReference : rai::ReferenceFeed {
-  virtual void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double time){
+  Var<arr> velocity_ref; ///< if set, defines a non-zero velocity reference
+
+  ZeroReference& setVelocityReference(const arr& _velocity_ref){ velocity_ref.set() = _velocity_ref; return *this; }
+
+  /// callback called by a robot control loop
+  virtual void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
      q_ref = q_real;
-     qDot_ref.resize(q_ref.N).setZero();
+     auto velocity_refGet = velocity_ref.get();
+     if(!velocity_refGet->N){
+       qDot_ref.resize(q_ref.N).setZero();
+     }else{
+       qDot_ref = velocity_refGet();
+     }
      qDDot_ref.resize(q_ref.N).setZero();
   }
 };
