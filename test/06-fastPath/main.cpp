@@ -52,8 +52,8 @@ void testFastPath() {
   komo.view(true);
 
   //-- start a robot thread
-  ControlEmulator robot(C, {});
-//  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
+//  ControlEmulator robot(C, {});
+  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   robot.writeData = true;
 
   //-- define the reference feed to be a spline
@@ -63,6 +63,8 @@ void testFastPath() {
   //first move slowly to home!
   double ctrlTime = robot.state.get()->time;
   sp->moveTo(q0, 2., ctrlTime, true);
+
+  rai::wait(.1); //WHY DO WE NEED THIS??? UGLY!
 
   //send komo as spline:
   for(double speed=1.;speed<=5.;speed+=.5){

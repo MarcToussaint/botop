@@ -2,7 +2,7 @@
 #include <Franka/franka.h>
 #include <Franka/help.h>
 
-#include <Control/SplineCtrlFeed.h>
+#include <Algo/SplineCtrlFeed.h>
 
 #include <Kin/frame.h>
 
@@ -27,7 +27,7 @@ void testMoveTo() {
   //-- create 2 simple reference configurations
   arr q0 = robot.state.get()->q;
   arr qT = q0;
-  qT(1) += .5;
+  qT(1) -= .5;
 
   //-- define the reference feed to be a spline
   auto sp = make_shared<rai::SplineCtrlReference>();

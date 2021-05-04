@@ -2,7 +2,7 @@
 #include <Franka/franka.h>
 #include <Franka/help.h>
 
-#include <Control/SplineCtrlFeed.h>
+#include <Algo/SplineCtrlFeed.h>
 
 #include <Kin/frame.h>
 

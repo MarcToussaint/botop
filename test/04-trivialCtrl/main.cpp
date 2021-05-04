@@ -35,10 +35,7 @@ struct ZeroReference : rai::ReferenceFeed {
 void testNew() {
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../model/pandaSingle.g"));
-  C.getFrame("R_panda_finger_joint1")->setJoint(rai::JT_rigid);
-  C.getFrame("R_panda_finger_joint2")->setJoint(rai::JT_rigid);
-  C.addFrame("target") -> setPosition(C["endeffR"]->getPosition() + arr{0,.0,-.5});
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
   C.watch(true);
 
   C.ensure_indexedJoints();
@@ -46,7 +43,9 @@ void testNew() {
   robot.writeData = true;
 
   //comment the next line to only get gravity compensation instead of 'zero reference following' (which includes damping)
-  robot.cmd.set()->ref = make_shared<ZeroReference>();
+  auto ref = make_shared<ZeroReference>();
+  robot.cmd.set()->ref = ref;
+  //ref->setVelocityReference({.0,.0,.2,0,0,0,0});
 
   for(;;){
     if(C.watch(false,STRING("time: "<<rai::realTime()))=='q') break;

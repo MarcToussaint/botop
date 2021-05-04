@@ -353,7 +353,7 @@ void FrankaThreadNew::step(){
     //-- cap the reference difference
     if(q_ref.N==7){
         double err = length(q_ref - q_real);
-        if(err>.02){ //stall!
+        if(err>.05){ //if(err>.02){ //stall!
             ctrlTime -= .001; //no progress in reference time!
             cout <<"STALLING" <<endl;
         }
