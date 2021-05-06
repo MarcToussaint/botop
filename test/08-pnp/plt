@@ -1,4 +1,24 @@
 set style data lines
-#plot [:] 'z' us 2:5, '' us 2:13
-plot [:] 'z.panda.dat' us 0:3 t 'real', '' us 0:10 t 'ref'
+#plot [:] 'z' us 2:5, '' us 2:13#
+#plot [:] 'z.panda.dat' us 0:3 t 'real', '' us 0:10 t 'ref'
 #plot 'z' us 0:4, '' us 0:8, '' us 0:12, '' us 0:16
+plot 'z.panda.dat' us 0:($2-$9) t 'err1', \
+  '' us 0:($3-$10) t 'err2', \
+  '' us 0:($4-$11) t 'err3', \
+  '' us 0:($5-$12) t 'err4', \
+  '' us 0:($6-$13) t 'err5', \
+  '' us 0:($7-$14) t 'err6', \
+  '' us 0:($8-$15) t 'err7'
+
+#plot 'z.panda.dat' us 0:($2) t 'real1', '' us 0:($9) t 'ref1',\
+#  '' us 0:($3) t 'real2', '' us 0:($10) t 'ref2', \
+#  '' us 0:($4) t 'real3', '' us 0:($11) t 'ref3', \
+#  '' us 0:($5) t 'real4', '' us 0:($12) t 'ref4', \
+#  '' us 0:($6) t 'real5', '' us 0:($13) t 'ref5', \
+#  '' us 0:($7) t 'real6', '' us 0:($14) t 'ref6', \
+#  '' us 0:($8) t 'real7', '' us 0:($15) t 'ref7', \
+
+
+#plot 'z.panda.dat' us 0:($6) t 'pos5',   '' us 0:($20) t 'vel5', \
+
+

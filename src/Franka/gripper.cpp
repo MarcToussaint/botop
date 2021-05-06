@@ -26,19 +26,19 @@ void FrankaGripper::homing(){
 }
 
 void FrankaGripper::open(double width, double speed){
-    auto cmdSet = cmd.set();
-    cmdSet->cmd = GripperCmdMsg::Command::_open;
-    cmdSet->width = width;
-    cmdSet->speed = speed;
+  auto cmdSet = cmd.set();
+  cmdSet->cmd = GripperCmdMsg::Command::_open;
+  cmdSet->width = width;
+  cmdSet->speed = speed;
 }
 
 
 void FrankaGripper::close(double force, double width, double speed){
-    auto cmdSet = cmd.set();
-    cmdSet->cmd = GripperCmdMsg::Command::_close;
-    cmdSet->force = force;
-    cmdSet->width = width;
-    cmdSet->speed = speed;
+  auto cmdSet = cmd.set();
+  cmdSet->cmd = GripperCmdMsg::Command::_close;
+  cmdSet->force = force;
+  cmdSet->width = width;
+  cmdSet->speed = speed;
 }
 
 double FrankaGripper::pos(){

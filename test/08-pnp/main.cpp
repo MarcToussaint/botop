@@ -98,13 +98,13 @@ void testPnp() {
 
   //-- start a robot thread
   C.ensure_indexedJoints();
-  ControlEmulator robot(C, {});
-//  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
+//  ControlEmulator robot(C, {});
+  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   robot.writeData = true;
   C.setJointState(robot.state.get()->q);
 
-  GripperEmulator gripper;
-//  FrankaGripper gripper(0);
+//  GripperEmulator gripper;
+  FrankaGripper gripper(0);
 
   //-- compute a path
   KOMO komo;
@@ -153,13 +153,13 @@ void testPnp() {
 
   for(uint k=0;k<path.N;k++){
 //    rai::wait();
-    if(k==0) gripper.open();
-    if(k==1) gripper.close();
-    if(k==2) gripper.open();
+    if(k==0){ gripper.open(); rai::wait(.3); }
+    if(k==1){ gripper.close(); rai::wait(.5); }
+    if(k==2){ gripper.open(); rai::wait(.3); }
 
     //send komo as spline:
     {
-      arr times = range(0., 2., path(k).d0-1);
+      arr times = range(0., 1., path(k).d0-1);
       if(times.N==1) times=2.;
       else times += times(1);
       double ctrlTime = robot.state.get()->time;
@@ -172,11 +172,13 @@ void testPnp() {
       int key = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
       //if(key==13) break;
       if(key=='q' || key==27) return;
-      if(ctrlTime>sp->getEndTime()) break;
+      if(ctrlTime+.5>sp->getEndTime()) break;
       C.setJointState(robot.state.get()->q);
       rai::wait(.1);
     }
   }
+
+  rai::wait(1.);
 
 }
 

@@ -8,7 +8,6 @@ int main(int argc, char** argv) {
 //    auto G_le = make_shared<FrankaGripper>(1);
     cout <<"gripper pos:" <<G_ri->pos() <<" isGrasped:" <<G_ri->isGrasped() <<endl;
 
-
     G_ri->close(20, .035, .5);
 
     //    cout <<"gripper pos:" <<G_ri->pos() <<" isGrasped:" <<G_ri->isGrasped() <<endl;

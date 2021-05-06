@@ -406,13 +406,13 @@ void FrankaThreadNew::step(){
 
       //-- add qDDot_ref term
       if(absMax(qDDot_des)>0.){
-          arr M;
-          M.setCarray(model.mass(robot_state).begin(), 49);
-          M.reshape(7,7);
+        arr M;
+        M.setCarray(model.mass(robot_state).begin(), 49);
+        M.reshape(7,7);
 
-          M += diag(ARR(0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2));
+        M += diag(ARR(0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2));
 
-          u += M*qDDot_ref;
+        u += M*qDDot_ref;
       }
 
       if(P_compliance.N) u = P_compliance * u;
@@ -466,8 +466,8 @@ void FrankaThreadNew::step(){
       dataFile <<ctrlTime <<' ';
       q_real.writeRaw(dataFile);
       q_ref.writeRaw(dataFile);
-      qDot_ref.writeRaw(dataFile);
-      qDDot_ref.writeRaw(dataFile);
+      qDot_real.writeRaw(dataFile);
+//      qDDot_ref.writeRaw(dataFile);
       dataFile <<endl;
     }
 

@@ -14,20 +14,25 @@
 
 
 struct ZeroReference : rai::ReferenceFeed {
+  Var<arr> position_ref; ///< if set, defines a non-zero velocity reference
   Var<arr> velocity_ref; ///< if set, defines a non-zero velocity reference
 
   ZeroReference& setVelocityReference(const arr& _velocity_ref){ velocity_ref.set() = _velocity_ref; return *this; }
+  ZeroReference& setPositionReference(const arr& _position_ref){ position_ref.set() = _position_ref; return *this; }
 
   /// callback called by a robot control loop
   virtual void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
-     q_ref = q_real;
-     auto velocity_refGet = velocity_ref.get();
-     if(!velocity_refGet->N){
-       qDot_ref.resize(q_ref.N).setZero();
-     }else{
-       qDot_ref = velocity_refGet();
-     }
-     qDDot_ref.resize(q_ref.N).setZero();
+    {
+      arr pos = position_ref.get()();
+      if(pos.N) q_ref = pos;
+      else q_ref = q_real;
+    }
+    {
+      arr vel = velocity_ref.get()();
+      if(vel.N) qDot_ref = vel;
+      else qDot_ref.resize(qDot_real.N).setZero();
+    }
+    qDDot_ref.resize(q_ref.N).setZero();
   }
 };
 
@@ -41,10 +46,12 @@ void testNew() {
   C.ensure_indexedJoints();
   FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   robot.writeData = true;
+  arr q_now = robot.state.get()->q;
 
   //comment the next line to only get gravity compensation instead of 'zero reference following' (which includes damping)
   auto ref = make_shared<ZeroReference>();
   robot.cmd.set()->ref = ref;
+  ref->setPositionReference(q_now);
   //ref->setVelocityReference({.0,.0,.2,0,0,0,0});
 
   for(;;){
