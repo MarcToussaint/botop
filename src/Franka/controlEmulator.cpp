@@ -119,11 +119,12 @@ void ControlEmulator::step(){
   q_real += .5 * tau * qDot_real;
 
   //-- data log?
-  if(writeData){
+  if(writeData && !(step_count%10)){
     if(!dataFile.is_open()) dataFile.open("z.panda.dat");
     dataFile <<ctrlTime <<' ';
     q_real.writeRaw(dataFile);
     cmd_q_ref.writeRaw(dataFile);
+    qDot_real.writeRaw(dataFile);
     dataFile <<endl;
   }
 }
