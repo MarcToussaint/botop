@@ -153,14 +153,14 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const char* app
   path[path.d0-1] = target_q; //overwrite last config
 //  arr times = komo.getPath_times();
 
-//  double sos = komo.getConstraintViolations()
-  while(komo.view_play(true));
+  C.setJointState(q0);
+
+//  while(komo.view_play(true));
   if(komo.sos>30. || komo.ineq>.2 || komo.eq>.2){
     LOG(-2) <<"WARNING!";
     while(komo.view_play(true));
+    return {};
   }
-
-  C.setJointState(q0);
 
   return path;
 }
@@ -181,10 +181,10 @@ void testPnp() {
 
   //-- start a robot thread
   C.ensure_indexedJoints();
-  ControlEmulator robot(C, {});
-  GripperEmulator gripper;
-//  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
-//  FrankaGripper gripper(0);
+//  ControlEmulator robot(C, {});
+//  GripperEmulator gripper;
+  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
+  FrankaGripper gripper(0);
 
   robot.writeData = true;
   C.setJointState(robot.state.get()->q);
@@ -245,7 +245,7 @@ void testPnp() {
 
     //send komo as spline:
     {
-      arr times = range(0., 1., path(k).d0-1);
+      arr times = range(0., 4., path(k).d0-1);
       if(times.N==1) times=2.;
       else times += times(1);
       double ctrlTime = robot.state.get()->time;
@@ -296,10 +296,13 @@ arr getPnpKeyframes(const rai::Configuration& C,
 
   komo.optimize();
   komo.getReport(true);
-  komo.view(true);
   //  while(komo.view_play(true, .5));
 
-  if(komo.getConstraintViolations()>.1) return {};
+  if(komo.getConstraintViolations()>.1){
+    LOG(-1) <<"INFEASIBLE";
+    komo.view(true);
+    return {};
+  }
 
   return komo.getPath_qOrg();
 }
@@ -317,10 +320,13 @@ void testPnp2() {
   arr q0 = C.getJointState();
 
   C.ensure_indexedJoints();
+#if 0 //SIM
   ControlEmulator robot(C, {});
   GripperEmulator gripper;
-//  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
-//  FrankaGripper gripper(0);
+#else //REAL
+  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
+  FrankaGripper gripper(0);
+#endif
   robot.writeData = true;
 
   C.setJointState(robot.state.get()->q);
@@ -367,14 +373,13 @@ void testPnp2() {
                                                                   {{}, {wristName, tableName}, .01}});
       }
 
-      //    rai::wait();
-      //    if(k==0){ gripper.open(); rai::wait(.3); }
-      //    if(k==1){ gripper.close(); rai::wait(.5); }
-      //    if(k==2){ gripper.open(); rai::wait(.3); }
+      if(k==0){ gripper.open(); rai::wait(.3); }
+      else if(k==1){ gripper.close(); rai::wait(.5); }
+      else if(k==2){ gripper.open(); rai::wait(.3); }
 
       //send komo as spline:
       {
-        arr times = range(0., 1., path.d0-1);
+        arr times = range(0., 2., path.d0-1);
         if(times.N==1) times=2.;
         else times += times(1);
         double ctrlTime = robot.state.get()->time;

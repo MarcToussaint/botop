@@ -51,7 +51,7 @@ void testNew() {
   //comment the next line to only get gravity compensation instead of 'zero reference following' (which includes damping)
   auto ref = make_shared<ZeroReference>();
   robot.cmd.set()->ref = ref;
-  ref->setPositionReference(q_now);
+//  ref->setPositionReference(q_now);
   //ref->setVelocityReference({.0,.0,.2,0,0,0,0});
 
   for(;;){
