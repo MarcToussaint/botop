@@ -54,9 +54,8 @@ void addBoxPickObjectives(KOMO& komo, double time, rai::ArgWord dir, const char*
   //approach: only longitudial velocity, min distance before and at grasp
   if(komo.k_order>1) komo.addObjective({time-.3,time}, FS_positionRel, {boxName, gripperName}, OT_eq, arr{{2,3}, {1,0,0,0,1,0}}*1e2, {}, 1);
   if(komo.k_order>1) komo.addObjective({time-.5,time-.3}, FS_distance, {palmName, boxName}, OT_ineq, {1e1}, {-.1});
-  komo.addObjective({time-.3,time}, FS_distance, {palmName, boxName}, OT_ineq, {1e1}, {-.005});
-  komo.addObjective({time-.5,time}, FS_distance, {palmName, tableName}, OT_ineq, {1e1}, {-.05});
-  komo.addObjective({}, FS_distance, {"R_panda_coll7", "table"}, OT_ineq, {1e1}, {-.01});
+  komo.addObjective({time-.3,time}, FS_distance, {palmName, boxName}, OT_ineq, {1e1}, {-.006});
+//  komo.addObjective({time-.5,time}, FS_distance, {palmName, tableName}, OT_ineq, {1e1}, {-.05});
 
   //zero vel
   if(komo.k_order>1) komo.addObjective({time}, FS_qItself, {}, OT_eq, {}, {}, 1);
@@ -101,8 +100,6 @@ void addBoxPlaceObjectives(KOMO& komo, double time, rai::ArgWord dir, const char
   if(komo.k_order>1) komo.addObjective({time,time+.3}, FS_positionRel, {boxName, gripperName}, OT_eq, arr{{2,3}, {1,0,0,0,1,0}}*1e2, {}, 1);
   if(komo.k_order>1) komo.addObjective({time+.3,time+.5}, FS_distance, {palmName, boxName}, OT_ineq, {1e1}, {-.1});
 
-  komo.addObjective({}, FS_distance, {"R_panda_coll7", "table"}, OT_ineq, {1e1}, {-.01});
-
   //zero vel
   if(komo.k_order>1) komo.addObjective({time}, FS_qItself, {}, OT_eq, {}, {}, 1);
 }
@@ -115,16 +112,16 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const char* app
 
   KOMO komo;
   komo.setModel(C, false);
-  komo.setTiming(1., 10, 3., 2);
+  komo.setTiming(1., 16, 3., 2);
   komo.add_qControlObjective({}, 2, 1.);
 
   //retract: only longitudial velocity
   if(retract){
     arr ori = ~C[retract]->getRotationMatrix();
-    komo.addObjective({0.,.3}, FS_position, {retract}, OT_eq, ori({0,1})*1e2, {}, 1);
-    komo.addObjective({0.,.3}, FS_vectorX, {retract}, OT_eq, {1e2}, ori[0]);
-    komo.addObjective({0.,.3}, FS_vectorY, {retract}, OT_eq, {1e2}, ori[1]);
-    komo.addObjective({0.,.3}, FS_vectorZ, {retract}, OT_eq, {1e2}, ori[2]);
+    komo.addObjective({0.,.2}, FS_position, {retract}, OT_eq, ori[0].reshape(1,-1)*1e2, {}, 1);
+    komo.addObjective({0.,.2}, FS_vectorX, {retract}, OT_eq, {1e1}, ori[0]);
+    komo.addObjective({0.,.2}, FS_vectorY, {retract}, OT_eq, {1e1}, ori[1]);
+    komo.addObjective({0.,.2}, FS_vectorZ, {retract}, OT_eq, {1e1}, ori[2]);
   }
 
   C.setJointState(target_q);
@@ -132,10 +129,10 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const char* app
   //approach: only longitudial velocity
   if(approach){
     arr ori = ~C[approach]->getRotationMatrix();
-    komo.addObjective({.7,1.}, FS_position, {approach}, OT_eq, ori({0,1})*1e2, {}, 1);
-    komo.addObjective({.7,1.}, FS_vectorX, {approach}, OT_eq, {1e2}, ori[0]);
-    komo.addObjective({.7,1.}, FS_vectorY, {approach}, OT_eq, {1e2}, ori[1]);
-    komo.addObjective({.7,1.}, FS_vectorZ, {approach}, OT_eq, {1e2}, ori[2]);
+    komo.addObjective({.8,1.}, FS_position, {approach}, OT_eq, ori[0].reshape(1,-1)*1e2, {}, 1);
+    komo.addObjective({.8,1.}, FS_vectorX, {approach}, OT_eq, {1e1}, ori[0]);
+    komo.addObjective({.8,1.}, FS_vectorY, {approach}, OT_eq, {1e1}, ori[1]);
+    komo.addObjective({.8,1.}, FS_vectorZ, {approach}, OT_eq, {1e1}, ori[2]);
   }
 
   // collision avoidances
@@ -143,11 +140,12 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const char* app
     komo.addObjective(a.times, FS_distance, a.frames, OT_ineq, {1e1}, {-a.dist});
   }
 
-  komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e1}, target_q);
-  komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e1}, {}, 1);
+  komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e0}, target_q);
+  komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e0}, {}, 1);
 
 //  komo.initWithWaypoints({target_q});
-  komo.optimize();
+//  komo.initWithConstant(target_q);
+  komo.optimize(0.);
 
   arr path = komo.getPath_qOrg();
   path[path.d0-1] = target_q; //overwrite last config
@@ -157,9 +155,24 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const char* app
 
 //  while(komo.view_play(true));
   if(komo.sos>30. || komo.ineq>.2 || komo.eq>.2){
+    FILE("z.path") <<path <<endl;
+    cout <<komo.getReport(true) <<endl;
     LOG(-2) <<"WARNING!";
     while(komo.view_play(true));
-    return {};
+
+    komo.reset();
+    komo.initWithConstant(q0);
+    komo.animateOptimization=4;
+    komo.verbose=8;
+    komo.optimize();
+    if(komo.sos>30. || komo.ineq>.2 || komo.eq>.2){
+      LOG(-1) <<"INFEASIBLE";
+      while(komo.view_play(true));
+      return {};
+    }else{
+      LOG(-1) <<"FEASIBLE";
+      komo.view(true);
+    }
   }
 
   return path;
@@ -272,14 +285,16 @@ void testPnp() {
 
 arr getPnpKeyframes(const rai::Configuration& C,
                     rai::ArgWord pickDirection, rai::ArgWord placeDirection,
-                    const char* boxName, const char* gripperName, const char* palmName, const char* tableName) {
+                    const char* boxName, const char* gripperName, const char* palmName, const char* tableName,
+                    const arr& qHome) {
   arr q0 = C.getJointState();
 
   KOMO komo;
   komo.setModel(C, false);
-  komo.setTiming(3, 1, 3., 1);
+  komo.setTiming(2, 1, 3., 1);
   //  komo.add_qControlObjective({}, 2, 1e-1);
   komo.add_qControlObjective({}, 1, 1e-1);
+  komo.addObjective({}, FS_qItself, {}, OT_sos, {1e-1}, qHome);
 
   arr boxSize={.06,.15,.09};
 
@@ -291,8 +306,12 @@ arr getPnpKeyframes(const rai::Configuration& C,
   komo.addModeSwitch({2.,-1.}, SY_stable, {"table", boxName}, false);
   addBoxPlaceObjectives(komo, 2., placeDirection, boxName, boxSize, gripperName, palmName);
 
+  komo.addObjective({}, FS_distance, {"R_panda_coll6", "table"}, OT_ineq, {1e2}, {});
+  komo.addObjective({}, FS_distance, {"R_panda_coll7", "table"}, OT_ineq, {1e2}, {});
+  komo.addObjective({}, FS_distance, {"R_panda_coll_hand", "table"}, OT_ineq, {1e2}, {});
+
   //-- home
-  komo.addObjective({3.}, FS_qItself, {}, OT_eq, {1e1}, q0);
+//  komo.addObjective({3.}, FS_qItself, {}, OT_eq, {1e1}, q0);
 
   komo.optimize();
   komo.getReport(true);
@@ -301,7 +320,21 @@ arr getPnpKeyframes(const rai::Configuration& C,
   if(komo.getConstraintViolations()>.1){
     LOG(-1) <<"INFEASIBLE";
     komo.view(true);
-    return {};
+    komo.reset();
+    komo.initWithConstant(qHome);
+    komo.optimize();
+    if(komo.getConstraintViolations()>.1){
+      LOG(-1) <<"INFEASIBLE";
+      komo.view(true);
+//      komo.reset();
+//      komo.initWithConstant(q0);
+//      komo.animateOptimization=4;
+//      komo.optimize();
+      return {};
+    }else{
+      LOG(-1) <<"FEASIBLE";
+      komo.view(true);
+    }
   }
 
   return komo.getPath_qOrg();
@@ -318,9 +351,10 @@ void testPnp2() {
       .setShape(rai::ST_ssBox, {.06,.15,.09,.01})
       .setRelativePosition(arr{-.4,-.4,.075});
   arr q0 = C.getJointState();
+  cout <<"JOINT LIMITS:" <<C.getLimits() <<endl;
 
   C.ensure_indexedJoints();
-#if 0 //SIM
+#if 1 //SIM
   ControlEmulator robot(C, {});
   GripperEmulator gripper;
 #else //REAL
@@ -340,37 +374,48 @@ void testPnp2() {
   const char* palmName="R_gripper";
   const char* boxName="target";
   const char* tableName="table";
-  const char* wristName="R_panda_coll7";
-  for(uint l=0;l<10;l++){
-    //-- compute keyframes
-    rai::ArgWord placeDirection = random(rai::Array<rai::ArgWord>{rai::_yAxis, rai::_zAxis, rai::_yNegAxis, rai::_zNegAxis });
-//    placeDirection = rai::_yNegAxis;
-    arr keyframes = getPnpKeyframes(C, rai::_xAxis, placeDirection, boxName, gripperName, palmName, tableName);
+  const char* arm1Name="R_panda_coll7";
+  const char* arm2Name="R_panda_coll6";
 
-    if(!keyframes.N){
-      LOG(0) <<"INFEASIBLE: " <<placeDirection;
-      rai::wait();
-      continue; //infeasible
-    }
+  uint L=20;
+  for(uint l=0;l<=L;l++){
+    //-- compute keyframes
+    rai::Enum<rai::ArgWord> placeDirection = random(rai::Array<rai::ArgWord>{rai::_yAxis, rai::_zAxis, rai::_yNegAxis, rai::_zNegAxis });
+//    placeDirection = rai::_yNegAxis;
+    cout <<"PLACING: " <<placeDirection <<endl;
+    arr qNow = C.getJointState();
+    arr keyframes = getPnpKeyframes(C, rai::_xAxis, placeDirection, boxName, gripperName, palmName, tableName, q0);
+
+    if(!keyframes.N) continue; //infeasible
+
+    cout <<C.getJointState() <<endl <<qNow <<endl <<keyframes <<endl;
 
     for(uint k=0;k<keyframes.d0;k++){
+      arr q = robot.state.get()->q;
+      if(k>0) CHECK_LE(maxDiff(q,keyframes[k-1]), 1e-6, "");
+      C.setJointState(q);
       arr path;
-      C.setJointState(robot.state.get()->q);
+      if(l==L) k=2;
       if(k==0){
-        path = getStartGoalPath(C, keyframes[0], gripperName, 0, {{{.5,.7}, {palmName, boxName}, .1},
-                                                                  {{.7,1.}, {palmName, boxName}, .005},
-                                                                  {{}, {wristName, tableName}, .01} });
+        C.attach(tableName, boxName);
+        path = getStartGoalPath(C, keyframes[0], gripperName, gripperName, {{{.3,.7}, {palmName, boxName}, .1},
+                                                                            {{.8,1.}, {palmName, boxName}, .005},
+                                                                            {{}, {arm1Name, tableName}, .0},
+                                                                            {{}, {arm2Name, tableName}, .0},
+                                                                           });
       }
       if(k==1){
         C.attach(gripperName, boxName);
-        path = getStartGoalPath(C, keyframes[1], 0, 0, { {{.2,.8}, {boxName, tableName}, .05},
+        path = getStartGoalPath(C, keyframes[1], 0, 0, { {{.3,.7}, {boxName, tableName}, .05},
                                                          {{}, {boxName, tableName}, .0},
-                                                         {{}, {wristName, tableName}, .01} } );
+                                                         {{}, {arm1Name, tableName}, .0},
+                                                         {{}, {arm2Name, tableName}, .0}
+                                                       });
       }
       if(k==2){
         C.attach(tableName, boxName);
-        path = getStartGoalPath(C, keyframes[2], 0, gripperName, {{{.3,.5}, {palmName, boxName}, .1},
-                                                                  {{}, {wristName, tableName}, .01}});
+        path = getStartGoalPath(C, q0, 0, gripperName, {{{.3,.5}, {palmName, boxName}, .1},
+                                                        {{}, {arm1Name, tableName}, .0}});
       }
 
       if(k==0){ gripper.open(); rai::wait(.3); }
