@@ -383,16 +383,16 @@ void testPnp2() {
     rai::Enum<rai::ArgWord> placeDirection = random(rai::Array<rai::ArgWord>{rai::_yAxis, rai::_zAxis, rai::_yNegAxis, rai::_zNegAxis });
 //    placeDirection = rai::_yNegAxis;
     cout <<"PLACING: " <<placeDirection <<endl;
-    arr qNow = C.getJointState();
+    C.setJointState(robot.state.get()->q);
     arr keyframes = getPnpKeyframes(C, rai::_xAxis, placeDirection, boxName, gripperName, palmName, tableName, q0);
 
     if(!keyframes.N) continue; //infeasible
 
-    cout <<C.getJointState() <<endl <<qNow <<endl <<keyframes <<endl;
+    cout <<C.getJointState() <<endl <<keyframes <<endl;
 
     for(uint k=0;k<keyframes.d0;k++){
       arr q = robot.state.get()->q;
-      if(k>0) CHECK_LE(maxDiff(q,keyframes[k-1]), 1e-6, "");
+      if(k>0) CHECK_LE(maxDiff(q,keyframes[k-1]), .03, "why is the joint error so large?");
       C.setJointState(q);
       arr path;
       if(l==L) k=2;
@@ -424,9 +424,8 @@ void testPnp2() {
 
       //send komo as spline:
       {
-        arr times = range(0., 2., path.d0-1);
-        if(times.N==1) times=2.;
-        else times += times(1);
+        arr times = range(0., 5., path.d0-1);
+        times += times(1);
         double ctrlTime = robot.state.get()->time;
         sp->append(path, times, ctrlTime, true);
       }

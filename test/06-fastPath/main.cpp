@@ -31,7 +31,7 @@ void testFastPath() {
   C.addFrame("target4")
       ->setShape(rai::ST_marker, {.1})
       .setPosition(center + arr{-.3,.0,-.2});
-  C.watch(true);
+  C.watch(false);
   arr q0 = C.getJointState();
 
   //compute a path
@@ -62,7 +62,7 @@ void testFastPath() {
 
   //first move slowly to home!
   double ctrlTime = robot.state.get()->time;
-  sp->moveTo(q0, 2., ctrlTime, true);
+  sp->moveTo(q0, 3., ctrlTime, true);
 
   rai::wait(.1); //WHY DO WE NEED THIS??? UGLY!
 
