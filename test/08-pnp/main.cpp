@@ -372,7 +372,7 @@ void testPnp2() {
   cout <<"JOINT LIMITS:" <<C.getLimits() <<endl;
 
   C.ensure_indexedJoints();
-#if 1 //SIM
+#if 0 //SIM
   ControlEmulator robot(C, {});
   GripperEmulator gripper;
 #else //REAL
@@ -439,12 +439,12 @@ void testPnp2() {
       }
 
       if(k==0){ gripper.open(); rai::wait(.3); }
-      else if(k==1){ gripper.close(); rai::wait(.5); }
+      else if(k==1){ gripper.close(35., .05, .2); rai::wait(.5); }
       else if(k==2){ gripper.open(); rai::wait(.3); }
 
       //send komo as spline:
       {
-        arr times = range(0., 1., path.d0-1);
+        arr times = range(0., 2.5, path.d0-1);
         times += times(1);
         double ctrlTime = robot.state.get()->time;
         sp->append(path, times, ctrlTime, true);
