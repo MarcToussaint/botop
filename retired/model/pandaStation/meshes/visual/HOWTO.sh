@@ -1,0 +1,10 @@
+meshlabserver -i finger.dae -o finger.ply -s script.mlx  -om
+meshlabserver -i hand.dae -o hand.ply -s script.mlx  -om
+meshlabserver -i link0.dae -o link0.ply -s script.mlx  -om
+meshlabserver -i link1.dae -o link1.ply -s script.mlx  -om
+meshlabserver -i link2.dae -o link2.ply -s script.mlx  -om
+meshlabserver -i link3.dae -o link3.ply -s script.mlx  -om
+meshlabserver -i link4.dae -o link4.ply -s script.mlx  -om
+meshlabserver -i link5.dae -o link5.ply -s script.mlx  -om
+meshlabserver -i link6.dae -o link6.ply -s script.mlx  -om
+meshlabserver -i link7.dae -o link7.ply -s script.mlx  -om
