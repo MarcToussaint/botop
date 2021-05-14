@@ -27,8 +27,8 @@ make libfranka.so -j2 # $(command nproc)
 ```
 mkdir -p $HOME/git
 cd $HOME/git
-git clone --recursive git@git.tu-berlin.de:lis/robotlab.git
-cd robotlab
+git clone --recursive git@git.tu-berlin.de:lis/botop.git
+cd botop
 
 make -j1 installUbuntuAll  # calls sudo apt-get install; you can always interrupt
 # If this fails, please try `make -j1 printUbuntuAll` to print all packages and install manually
@@ -41,10 +41,10 @@ make -j $(command nproc)
 
 * Add binaries to your $PATH; or add symbolic links to your user bin 
 ```
-export PATH="$HOME/git/robotlab/build:$PATH"
+export PATH="$HOME/git/botop/build:$PATH"
 OR SOMETHING LIKE:
-ln -s $HOME/robotlab/build/bot $HOME/bin/
-ln -s $HOME/robotlab/build/kinEdit $HOME/bin/
+ln -s $HOME/botop/build/bot $HOME/bin/
+ln -s $HOME/botop/build/kinEdit $HOME/bin/
 ```
 
 * Test the things in test/
@@ -66,10 +66,10 @@ test/01-.../x.exe
 ## Setting up your own coding environment/directory
 
 * Use a separate repository for your own code
-* Place the repository in $HOME/git (parallel to ~/git/robotlab)
+* Place the repository in $HOME/git (parallel to ~/git/botop)
 * In a working directory with your `main.cpp` place the following `Makefile` - and compile
 ```
-BASE = ../../robotlab/rai
+BASE = ../../botop/rai
 
 include $(BASE)/build/generic.mk
 ```
