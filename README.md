@@ -1,28 +1,89 @@
-# LGP-execution
+# LIS robot operation repo
 
-## Quick Start
+## Installation
 
-I usually set `export MAKEFLAGS=-j4 -k`
+This assumes a standard Ubuntu 18.04 or 20.04 machine.
 
+* The following assumes $HOME/git as your git path, and $HOME/opt
+to install 3rd-party libs -- please stick to this (no system-wide installs)
+
+* Install [libfranka](https://github.com/frankaemika/libfranka)
 ```
-git clone git@github.com:MarcToussaint/LGP-execution.git
-cd LGP-execution
+sudo apt update
+sudo apt install --yes build-essential cmake git libpoco-dev libeigen3-dev
 
-git submodule init
-git submodule update
+mkdir -p $HOME/git
+cd $HOME/git
+git clone --recursive https://github.com/frankaemika/libfranka
+cd libfranka
 
-#ensure you got the Ubuntu packages installed, e.g.:
-make -C rai -j1 printUbuntuAll
-
-make -C src/Sim
-roscore &
-cd 01-simulator; make && ./x.exe &
-cd ../02-rndPolicy; make && ./x.exe
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make libfranka.so -j2 # $(command nproc)
 ```
 
-To test rai only:
+* Clone and compile this repo:
 ```
-cd rai; make runTests
+mkdir -p $HOME/git
+cd $HOME/git
+git clone --recursive git@git.tu-berlin.de:lis/robotlab.git
+cd robotlab
+
+make -j1 installUbuntuAll  # calls sudo apt-get install; you can always interrupt
+# If this fails, please try `make -j1 printUbuntuAll` to print all packages and install manually
+
+mkdir build
+cd build
+cmake ..
+make -j $(command nproc)
 ```
+
+* Add binaries to your $PATH; or add symbolic links to your user bin 
+```
+export PATH="$HOME/git/robotlab/build:$PATH"
+OR SOMETHING LIKE:
+ln -s $HOME/robotlab/build/bot $HOME/bin/
+ln -s $HOME/robotlab/build/kinEdit $HOME/bin/
+```
+
+* Test the things in test/
+```
+make tests
+test/01-.../x.exe
+```
+
+
+## Panda robot operation
+
+* Turn on the power switch at the control box
+* Open the panda web interface at http://....
+* Unlock the joints
+* **ALWAYS 2 PEOPLE ARE REQUIRED! ONE TO HOLD THE EMERGENCY STOP**
+* Perform a series of tests
+  * `bot -openclose -home -loop -speed 2`
+
+## Setting up your own coding environment/directory
+
+* Use a separate repository for your own code
+* Place the repository in $HOME/git (parallel to ~/git/robotlab)
+* In a working directory with your `main.cpp` place the following `Makefile` - and compile
+```
+BASE = ../../robotlab/rai
+
+include $(BASE)/build/generic.mk
+```
+* If you have more cpp-files, you can add `OBJS = main.o code.o etc.o`
+* Otherwise, use your own build system and just link with librai.so
+
+
+## cmd line tool `bot`
+
+  * `bot -openclose`
+  * `bot -home`
+  * `bot -loop -speed 2`
+  * `bot -float`
+  * `bot -hold`
+
 
 

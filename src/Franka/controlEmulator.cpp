@@ -3,14 +3,6 @@
 #include <Kin/frame.h>
 
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
-void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio) {
-  CHECK(decayTime>0. && dampingRatio>=0., "this does not define proper gains!");
-  double lambda = decayTime*dampingRatio/(-log(.1));
-//  double lambda = decayTime/(-log(.1)); //assume the damping ratio always 1. -- just so that setting ratio to zero still gives a reasonable value
-  double freq = 1./lambda;
-  Kp = freq*freq;
-  Kd = 2.*dampingRatio*freq;
-}
 
 ControlEmulator::ControlEmulator(const rai::Configuration& C,
                                  const StringA& joints,
