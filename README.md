@@ -16,11 +16,12 @@ mkdir -p $HOME/git
 cd $HOME/git
 git clone --recursive https://github.com/frankaemika/libfranka
 cd libfranka
+git checkout 0.7.1
 
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-make libfranka.so -j2 # $(command nproc)
+make franka -j $(command nproc)
 ```
 
 * Clone and compile this repo:
@@ -28,6 +29,7 @@ make libfranka.so -j2 # $(command nproc)
 mkdir -p $HOME/git
 cd $HOME/git
 git clone --recursive git@git.tu-berlin.de:lis/botop.git
+#git clone --recursive git@github.com:MarcToussaint/botop.git
 cd botop
 
 make -j1 installUbuntuAll  # calls sudo apt-get install; you can always interrupt
@@ -56,12 +58,17 @@ test/01-.../x.exe
 
 ## Panda robot operation
 
+* The user needs to be part of the `realtime` unix group:
+```
+sudo usermod -a -G realtime <username>
+```
 * Turn on the power switch at the control box
-* Open the panda web interface at http://....
+* Open the panda web interface at `https://172.16.0.2/desk/`. You'll need to log in with user `mti` and passwd `mti-engage`
 * Unlock the joints
 * **ALWAYS 2 PEOPLE ARE REQUIRED! ONE TO HOLD THE EMERGENCY STOP**
 * Perform a series of tests
   * `bot -openclose -home -loop -speed 2`
+
 
 ## Setting up your own coding environment/directory
 

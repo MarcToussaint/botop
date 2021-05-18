@@ -1,6 +1,6 @@
 BASE = rai
 
-DEPEND = KOMO Core Algo Geo Kin Gui Optim Exec Sim
+DEPEND = KOMO Core Algo Geo Kin Gui Optim Perception
 
 test_paths = $(shell find test -mindepth 2 -maxdepth 2 -name 'Makefile' -printf "%h ")
 
