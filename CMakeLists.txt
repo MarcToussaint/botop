@@ -102,4 +102,7 @@ target_link_libraries(rai
 add_executable(kinEdit rai/bin/src_kinEdit/main.cpp)
 target_link_libraries(kinEdit rai)
 
+add_executable(bot bin/bot/main.cpp bin/bot/bot.cpp)
+target_link_libraries(bot rai)
+
 

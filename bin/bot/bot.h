@@ -28,47 +28,22 @@ struct BotOp{
   std::shared_ptr<rai::ReferenceFeed> ref;
   arr qHome;
 
-  BotOp(rai::Configuration& C, bool sim);
+  BotOp(rai::Configuration& C, bool useRealRobot);
   ~BotOp();
 
   template<class T> BotOp& setReference();
 
+  double get_t();
+  const arr& get_qHome(){ return qHome; }
+  arr get_q();
+  arr get_qDot();
+  double getTimeToEnd();
+
   bool step(rai::Configuration& C, double waitTime=.1);
 
-  void move(const arr& path, double duration){
-    arr times;
-    if(path.d0>1){
-      times = range(0., duration, path.d0-1);
-      times += times(1);
-    }else{
-      times = {duration};
-    }
-    auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
-    if(!sp){
-      setReference<rai::SplineCtrlReference>();
-      sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
-      CHECK(sp, "this is not a spline reference!")
-    }
-    double ctrlTime = robot->state.get()->time;
-    sp->append(path, times, ctrlTime, true);
-  }
+  void move(const arr& path, double duration);
 
-  void hold(bool floating=true){
-    auto ref = std::dynamic_pointer_cast<rai::ZeroReference>(ref);
-    if(!ref){
-      setReference<ZeroReference>();
-      ref = std::dynamic_pointer_cast<rai::ZeroReference>(ref);
-      CHECK(ref, "this is not a spline reference!")
-    }
-    if(floating){
-      ref->setVelocityReference({});
-      ref->setPositionReference({});
-      ref->
-    }
-
-  }
-
-
+  void hold(bool floating=true, bool damping=true);
 };
 
 //===========================================================================

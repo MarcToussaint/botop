@@ -12,37 +12,102 @@ void ZeroReference::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, cons
   }
   {
     arr vel = velocity_ref.get()();
-    if(vel.N) qDot_ref = vel;
-    else qDot_ref.resize(qDot_real.N).setZero();
+    if(vel.N==1 && vel.scalar()==0.) qDot_ref.resize(qDot_real.N).setZero();
+    else if(vel.N) qDot_ref = vel;
+    else qDot_ref = qDot_real;
   }
   qDDot_ref.resize(q_ref.N).setZero();
 }
 
-BotOp::BotOp(rai::Configuration& C, bool sim){
+BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   C.ensure_indexedJoints();
   qHome = C.getJointState();
-  if(!sim){
+  if(useRealRobot){
     robot = make_unique<FrankaThreadNew>(0, franka_getJointIndices(C,'R'));
     gripper = make_unique<FrankaGripper>(0);
   }else{
     robot = make_unique<ControlEmulator>(C);
     gripper = make_unique<GripperEmulator>();
   }
-  C.setJointState(robot->state.get()->q);
+  C.setJointState(get_q());
 }
 
 BotOp::~BotOp(){
   robot.release();
 }
 
+double BotOp::get_t(){
+  return robot->state.get()->time;
+}
+
+arr BotOp::get_q() {
+  return robot->state.get()->q;
+}
+
+arr BotOp::get_qDot() {
+  return robot->state.get()->qDot;
+}
+
+double BotOp::getTimeToEnd(){
+  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  if(!sp){
+    LOG(-1) <<"can't get timeToEnd for non-spline mode";
+    return 0.;
+  }
+  double ctrlTime = get_t();
+  return sp->getEndTime() - ctrlTime;
+}
+
 bool BotOp::step(rai::Configuration& C, double waitTime){
   C.setJointState(robot->state.get()->q);
   C.gl()->raiseWindow();
-  int key = C.watch(false,STRING("time: "<<robot->state.get()->time <<"\n[q or ESC to ABORT]"));
+  double ctrlTime = robot->state.get()->time;
+  int key = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
   if(key==13) return false;
   if(key=='q' || key==27) return false;
+  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  if(sp && ctrlTime>sp->getEndTime()) return false;
   if(waitTime) rai::wait(waitTime);
   return true;
+}
+
+void BotOp::move(const arr& path, double duration){
+  arr times;
+  if(path.d0>1){
+    times = range(0., duration, path.d0-1);
+    times += times(1);
+  }else{
+    times = {duration};
+  }
+  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  if(!sp){
+    setReference<rai::SplineCtrlReference>();
+    sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+    CHECK(sp, "this is not a spline reference!")
+  }
+  double ctrlTime = robot->state.get()->time;
+  sp->append(path, times, ctrlTime, true);
+}
+
+void BotOp::hold(bool floating, bool damping){
+  auto zref = std::dynamic_pointer_cast<ZeroReference>(ref);
+  if(!zref){
+    setReference<ZeroReference>();
+    zref = std::dynamic_pointer_cast<ZeroReference>(ref);
+    CHECK(zref, "this is not a spline reference!")
+  }
+  if(floating){
+    zref->setPositionReference({});
+    if(damping){
+      zref->setVelocityReference({0.});
+    }else{
+      zref->setVelocityReference({});
+    }
+  }else{
+    arr q = get_q();
+    zref->setPositionReference(q);
+    zref->setVelocityReference({0.});
+  }
 }
 
 arr getLoopPath(rai::Configuration& C){

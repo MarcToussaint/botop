@@ -219,8 +219,8 @@ FrankaThreadNew::FrankaThreadNew(uint whichRobot, const uintA& _qIndices)
   qIndices_max = qIndices.max();
 
   //-- basic Kp Kd settings for reference control mode
-  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", ARR(18., 18., 18., 13., 8., 8., 6.));
-  Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", ARR(.8, .8, .7, .7, .1, .1, .1));
+  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", ARR(20., 20., 20., 20., 10., 15., 10.)); //18., 18., 18., 13., 8., 8., 6.));
+  Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", ARR(.6, .6, .4, .4, .1, .5, .1)); //.8, .8, .7, .7, .1, .1, .1));
   LOG(0) << "FRANKA: Kp_freq=" << Kp_freq << " Kd_ratio=" << Kd_ratio;
 
   //-- choose robot/ipAddress
@@ -357,7 +357,7 @@ void FrankaThreadNew::step(){
         double err = length(q_ref - q_real);
         if(err>.05){ //if(err>.02){ //stall!
             ctrlTime -= .001; //no progress in reference time!
-            cout <<"STALLING" <<endl;
+            cout <<"STALLING - step:" <<steps <<endl;
         }
     }
 
@@ -368,7 +368,9 @@ void FrankaThreadNew::step(){
       arr qDDot_des = zeros(7);
       //check for correct ctrl otherwise do something...
       if(q_ref.N!=7){
-        cerr << "FRANKA: inconsistent ctrl q_ref message" << endl;
+        if(!(steps%10)){
+          cerr <<"FRANKA: inconsistent ctrl q_ref message - step: " <<steps <<endl;
+        }
         return std::array<double, 7>({0., 0., 0., 0., 0., 0., 0.});
       }
       if(P_compliance.N){

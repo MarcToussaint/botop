@@ -11,10 +11,6 @@
 
 //===========================================================================
 
-void testNew() {
-}
-
-
 #include <Franka/controlEmulator.h>
 #include <Franka/franka.h>
 #include <Franka/gripper.h>
@@ -489,60 +485,61 @@ void testPnp2() {
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
-//  rnd.clockSeed();
-
   //-- setup a configuration
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
 
-  BotOp bot(C, true);
+  BotOp bot(C, !rai::checkParameter<bool>("sim"));
 
-  //float
-  if(false){
-    bot.setReference<ZeroReference>();
+  if(rai::checkParameter<bool>("float")){
+    bot.hold(true, false);
     while(bot.step(C));
   }
 
-  //loop
-  {
-    bot.setReference<rai::SplineCtrlReference>();
-    C.setJointState(bot.qHome);
-    arr path = getLoopPath(C);
-
-    bot.move(path, 3.);
-
+  if(rai::checkParameter<bool>("damp")){
+    bot.hold(true, true);
     while(bot.step(C));
   }
 
-  //up
-  {
+  if(rai::checkParameter<bool>("hold")){
+    bot.hold(false, true);
+    while(bot.step(C));
+  }
+
+  if(rai::checkParameter<bool>("home")){
+    arr q=bot.qHome;
+    bot.move(q.reshape(1,-1), 2.);
+    while(bot.step(C));
+  }
+
+  if(rai::checkParameter<bool>("up")){
     arr q=bot.qHome;
     q(1) -= .5;
     bot.move(q.reshape(1,-1), 2.);
-
     while(bot.step(C));
   }
 
-  //home
-  {
+  if(rai::checkParameter<bool>("loop")){
     arr q=bot.qHome;
     bot.move(q.reshape(1,-1), 2.);
+    while(bot.step(C));
+
+    C.setJointState(bot.qHome);
+    arr path = getLoopPath(C);
+    bot.move(path, 5.);
 
     while(bot.step(C));
   }
 
-  //open
-  {
-    bot.gripper->open();
-    while(bot.step(C));
-  }
-
-  //close
-  {
+  if(rai::checkParameter<bool>("close")){
     bot.gripper->close();
-    while(bot.step(C));
+    rai::wait(.5);
   }
 
+  if(rai::checkParameter<bool>("open")){
+    bot.gripper->open();
+    rai::wait(.5);
+  }
 
 
   cout <<"bye bye" <<endl;
