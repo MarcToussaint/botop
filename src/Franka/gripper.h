@@ -2,7 +2,9 @@
 
 #include <Core/util.h>
 #include <Core/thread.h>
-\
+
+#include "controlEmulator.h"
+
 namespace franka{
   class Gripper;
 }
@@ -16,7 +18,7 @@ struct GripperCmdMsg {
     double speed=.1;
 };
 
-struct FrankaGripper : Thread{
+struct FrankaGripper : rai::GripperAbstraction, Thread{
   Var<GripperCmdMsg> cmd;
   double maxWidth;
 

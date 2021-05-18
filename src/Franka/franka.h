@@ -6,7 +6,7 @@
 #include <Control/CtrlMsgs.h>
 
 //TODO: remove this old one:
-struct FrankaThread : Thread{
+struct FrankaThread :  Thread{
   Var<CtrlMsg> ctrl;
   Var<CtrlMsg> ctrl_state;
   bool stop=false, firstTime=true;
@@ -24,13 +24,7 @@ private:
 };
 
 
-struct FrankaThreadNew : Thread{
-  // input/output messages
-  Var<rai::CtrlCmdMsg> cmd;
-  Var<rai::CtrlStateMsg> state;
-
-  bool writeData=false;
-
+struct FrankaThreadNew : rai::RobotAbstraction, Thread{
   FrankaThreadNew(uint whichRobot=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6});
   ~FrankaThreadNew();
 
