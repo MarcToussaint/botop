@@ -115,7 +115,7 @@ void RealSenseThread::open(){
     rs2::video_stream_profile vsp = sp.as<rs2::video_stream_profile>();
     if(vsp){
       rs2_intrinsics intrinsics = vsp.get_intrinsics();
-      LOG(1) <<"  is video: w=" <<intrinsics.width <<" h=" <<intrinsics.height <<" px=" <<intrinsics.ppx << " py=" <<intrinsics.ppy <<" fx=" <<intrinsics.fx <<" fy=" <<intrinsics.fy <<" distorsion=" <<intrinsics.model <<floatA(intrinsics.coeffs, 5);
+      LOG(1) <<"  is video: w=" <<intrinsics.width <<" h=" <<intrinsics.height <<" px=" <<intrinsics.ppx << " py=" <<intrinsics.ppy <<" fx=" <<intrinsics.fx <<" fy=" <<intrinsics.fy <<" distorsion=" <<intrinsics.model <<floatA(intrinsics.coeffs, 5, true);
       if(sp.stream_type()==RS2_STREAM_DEPTH) depth_fxypxy = ARR(intrinsics.fx, intrinsics.fy, intrinsics.ppx, intrinsics.ppy);
       if(sp.stream_type()==RS2_STREAM_COLOR) color_fxypxy = ARR(intrinsics.fx, intrinsics.fy, intrinsics.ppx, intrinsics.ppy);
     }

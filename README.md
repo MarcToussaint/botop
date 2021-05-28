@@ -13,6 +13,8 @@ sudo apt update
 sudo apt install --yes build-essential cmake git libpoco-dev libeigen3-dev
 
 mkdir -p $HOME/git
+mkdir -p $HOME/opt/lib
+mkdir -p $HOME/opt/include
 cd $HOME/git
 git clone --recursive https://github.com/frankaemika/libfranka
 cd libfranka
@@ -20,8 +22,28 @@ git checkout 0.7.1
 
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make franka -j $(command nproc)
+cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt \-DCMAKE_BUILD_TYPE=Release ..
+nice -19 make franka -j $(command nproc)
+#make install
+cp libfranka* $HOME/opt/lib
+cp -r ../include/franka $HOME/opt/include
+```
+
+* Install [librealsense](https://github.com/IntelRealSense/librealsense)
+```
+sudo apt install --yes libusb-1.0-0-dev libglfw3-dev libgtk-3-dev
+
+mkdir -p $HOME/git
+mkdir -p $HOME/opt
+cd $HOME/git
+git clone --recursive https://github.com/IntelRealSense/librealsense.git
+cd librealsense
+
+mkdir build
+cd build
+cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DCMAKE_BUILD_TYPE=Release ..
+nice -19 make -j $(command nproc)
+make install
 ```
 
 * Clone and compile this repo:
@@ -38,7 +60,7 @@ make -j1 installUbuntuAll  # calls sudo apt-get install; you can always interrup
 mkdir build
 cd build
 cmake ..
-make -j $(command nproc)
+nice -19 make -j $(command nproc)
 ```
 
 * Add binaries to your $PATH; or add symbolic links to your user bin 
@@ -86,11 +108,11 @@ include $(BASE)/build/generic.mk
 
 ## cmd line tool `bot`
 
-  * `bot -openclose`
-  * `bot -home`
-  * `bot -loop -speed 2`
-  * `bot -float`
-  * `bot -hold`
+* `bot -openclose`
+* `bot -home`
+* `bot -loop -speed 2`
+* `bot -float`
+* `bot -hold`
 
 
 

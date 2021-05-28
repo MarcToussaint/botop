@@ -2,7 +2,7 @@
 #include <Gui/opengl.h>
 #include <RealSense/RealSenseThread.h>
 #include <Gui/viewer.h>
-#include <Perception/depth2PointCloud.h>
+#include <Geo/depth2PointCloud.h>
 #include <Core/thread.h>
 
 int main(int argc, char * argv[]){
@@ -13,8 +13,8 @@ int main(int argc, char * argv[]){
   {
     RS.depth.waitForNextRevision();
     RS.color.waitForNextRevision();
-//    Depth2PointCloud cvt2pcl(RS.depth, RS.fxypxy(0), RS.fxypxy(1), RS.fxypxy(2), RS.fxypxy(3));
-//    PointCloudViewer pcview(cvt2pcl.points, RS.color);
+    Depth2PointCloud cvt2pcl(RS.depth, RS.fxypxy(0), RS.fxypxy(1), RS.fxypxy(2), RS.fxypxy(3));
+    PointCloudViewer pcview(cvt2pcl.points, RS.color);
 
     {
       auto depthGet = RS.depth.get();

@@ -18,6 +18,7 @@ add_definitions(
   -DRAI_SWIFT -DRAI_GJK -DRAI_FCL -DRAI_CCD
   -DRAI_OPENCV
   -DRAI_FRANKA
+  -DRAI_REALSENSE
   #-DRAI_PYBIND -DRAI_BIND_KOMO
   #-DRAI_PHYSX -D_DEBUG -DPX_DISABLE_FLUIDS -DCORELIB -DPX32 -DLINUX #physx
   #-DRAI_BULLET #bullet
@@ -27,14 +28,14 @@ include_directories(
   src/
   rai/rai
   /usr/include/eigen3
-  $ENV{HOME}/git/libfranka/include
+  $ENV{HOME}/opt/include
   #${BULLET_INCLUDE_DIRS}
   #$ENV{HOME}/opt/physx3.4/include $ENV{HOME}/opt/physx3.4/include/physx
   #$ENV{HOME}/opt/include/bullet/
   )
 
 link_directories(
-  $ENV{HOME}/git/libfranka/build
+  $ENV{HOME}/opt/lib
   #$ENV{HOME}/opt/physx3.4/lib
   #/opt/ros/kinetic/lib
   )
@@ -79,12 +80,14 @@ add_library(rai SHARED
   #${SRC_Operate}
   #  ${SRC_ry}
   ${SRC_Franka}
+  ${SRC_RealSense}
   )
 
 target_link_libraries(rai
   jsoncpp lapack blas pthread rt X11
   assimp fcl ann glfw GLEW glut GLU GL png qhull
   franka
+  realsense2
   ${OpenCV_LIBS}
   #${BULLET_LIBRARIES}
   #PhysX3Extensions PhysX3_x64 PhysX3Cooking_x64 PhysX3Common_x64 PxFoundation_x64
