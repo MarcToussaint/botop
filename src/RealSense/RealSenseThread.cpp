@@ -31,10 +31,12 @@ RealSenseThread::~RealSenseThread(){
 }
 
 void RealSenseThread::open(){
-  bool longCable = rai::getParameter<bool>("RealSense/longCable", true);
+  bool longCable = rai::getParameter<bool>("RealSense/longCable", false);
   bool lowResolution = rai::getParameter<bool>("RealSense/lowResolution", true);
-  bool autoExposure = rai::getParameter<bool>("RealSense/autoExposure", false);
   bool alignToDepth = rai::getParameter<bool>("RealSense/alignToDepth", true);
+  bool autoExposure = rai::getParameter<bool>("RealSense/autoExposure", true);
+  double exposure = rai::getParameter<double>("RealSense/exposure", 500);
+  double white = rai::getParameter<double>("RealSense/white", 4000);
 
   s = new sRealSenseThread;
 
@@ -68,12 +70,12 @@ void RealSenseThread::open(){
       if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"RGB Camera")){
         if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
           sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
-          sensor.set_option(RS2_OPTION_EXPOSURE, 1000.);
+          sensor.set_option(RS2_OPTION_EXPOSURE, exposure);
           LOG(1) <<"  I disabled auto exposure";
         }
         if(sensor.supports(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE)){
           sensor.set_option(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, 0);
-          sensor.set_option(RS2_OPTION_WHITE_BALANCE, 4500.);
+          sensor.set_option(RS2_OPTION_WHITE_BALANCE, white);
           LOG(1) <<"  I disabled auto white balance";
         }
       }
@@ -81,7 +83,7 @@ void RealSenseThread::open(){
         if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")){
           if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
             sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
-            sensor.set_option(RS2_OPTION_EXPOSURE, 6000.);
+            sensor.set_option(RS2_OPTION_EXPOSURE, 5000.);
             LOG(1) <<"  I disabled auto exposure";
           }
         }
@@ -105,7 +107,6 @@ void RealSenseThread::open(){
           }
         }
       }
-
     }
   }
 

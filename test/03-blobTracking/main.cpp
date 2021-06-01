@@ -11,8 +11,6 @@
 #include <Gui/viewer.h>
 #include <Core/thread.h>
 
-
-
 arr getHsvBlobPosition(cv::Mat& rgb, cv::Mat& depth, const arr& hsvFilter, const arr& Fxypxy){
   //blur
   cv::blur(rgb, rgb, cv::Size(3,3));
@@ -20,7 +18,7 @@ arr getHsvBlobPosition(cv::Mat& rgb, cv::Mat& depth, const arr& hsvFilter, const
   //convert to BGR -> RGB -> HSV
   cv::Mat hsv, mask;
   cv::cvtColor(rgb, rgb, cv::COLOR_RGB2BGR);
-  cv::cvtColor(rgb, hsv, cv::COLOR_RGB2HSV);
+  cv::cvtColor(rgb, hsv, cv::COLOR_BGR2HSV);
 
   //find red areas
   cv::inRange(hsv,
