@@ -131,7 +131,10 @@ void tracking2(){
 
     int key = cv::waitKey(1);
     if((key&0xff)=='q') break;
-
+    if((key&0xff)=='r'){
+      rai::initParameters(0,0,true);
+      hsvFilter = rai::getParameter<arr>("hsvFilter").reshape(2,3);
+    }
   }
 
   LOG(0) <<"bye bye";
