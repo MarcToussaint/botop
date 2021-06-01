@@ -292,5 +292,5 @@ void FrankaThreadNew::step(){
   };
 
   // start real-time control loop
-  robot.control(torque_control_callback, false, 2000.);
+  robot.control(torque_control_callback, true, 2000.);
 }
