@@ -19,6 +19,9 @@ plot 'z.panda.dat' us 0:($2-$9) t 'err1', \
 #  '' us 0:($8) t 'real7', '' us 0:($15) t 'ref7', \
 
 
-#plot 'z.panda.dat' us 0:($6) t 'pos5',   '' us 0:($20) t 'vel5', \
+plot 'z.panda.dat' us 1:($26) t 'u_cmd', \
+'' us 1:($33) t 'u_measured', \
+'' us 1:($40) t 'gravity', \
+'' us 1:($40+$26) t 'gravity+u_cmd', \
 
 

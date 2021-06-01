@@ -50,8 +50,8 @@ make install
 ```
 mkdir -p $HOME/git
 cd $HOME/git
-git clone --recursive git@git.tu-berlin.de:lis/botop.git
-#git clone --recursive git@github.com:MarcToussaint/botop.git
+#git clone --recursive git@git.tu-berlin.de:lis/botop.git
+git clone --recursive git@github.com:MarcToussaint/botop.git
 cd botop
 
 make -j1 installUbuntuAll  # calls sudo apt-get install; you can always interrupt
@@ -67,8 +67,8 @@ nice -19 make -j $(command nproc)
 ```
 export PATH="$HOME/git/botop/build:$PATH"
 OR SOMETHING LIKE:
-ln -s $HOME/botop/build/bot $HOME/bin/
-ln -s $HOME/botop/build/kinEdit $HOME/bin/
+ln -s $HOME/git/botop/build/bot $HOME/bin/
+ln -s $HOME/git/botop/build/kinEdit $HOME/bin/
 ```
 
 * Test the things in test/
