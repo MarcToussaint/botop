@@ -4,10 +4,7 @@
 
 #include <Gui/viewer.h>
 
-
-
 #include "bot.h"
-
 
 //===========================================================================
 
@@ -214,19 +211,30 @@ void testPnp() {
       ->setJoint(rai::JT_rigid)
       .setShape(rai::ST_ssBox, {.06,.15,.09,.01})
       .setRelativePosition(arr{-.4,-.4,.075});
-  arr q0 = C.getJointState();
+  arr qHome = C.getJointState();
 
   //-- start a robot thread
   C.ensure_indexedJoints();
-//  ControlEmulator robot(C, {});
-//  GripperEmulator gripper;
+#if 1 //SIM
+  ControlEmulator robot(C, {});
+  GripperEmulator gripper;
+#else //REAL
   FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   FrankaGripper gripper(0);
-
+#endif
   robot.writeData = true;
+
   C.setJointState(robot.state.get()->q);
   C.watch(false);
 
+  //-- define the reference feed to be a spline
+  auto sp = make_shared<rai::SplineCtrlReference>();
+  robot.cmd.set()->ref = sp;
+
+  const char* gripperName="R_gripperCenter";
+  const char* palmName="R_panda_coll_hand";
+  const char* boxName="target";
+  const char* tableName="table";
 
   //-- compute a path
   KOMO komo;
@@ -235,25 +243,21 @@ void testPnp() {
   komo.add_qControlObjective({}, 2, 1e-1);
 //  komo.add_qControlObjective({}, 1, 1e-1);
 
-  const char* gripperName="R_gripperCenter";
-  const char* palmName="R_gripper";
-  const char* boxName="target";
-  const char* tableName="table";
   arr boxSize={.06,.15,.09};
 
   //-- pick
-  komo.addModeSwitch({1.,2.}, SY_stable, {gripperName, boxName}, true);
+  komo.addModeSwitch({1.,2.}, rai::SY_stable, {gripperName, boxName}, true);
   addBoxPickObjectives(komo, 1., rai::_xAxis, boxName, boxSize, gripperName, palmName, tableName);
 
   //-- carry above table
   if(komo.k_order>1) komo.addObjective({1.2,1.8}, FS_distance, {boxName, tableName}, OT_ineq, arr{1e1}, {-.05});
 
   //-- place
-  komo.addModeSwitch({2.,-1.}, SY_stable, {"table", boxName}, false);
-  addBoxPlaceObjectives(komo, 2., rai::_yAxis, boxName, boxSize, gripperName, palmName);
+  komo.addModeSwitch({2.,-1.}, rai::SY_stable, {"table", boxName}, false);
+  addBoxPlaceObjectives(komo, 2., rai::_zAxis, boxName, boxSize, gripperName, palmName);
 
   //-- home
-  komo.addObjective({3.}, FS_qItself, {}, OT_eq, {1e1}, q0);
+  komo.addObjective({3.}, FS_qItself, {}, OT_eq, {1e1}, qHome);
   if(komo.k_order>1) komo.addObjective({3.}, FS_qItself, {}, OT_eq, {1e1}, {}, 1);
 
 
@@ -261,10 +265,6 @@ void testPnp() {
   komo.getReport(true);
   komo.view(true);
   while(komo.view_play(true, .5));
-
-  //-- define the reference feed to be a spline
-  auto sp = make_shared<rai::SplineCtrlReference>();
-  robot.cmd.set()->ref = sp;
 
 
   //get KOMO parts
@@ -295,7 +295,7 @@ void testPnp() {
       int key = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
       //if(key==13) break;
       if(key=='q' || key==27) return;
-      if(ctrlTime+.5>sp->getEndTime()) break;
+      if(ctrlTime>sp->getEndTime()) break;
       C.setJointState(robot.state.get()->q);
       rai::wait(.1);
     }
@@ -323,11 +323,11 @@ arr getPnpKeyframes(const rai::Configuration& C,
   arr boxSize={.06,.15,.09};
 
   //-- pick
-  komo.addModeSwitch({1.,2.}, SY_stable, {gripperName, boxName}, true);
+  komo.addModeSwitch({1.,2.}, rai::SY_stable, {gripperName, boxName}, true);
   addBoxPickObjectives(komo, 1., pickDirection, boxName, boxSize, gripperName, palmName, tableName);
 
   //-- place
-  komo.addModeSwitch({2.,-1.}, SY_stable, {"table", boxName}, false);
+  komo.addModeSwitch({2.,-1.}, rai::SY_stable, {"table", boxName}, false);
   addBoxPlaceObjectives(komo, 2., placeDirection, boxName, boxSize, gripperName, palmName);
 
   komo.addObjective({}, FS_distance, {"R_panda_coll6", "table"}, OT_ineq, {1e2}, {});
@@ -350,8 +350,9 @@ arr getPnpKeyframes(const rai::Configuration& C,
     komo.initWithConstant(qHome);
     komo.optimize();
     if(komo.getConstraintViolations()>.1){
+      cout <<komo.getReport(true);
       LOG(-1) <<"INFEASIBLE";
-      komo.view(false);
+      komo.view(true);
 //      komo.reset();
 //      komo.initWithConstant(q0);
 //      komo.animateOptimization=4;
