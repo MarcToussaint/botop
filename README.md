@@ -18,7 +18,7 @@ mkdir -p $HOME/opt/include
 cd $HOME/git
 git clone --recursive https://github.com/frankaemika/libfranka
 cd libfranka
-git checkout 0.7.1
+git checkout 0.7.1 --recurse-submodules
 
 mkdir build
 cd build
