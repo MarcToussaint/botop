@@ -269,18 +269,20 @@ void FrankaThreadNew::step(){
     }
 
     //-- data log?
-    if(writeData && !(steps%1)){
+    if(writeData>0 && !(steps%1)){
       if(!dataFile.is_open()) dataFile.open("z.panda.dat");
       dataFile <<ctrlTime <<' '; //single number
       q_real.writeRaw(dataFile); //7
       q_ref.writeRaw(dataFile); //7
-      qDot_real.writeRaw(dataFile); //7
-      u.writeRaw(dataFile); //7
-      torques_real.writeRaw(dataFile); //7
-      G_org.writeRaw(dataFile); //7-vector gravity
-      C_org.writeRaw(dataFile); //7-vector coriolis
-      M_org.write(dataFile, " ", " ", "  "); //7x7 inertia matrix
+      if(writeData>1){
+          qDot_real.writeRaw(dataFile); //7
+          u.writeRaw(dataFile); //7
+          torques_real.writeRaw(dataFile); //7
+          G_org.writeRaw(dataFile); //7-vector gravity
+          C_org.writeRaw(dataFile); //7-vector coriolis
+          M_org.write(dataFile, " ", " ", "  "); //7x7 inertia matrix
 //      qDDot_ref.writeRaw(dataFile);
+      }
       dataFile <<endl;
     }
 

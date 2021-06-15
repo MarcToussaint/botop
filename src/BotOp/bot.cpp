@@ -30,6 +30,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     gripper = make_unique<GripperEmulator>();
   }
   C.setJointState(get_q());
+  C.watch(false, STRING("time: 0"));
 }
 
 BotOp::~BotOp(){
@@ -62,13 +63,30 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   C.setJointState(robot->state.get()->q);
   C.gl()->raiseWindow();
   double ctrlTime = robot->state.get()->time;
-  int key = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
-  if(key==13) return false;
-  if(key=='q' || key==27) return false;
+  keypressed = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
+  if(keypressed==13) return false;
+  if(keypressed=='q' || keypressed==27) return false;
   auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
   if(sp && ctrlTime>sp->getEndTime()) return false;
   if(waitTime) rai::wait(waitTime);
   return true;
+}
+
+void BotOp::moveLeap(const arr& q_target, double timeCost){
+  arr q = get_q();
+  arr qDot = get_qDot();
+  double dist = length(q-q_target);
+  double vel = scalarProduct(qDot, q_target-q)/dist;
+  double T = (sqrt(6.*timeCost*dist+vel*vel) - vel)/timeCost;
+//  move(~q_target, T);
+
+  if(T<.2) T=.2;
+  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  if(sp){
+      double ctrlTime = robot->state.get()->time;
+      sp->overrideSmooth(~q_target, {T}, ctrlTime);
+  }
+  else move(~q_target, T);
 }
 
 void BotOp::move(const arr& path, double duration){
@@ -145,3 +163,4 @@ arr getLoopPath(rai::Configuration& C){
   komo.view(true);
   return komo.getPath_qOrg();
 }
+

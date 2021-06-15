@@ -60,6 +60,7 @@ file(GLOB SRC_ry rai/rai/ry/*.cpp)
 
 file(GLOB SRC_Franka src/Franka/*.cpp)
 file(GLOB SRC_RealSense src/RealSense/*.cpp)
+file(GLOB SRC_BotOp src/BotOp/*.cpp)
 
 add_library(rai SHARED
   ${SRC_Core}
@@ -81,6 +82,7 @@ add_library(rai SHARED
   #  ${SRC_ry}
   ${SRC_Franka}
   ${SRC_RealSense}
+  ${SRC_BotOp}
   )
 
 target_link_libraries(rai
@@ -105,7 +107,7 @@ target_link_libraries(rai
 add_executable(kinEdit rai/bin/src_kinEdit/main.cpp)
 target_link_libraries(kinEdit rai)
 
-add_executable(bot bin/bot/main.cpp bin/bot/bot.cpp)
+add_executable(bot bin/bot/main.cpp)
 target_link_libraries(bot rai)
 
 

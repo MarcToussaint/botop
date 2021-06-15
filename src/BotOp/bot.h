@@ -27,6 +27,7 @@ struct BotOp{
   std::unique_ptr<rai::GripperAbstraction> gripper;
   std::shared_ptr<rai::ReferenceFeed> ref;
   arr qHome;
+  int keypressed=0;
 
   BotOp(rai::Configuration& C, bool useRealRobot);
   ~BotOp();
@@ -41,6 +42,7 @@ struct BotOp{
 
   bool step(rai::Configuration& C, double waitTime=.1);
 
+  void moveLeap(const arr& q_target, double timeCost=.7);
   void move(const arr& path, double duration);
 
   void hold(bool floating=true, bool damping=true);
