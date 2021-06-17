@@ -1,20 +1,26 @@
 #include "controlEmulator.h"
 #include <Kin/kin.h>
 #include <Kin/frame.h>
+#include <Kin/F_collisions.h>
 
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
 ControlEmulator::ControlEmulator(const rai::Configuration& C,
                                  const StringA& joints,
-                                 double _tau)
-  : Thread("FrankaThread_Emulated", _tau),
-    tau(_tau){
+                                 double _tau, double hyperSpeed)
+  : Thread("FrankaThread_Emulated", _tau/hyperSpeed),
+    tau(_tau),
+    emuConfig(C){
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
   {
     q_real = C.getJointState();
     qDot_real.resize(q_real.N).setZero();
+    collisionPairs = emuConfig.getCollisionAllPairs();
+    //    cout <<" CollisionPairs:" <<endl;
+    //    for(uint i=0;i<collisionPairs.d0;i++) cout <<collisionPairs(i,0)->name <<'-' <<collisionPairs(i,1)->name <<endl;
+
     if(joints.N){
       q_indices.resize(joints.N);
       uint i=0;
@@ -109,6 +115,19 @@ void ControlEmulator::step(){
   q_real += .5 * tau * qDot_real;
   qDot_real += tau * qDDot_des;
   q_real += .5 * tau * qDot_real;
+
+
+  //-- check for collisions!
+  emuConfig.setJointState(q_real);
+  auto coll = F_PairCollision().eval(collisionPairs);
+  bool doesCollide=false;
+  for(uint i=0;i<coll.y.N;i++){
+    if(coll.y.elem(i)>0.){
+      LOG(-1) <<"in collision: " <<collisionPairs(i,0)->name <<'-' <<collisionPairs(i,1)->name <<' ' <<coll.y.elem(i);
+      doesCollide=true;
+    }
+  }
+  if(doesCollide) rai::wait();
 
   //-- data log?
   if(writeData && !(step_count%10)){

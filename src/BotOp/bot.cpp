@@ -26,7 +26,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     robot = make_unique<FrankaThreadNew>(0, franka_getJointIndices(C,'R'));
     gripper = make_unique<FrankaGripper>(0);
   }else{
-    robot = make_unique<ControlEmulator>(C);
+    robot = make_unique<ControlEmulator>(C, StringA(), .001, 10.);
     gripper = make_unique<GripperEmulator>();
   }
   C.setJointState(get_q());

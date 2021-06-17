@@ -18,7 +18,8 @@ struct GripperAbstraction {
 struct ControlEmulator : rai::RobotAbstraction, Thread {
   ControlEmulator(const rai::Configuration& _sim_config,
                   const StringA& joints={},
-                  double _tau=.001);
+                  double _tau=.001,
+                  double hyperSpeed=1.);
   ~ControlEmulator();
 
 private:
@@ -27,6 +28,8 @@ private:
   arr q_real, qDot_real;
   uintA q_indices;
   ofstream dataFile;
+  rai::Configuration emuConfig;
+  FrameL collisionPairs;
 
   void step();
 };
