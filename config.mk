@@ -12,7 +12,7 @@
 #OPTIM=fast
 #OPTIM = fast_debug
 
-RAI_CMAKE = 1
+RAI_CMAKE = 0
 
 #GL = 0
 #FCL = 0

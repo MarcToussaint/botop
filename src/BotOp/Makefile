@@ -1,9 +1,14 @@
 BASE = ../../rai
 BASE2 = ..
 NAME   = $(shell basename `pwd`)
-OUTPUT = lib$(NAME).so
+EXT    = $(shell python3-config --extension-suffix)
+OUTPUT = lib$(NAME).so #$(EXT)
 
-DEPEND = Core Algo Gui Geo Kin Franka Control
+DEPEND = Core Algo Optim Gui Geo Kin KOMO LGP Franka Control Logic ry
+
+PYBIND = 1
+
+CXXFLAGS += -DRAI_BIND_KOMO
 
 SRCS = $(shell find . -maxdepth 1 -name '*.cpp' )
 OBJS = $(SRCS:%.cpp=%.o)

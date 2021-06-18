@@ -26,7 +26,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     robot = make_unique<FrankaThreadNew>(0, franka_getJointIndices(C,'R'));
     gripper = make_unique<FrankaGripper>(0);
   }else{
-    robot = make_unique<ControlEmulator>(C, StringA(), .001, 10.);
+    robot = make_unique<ControlEmulator>(C); //, StringA(), .001, 10.);
     gripper = make_unique<GripperEmulator>();
   }
   C.setJointState(get_q());
@@ -86,17 +86,20 @@ void BotOp::moveLeap(const arr& q_target, double timeCost){
       double ctrlTime = robot->state.get()->time;
       sp->overrideSmooth(~q_target, {T}, ctrlTime);
   }
-  else move(~q_target, T);
+  else move(~q_target, {T});
 }
 
-void BotOp::move(const arr& path, double duration){
-  arr times;
-  if(path.d0>1){
-    times = range(0., duration, path.d0-1);
-    times += times(1);
-  }else{
-    times = {duration};
-  }
+void BotOp::move(const arr& path, const arr& times){
+    arr _times;
+    if(path.d0==times.N){
+        _times = times;  // all is good, nothing to do
+    }else{
+        CHECK_EQ(times.N,1, "");
+        CHECK_GE(path.d0, 2, "");
+        double duration = times.scalar();
+        _times = range(0., duration, path.d0-1);
+        _times += _times(1);
+    }
   auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
   if(!sp){
     setReference<rai::SplineCtrlReference>();
@@ -104,7 +107,7 @@ void BotOp::move(const arr& path, double duration){
     CHECK(sp, "this is not a spline reference!")
   }
   double ctrlTime = robot->state.get()->time;
-  sp->append(path, times, ctrlTime, true);
+  sp->append(path, _times, ctrlTime, true);
 }
 
 void BotOp::hold(bool floating, bool damping){
