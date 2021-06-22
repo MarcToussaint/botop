@@ -124,7 +124,7 @@ void BotOp::home(rai::Configuration& C){
     C.gl()->raiseWindow();
     arr q=get_q();
     if(maxDiff(q,qHome)>1e-3){
-        moveLeap(q, 1.);
+        moveLeap(qHome, 1.);
         while(step(C));
     }else{
         move(~qHome, {.1});

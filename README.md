@@ -84,12 +84,16 @@ test/01-.../x.exe
 ```
 sudo usermod -a -G realtime <username>
 ```
+You need to log out/in or even reboot for this to take effect. Check with `groups` in a terminal.
 * Turn on the power switch at the control box
 * Open the panda web interface at `https://172.16.0.2/desk/`. You'll need to log in with user `mti` and passwd `mti-engage`
 * Unlock the joints
 * **ALWAYS 2 PEOPLE ARE REQUIRED! ONE TO HOLD THE EMERGENCY STOP**
 * Perform a series of tests
-  * `bot -openclose -home -loop -speed 2`
+  * `bot -close`
+  * `bot -open`
+  * `bot -home`
+  * `bot -loop`
 
 
 ## Setting up your own coding environment/directory
@@ -108,7 +112,7 @@ include $(BASE)/build/generic.mk
 
 ## cmd line tool `bot`
 
-* `bot -openclose`
+* `bot -open -close`
 * `bot -home`
 * `bot -loop -speed 2`
 * `bot -float`
