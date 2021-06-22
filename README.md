@@ -59,7 +59,7 @@ make -j1 installUbuntuAll  # calls sudo apt-get install; you can always interrup
 
 mkdir build
 cd build
-cmake ..
+cmake -Dpybind11_DIR=`python3 -m pybind11 --cmakedir` ..
 nice -19 make -j $(command nproc)
 ```
 

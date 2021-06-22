@@ -2,9 +2,13 @@ cmake_minimum_required(VERSION 3.4)
 
 project(LISRobotLab)
 
+set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
+
 find_package( OpenCV REQUIRED )
 #find_package( Bullet REQUIRED )
-#add_subdirectory(pybind11)
+find_package(pybind11)
+#find_package(Python COMPONENTS Interpreter Development REQUIRED)
+#find_package(pybind11 CONFIG REQUIRED)
 
 add_compile_options(
   -O3 -g -Wall -fPIC -std=c++14 -Wno-terminate -Wno-pragmas
@@ -19,7 +23,7 @@ add_definitions(
   -DRAI_OPENCV
   -DRAI_FRANKA
   -DRAI_REALSENSE
-  #-DRAI_PYBIND -DRAI_BIND_KOMO
+  -DRAI_PYBIND
   #-DRAI_PHYSX -D_DEBUG -DPX_DISABLE_FLUIDS -DCORELIB -DPX32 -DLINUX #physx
   #-DRAI_BULLET #bullet
   )
@@ -60,7 +64,7 @@ file(GLOB SRC_ry rai/rai/ry/*.cpp)
 
 file(GLOB SRC_Franka src/Franka/*.cpp)
 file(GLOB SRC_RealSense src/RealSense/*.cpp)
-file(GLOB SRC_BotOp src/BotOp/*.cpp)
+file(GLOB SRC_BotOp src/BotOp/bot.cpp)
 
 add_library(rai SHARED
   ${SRC_Core}
@@ -96,13 +100,23 @@ target_link_libraries(rai
   #BulletSoftBody BulletDynamics BulletCollision LinearMath 
   )
 
-#pybind11_add_module(libry SHARED
-#  ${SRC_ry}
-#  )
+pybind11_add_module(libry SHARED
+  ${SRC_ry}
+  )
 
-#target_link_libraries(libry PRIVATE
-#  rai
-#  )
+target_link_libraries(libry PRIVATE
+  rai
+  )
+
+pybind11_add_module(libpybot SHARED
+  rai
+  src/BotOp/pyBot.cpp
+  )
+
+target_link_libraries(libpybot PRIVATE
+  rai
+  libry
+  )
 
 add_executable(kinEdit rai/bin/src_kinEdit/main.cpp)
 target_link_libraries(kinEdit rai)

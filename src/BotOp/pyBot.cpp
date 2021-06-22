@@ -22,7 +22,7 @@ template<> pybind11::array_t<double> arr2numpy(const rai::Array<double>& x){
   return pybind11::array_t<double>(triplets.dim(), triplets.p);
 }
 
-PYBIND11_MODULE(libBotOp, m) {
+PYBIND11_MODULE(libpybot, m) {
   m.doc() = "bot bindings";
 
   init_PyBot(m);
