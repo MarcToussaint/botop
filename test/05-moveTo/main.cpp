@@ -11,17 +11,13 @@
 void testMoveTo() {
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../model/pandaSingle.g"));
-  C.getFrame("R_panda_finger_joint1")->setJoint(rai::JT_rigid);
-  C.getFrame("R_panda_finger_joint2")->setJoint(rai::JT_rigid);
-  C.addFrame("target") -> setPosition(C["endeffR"]->getPosition() + arr{0,.0,-.5});
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
   C.watch(true);
-
 
   //-- start a robot thread
   C.ensure_indexedJoints();
-//  ControlEmulator robot(C, {});
-  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
+  ControlEmulator robot(C, {});
+//  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
   robot.writeData = true;
 
   //-- create 2 simple reference configurations

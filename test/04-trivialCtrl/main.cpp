@@ -1,17 +1,7 @@
-//#include <NewControl/TaskControlThread.h>
-//#include <LGPop/lgpop.h>
-#include <Kin/kinViewer.h>
-
-#include <Gui/viewer.h>
-
-#include <Franka/controlEmulator.h>
-
 #include <Franka/franka.h>
-#include <Franka/gripper.h>
 #include <Franka/help.h>
 
-#include <Control/CtrlMsgs.h>
-
+// define your own reference feed
 
 struct ZeroReference : rai::ReferenceFeed {
   Var<arr> position_ref; ///< if set, defines a non-zero velocity reference
@@ -37,16 +27,15 @@ struct ZeroReference : rai::ReferenceFeed {
 };
 
 
-void testNew() {
+void test() {
   //-- setup a configuration
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
   C.watch(true);
 
+  //-- start the franka thread
   C.ensure_indexedJoints();
   FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
-  robot.writeData = true;
-  arr q_now = robot.state.get()->q;
 
   //comment the next line to only get gravity compensation instead of 'zero reference following' (which includes damping)
   auto ref = make_shared<ZeroReference>();
@@ -60,15 +49,14 @@ void testNew() {
     rai::wait(.1);
   }
 
-  cout <<"bye bye" <<endl;
 }
-
-
 
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
-  testNew();
+  test();
+
+  cout <<"bye bye" <<endl;
 
   return 0;
 }

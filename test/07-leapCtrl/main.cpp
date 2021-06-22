@@ -11,6 +11,8 @@
 #include <Kin/viewer.h>
 #include <Control/LeapMPC.h>
 
+#include <BotOp/bot.h>
+
 //===========================================================================
 
 void testLeapCtrl() {
@@ -28,16 +30,9 @@ void testLeapCtrl() {
   arr q0 = C.getJointState();
 
   //-- start a robot thread
-  C.ensure_indexedJoints();
-//  ControlEmulator robot(C, {});
-  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
-  robot.writeData = true;
+  BotOp bot(C, !rai::checkParameter<bool>("sim"));
+  bot.home(C);
 
-  C.setJointState(robot.state.get()->q);
-
-  //-- define the reference feed to be a spline
-  std::shared_ptr<rai::SplineCtrlReference> sp = make_shared<rai::SplineCtrlReference>();
-  robot.cmd.set()->ref = sp;
 
   LeapMPC leap(C,1.);
   leap.komo.addObjective({1.}, FS_positionDiff, {"R_gripperCenter", "target"}, OT_eq, {1e2});
@@ -56,7 +51,7 @@ void testLeapCtrl() {
     double ctrlTime;
     arr q,qDot;
     {
-      auto stateGet = robot.state.get();
+      auto stateGet = bot.robot->state.get();
       ctrlTime = stateGet->time;
       q = stateGet->q;
       qDot = stateGet->qDot;
@@ -67,6 +62,11 @@ void testLeapCtrl() {
     leap.solve();
     rai::Graph R = leap.komo.getReport();
 
+
+#if 1
+    double T = bot.moveLeap(leap.xT);
+    leap.komo.view(false, STRING("LEAP proposal T:"<<T <<"\n" <<R));
+#else
     double constraints = R.get<double>("ineq") + R.get<double>("eq");
     double cost = R.get<double>("sos");
 //    double T=10.; //leap.tau.last();
@@ -89,17 +89,14 @@ void testLeapCtrl() {
       arr _t = {now, now+T};
       sp->overrideHardRealTime(_x, _t, qDot);
 #else
-      sp->overrideSmooth(~leap.xT, {T}, ctrlTime);
+      bot.moveOverride(~leap.xT, {T});
 #endif
     }
-
-    C.setJointState(robot.state.get()->q);
-    C.gl()->raiseWindow();
-    int key = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
-    if(key==13) break;
-    if(key=='q' || key==27) return;
+#endif
+    bot.step(C);
+    if(bot.keypressed==13){ t=9; continue; }
+    if(bot.keypressed=='q' || bot.keypressed==27) return;
     rai::wait(.1);
-
   }
 }
 

@@ -118,6 +118,7 @@ void ControlEmulator::step(){
 
 
   //-- check for collisions!
+#if 0
   emuConfig.setJointState(q_real);
   auto coll = F_PairCollision().eval(collisionPairs);
   bool doesCollide=false;
@@ -128,6 +129,7 @@ void ControlEmulator::step(){
     }
   }
   if(doesCollide){ rai::wait(); metronome.reset(tau); }
+#endif
 
   //-- data log?
   if(writeData && !(step_count%10)){

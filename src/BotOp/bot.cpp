@@ -8,13 +8,13 @@ void ZeroReference::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, cons
   {
     arr pos = position_ref.get()();
     if(pos.N) q_ref = pos;
-    else q_ref = q_real;
+    else q_ref = q_real;  //->no position gains at all
   }
   {
     arr vel = velocity_ref.get()();
-    if(vel.N==1 && vel.scalar()==0.) qDot_ref.resize(qDot_real.N).setZero();
+    if(vel.N==1 && vel.scalar()==0.) qDot_ref.resize(qDot_real.N).setZero(); //[0] -> zero vel reference -> damping
     else if(vel.N) qDot_ref = vel;
-    else qDot_ref = qDot_real;
+    else qDot_ref = qDot_real;  //[] -> no damping at all!
   }
   qDDot_ref.resize(q_ref.N).setZero();
 }
@@ -72,21 +72,14 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   return true;
 }
 
-void BotOp::moveLeap(const arr& q_target, double timeCost){
-  arr q = get_q();
-  arr qDot = get_qDot();
-  double dist = length(q-q_target);
-  double vel = scalarProduct(qDot, q_target-q)/dist;
-  double T = (sqrt(6.*timeCost*dist+vel*vel) - vel)/timeCost;
-//  move(~q_target, T);
-
-  if(T<.2) T=.2;
-  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
-  if(sp){
-      double ctrlTime = robot->state.get()->time;
-      sp->overrideSmooth(~q_target, {T}, ctrlTime);
-  }
-  else move(~q_target, {T});
+std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
+    auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+    if(!sp){
+      setReference<rai::SplineCtrlReference>();
+      sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+      CHECK(sp, "this is not a spline reference!")
+    }
+    return sp;
 }
 
 void BotOp::move(const arr& path, const arr& times){
@@ -100,14 +93,42 @@ void BotOp::move(const arr& path, const arr& times){
         _times = range(0., duration, path.d0-1);
         _times += _times(1);
     }
-  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
-  if(!sp){
-    setReference<rai::SplineCtrlReference>();
-    sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
-    CHECK(sp, "this is not a spline reference!")
-  }
   double ctrlTime = robot->state.get()->time;
-  sp->append(path, _times, ctrlTime, true);
+  getSplineRef()->append(path, _times, ctrlTime, true);
+}
+
+void BotOp::moveOverride(const arr& path, const arr& times){
+  double ctrlTime = robot->state.get()->time;
+  getSplineRef()->overrideSmooth(path, times, ctrlTime);
+}
+
+double BotOp::moveLeap(const arr& q_target, double timeCost){
+  arr q = get_q();
+  arr qDot = get_qDot();
+  double dist = length(q-q_target);
+  double vel = scalarProduct(qDot, q_target-q)/dist;
+  double T = (sqrt(6.*timeCost*dist+vel*vel) - vel)/timeCost;
+//  move(~q_target, T);
+
+  if(dist<1e-4 || T<.2) T=.2;
+  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  if(sp){
+      double ctrlTime = robot->state.get()->time;
+      sp->overrideSmooth(~q_target, {T}, ctrlTime);
+  }
+  else move(~q_target, {T});
+  return T;
+}
+
+void BotOp::home(rai::Configuration& C){
+    C.gl()->raiseWindow();
+    arr q=get_q();
+    if(maxDiff(q,qHome)>1e-3){
+        moveLeap(q, 1.);
+        while(step(C));
+    }else{
+        move(~qHome, {.1});
+    }
 }
 
 void BotOp::hold(bool floating, bool damping){

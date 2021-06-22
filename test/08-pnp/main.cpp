@@ -13,6 +13,8 @@
 #include <Kin/viewer.h>
 #include <Control/LeapMPC.h>
 
+#include <BotOp/bot.h>
+
 //===========================================================================
 
 struct Avoid{
@@ -204,22 +206,8 @@ void testPnp() {
   arr qHome = C.getJointState();
 
   //-- start a robot thread
-  C.ensure_indexedJoints();
-#if 1 //SIM
-  ControlEmulator robot(C, {});
-  GripperEmulator gripper;
-#else //REAL
-  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
-  FrankaGripper gripper(0);
-#endif
-  robot.writeData = true;
-
-  C.setJointState(robot.state.get()->q);
-  C.watch(false);
-
-  //-- define the reference feed to be a spline
-  auto sp = make_shared<rai::SplineCtrlReference>();
-  robot.cmd.set()->ref = sp;
+  BotOp bot(C, !rai::checkParameter<bool>("sim"));
+  bot.home(C);
 
   const char* gripperName="R_gripperCenter";
   const char* palmName="R_panda_coll_hand";
@@ -266,32 +254,16 @@ void testPnp() {
 
   for(uint k=0;k<path.N;k++){
 //    rai::wait();
-    if(k==0){ gripper.open(); rai::wait(.3); }
-    if(k==1){ gripper.close(); rai::wait(.5); }
-    if(k==2){ gripper.open(); rai::wait(.3); }
+    if(k==0){ bot.gripper->open(); rai::wait(.3); }
+    if(k==1){ bot.gripper->close(); rai::wait(.5); }
+    if(k==2){ bot.gripper->open(); rai::wait(.3); }
 
     //send komo as spline:
-    {
-      arr times = range(0., 4., path(k).d0-1);
-      if(times.N==1) times=2.;
-      else times += times(1);
-      double ctrlTime = robot.state.get()->time;
-      sp->append(path(k), times, ctrlTime, true);
-    }
+    bot.move(path(k), {4.});
 
-    for(;;){
-      C.gl()->raiseWindow();
-      double ctrlTime = robot.state.get()->time;
-      int key = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
-      //if(key==13) break;
-      if(key=='q' || key==27) return;
-      if(ctrlTime>sp->getEndTime()) break;
-      C.setJointState(robot.state.get()->q);
-      rai::wait(.1);
-    }
+    while(bot.step(C));
+    if(bot.keypressed=='q' || bot.keypressed==27) return;
   }
-
-  rai::wait(1.);
 
 }
 
@@ -375,22 +347,10 @@ void testPnp2() {
   arr qHome = C.getJointState();
   cout <<"JOINT LIMITS:" <<C.getLimits() <<endl;
 
-  C.ensure_indexedJoints();
-#if 1 //SIM
-  ControlEmulator robot(C, {});
-  GripperEmulator gripper;
-#else //REAL
-  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
-  FrankaGripper gripper(0);
-#endif
-  robot.writeData = true;
+  //-- start a robot thread
+  BotOp bot(C, !rai::checkParameter<bool>("sim"));
+  bot.home(C);
 
-  C.setJointState(robot.state.get()->q);
-  C.watch(false);
-
-  //-- define the reference feed to be a spline
-  auto sp = make_shared<rai::SplineCtrlReference>();
-  robot.cmd.set()->ref = sp;
 
   const char* gripperName="R_gripperCenter";
   const char* palmName="R_panda_coll_hand";
@@ -405,13 +365,13 @@ void testPnp2() {
     rai::Enum<rai::ArgWord> placeDirection = random(rai::Array<rai::ArgWord>{rai::_yAxis, rai::_zAxis, rai::_yNegAxis, rai::_zNegAxis });
 //    placeDirection = rai::_yNegAxis;
     cout <<"PLACING: " <<placeDirection <<endl;
-    C.setJointState(robot.state.get()->q);
+    C.setJointState(bot.get_q());
     arr keyframes = getPnpKeyframes(C, rai::_xAxis, placeDirection, boxName, gripperName, palmName, tableName, qHome);
 
     if(!keyframes.N) continue; //infeasible
 
     for(uint k=0;k<keyframes.d0;k++){
-      arr q = robot.state.get()->q;
+      arr q = bot.get_q();
 //      if(k>0) CHECK_LE(maxDiff(q,keyframes[k-1]), .03, "why is the joint error so large?");
       C.setJointState(q);
       arr path;
@@ -442,32 +402,17 @@ void testPnp2() {
                                 }, qHome);
       }
 
-      if(k==0){ gripper.open(); rai::wait(.3); }
-      else if(k==1){ gripper.close(35., .05, .2); rai::wait(.5); }
-      else if(k==2){ gripper.open(); rai::wait(.3); }
+      if(k==0){ bot.gripper->open(); rai::wait(.3); }
+      else if(k==1){ bot.gripper->close(35., .05, .2); rai::wait(.5); }
+      else if(k==2){ bot.gripper->open(); rai::wait(.3); }
 
       //send komo as spline:
-      {
-        arr times = range(0., 2.5, path.d0-1);
-        times += times(1);
-        double ctrlTime = robot.state.get()->time;
-        sp->append(path, times, ctrlTime, true);
-      }
+      bot.move(path, {2.5});
 
-      for(;;){
-        C.gl()->raiseWindow();
-        double ctrlTime = robot.state.get()->time;
-        int key = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
-        //if(key==13) break;
-        if(key=='q' || key==27) return;
-        if(ctrlTime>sp->getEndTime()) break;
-        C.setJointState(robot.state.get()->q);
-        rai::wait(.1);
-      }
+      while(bot.step(C));
+      if(bot.keypressed=='q' || bot.keypressed==27) return;
     }
   }
-
-  rai::wait(1.);
 
 }
 
@@ -480,6 +425,8 @@ int main(int argc, char * argv[]){
 
 //  testPnp();
   testPnp2();
+
+  cout <<"bye bye" <<endl;
 
   return 0;
 }

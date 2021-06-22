@@ -1,14 +1,7 @@
-#include <Franka/controlEmulator.h>
-#include <Franka/franka.h>
-#include <Franka/help.h>
-
-#include <Algo/SplineCtrlFeed.h>
-
-#include <Kin/frame.h>
-
 #include <KOMO/komo.h>
 #include <Kin/F_qFeatures.h>
-#include <Kin/viewer.h>
+
+#include <BotOp/bot.h>
 
 //===========================================================================
 
@@ -17,7 +10,7 @@ void testFastPath() {
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
 
-  //add some targets in position space
+  //-- add some targets in position space
   arr center = C["R_gripperCenter"]->getPosition();
   C.addFrame("target1")
       ->setShape(rai::ST_marker, {.1})
@@ -34,7 +27,7 @@ void testFastPath() {
   C.watch(false);
   arr q0 = C.getJointState();
 
-  //compute a path
+  //-- compute a path
   KOMO komo;
   komo.setModel(C, false);
   komo.setTiming(5, 10, 2., 2);
@@ -52,33 +45,15 @@ void testFastPath() {
   komo.view(true);
 
   //-- start a robot thread
-//  ControlEmulator robot(C, {});
-  FrankaThreadNew robot(0, franka_getJointIndices(C,'R'));
-  robot.writeData = true;
+  BotOp bot(C, !rai::checkParameter<bool>("sim"));
+  bot.home(C);
 
-  //-- define the reference feed to be a spline
-  auto sp = make_shared<rai::SplineCtrlReference>();
-  robot.cmd.set()->ref = sp;
-
-  //first move slowly to home!
-  double ctrlTime = robot.state.get()->time;
-  sp->moveTo(q0, 3., ctrlTime, true);
-
-  rai::wait(.1); //WHY DO WE NEED THIS??? UGLY!
-
-  //send komo as spline:
+  //-- send path as spline:
   for(double speed=1.;speed<=5.;speed+=.5){
-    ctrlTime = robot.state.get()->time;
-    sp->append(komo.getPath_qOrg(), komo.getPath_times()/speed, ctrlTime, true);
+    bot.move(komo.getPath_qOrg(), komo.getPath_times()/speed);
 
-    for(;;){
-      C.gl()->raiseWindow();
-      int key = C.watch(false,STRING("time: "<<robot.state.get()->time <<"\n[q or ESC to ABORT]"));
-      if(key==13) break;
-      if(key=='q' || key==27) return;
-      C.setJointState(robot.state.get()->q);
-      rai::wait(.1);
-    }
+    while(bot.step(C));
+    if(bot.keypressed=='q' || bot.keypressed==27) return;
   }
 
 }
