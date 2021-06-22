@@ -24,7 +24,7 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const arr& qHom
   komo.setTiming(1., 32, 3., 2);
   komo.add_qControlObjective({}, 2, 1.);
 
-  komo.addObjective({.4,.6}, FS_qItself, {}, OT_sos, {1.}, qHome);
+//  komo.addObjective({.4,.6}, FS_qItself, {}, OT_sos, {1.}, qHome);
   komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e0}, target_q);
   komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e0}, {}, 1);
   komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e2});
@@ -45,6 +45,7 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const arr& qHom
     cout <<komo.getReport(true) <<endl;
     LOG(-2) <<"WARNING!";
     while(komo.view_play(true));
+    return {};
   }
 
   return path;
@@ -92,6 +93,7 @@ void driveToPoses(rai::Configuration& C, const arr& X, const uint kStart=0) {
     cout <<"========== POSE " <<k <<" ===========" <<endl;
     C.setJointState(bot.get_q());
     arr path = getStartGoalPath(C, X[k], bot.qHome);
+    if(!path.N) continue;
     bot.move(path, {3.});
 //    bot.moveLeap(X[k], 3.);
     while(bot.step(C));
@@ -119,7 +121,7 @@ int main(int argc, char * argv[]){
   //-- fix poses
   fixPoses(X, C);
 
-  driveToPoses(C, X, 30);
+  driveToPoses(C, X);
 
   return 0;
 }

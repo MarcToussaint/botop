@@ -61,7 +61,7 @@ double BotOp::getTimeToEnd(){
 
 bool BotOp::step(rai::Configuration& C, double waitTime){
   C.setJointState(robot->state.get()->q);
-  C.gl()->raiseWindow();
+//  C.gl()->raiseWindow();
   double ctrlTime = robot->state.get()->time;
   keypressed = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
   if(keypressed==13) return false;

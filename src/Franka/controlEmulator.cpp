@@ -127,7 +127,7 @@ void ControlEmulator::step(){
       doesCollide=true;
     }
   }
-  if(doesCollide) rai::wait();
+  if(doesCollide){ rai::wait(); metronome.reset(tau); }
 
   //-- data log?
   if(writeData && !(step_count%10)){
