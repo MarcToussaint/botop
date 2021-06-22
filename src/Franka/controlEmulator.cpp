@@ -122,7 +122,7 @@ void ControlEmulator::step(){
   auto coll = F_PairCollision().eval(collisionPairs);
   bool doesCollide=false;
   for(uint i=0;i<coll.y.N;i++){
-    if(coll.y.elem(i)>0.){
+    if(coll.y.elem(i)>1e-4){
       LOG(-1) <<"in collision: " <<collisionPairs(i,0)->name <<'-' <<collisionPairs(i,1)->name <<' ' <<coll.y.elem(i);
       doesCollide=true;
     }

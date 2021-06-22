@@ -43,7 +43,7 @@ struct BotOp{
   bool step(rai::Configuration& C, double waitTime=.1);
 
   void move(const arr& path, const arr& times);
-  void moveLeap(const arr& q_target, double timeCost=.7);
+  void moveLeap(const arr& q_target, double timeCost=1.);
 
   void hold(bool floating=true, bool damping=true);
 };

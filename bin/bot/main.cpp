@@ -509,20 +509,20 @@ int main(int argc, char * argv[]){
 
   if(rai::checkParameter<bool>("home")){
     arr q=bot.qHome;
-    bot.move(q.reshape(1,-1), {2.});
+    bot.moveLeap(q, 1.);
     while(bot.step(C));
   }
 
   if(rai::checkParameter<bool>("up")){
     arr q=bot.qHome;
     q(1) -= .5;
-    bot.move(q.reshape(1,-1), {2.});
+    bot.moveLeap(q, 1.);
     while(bot.step(C));
   }
 
   if(rai::checkParameter<bool>("loop")){
     arr q=bot.qHome;
-    bot.move(q.reshape(1,-1), {2.});
+    bot.moveLeap(q, 1.);
     while(bot.step(C));
 
     C.setJointState(bot.qHome);
@@ -541,7 +541,6 @@ int main(int argc, char * argv[]){
     bot.gripper->open();
     rai::wait(.5);
   }
-
 
   cout <<"bye bye" <<endl;
 
