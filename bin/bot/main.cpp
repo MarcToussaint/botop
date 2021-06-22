@@ -509,25 +509,25 @@ int main(int argc, char * argv[]){
 
   if(rai::checkParameter<bool>("home")){
     arr q=bot.qHome;
-    bot.move(q.reshape(1,-1), 2.);
+    bot.move(q.reshape(1,-1), {2.});
     while(bot.step(C));
   }
 
   if(rai::checkParameter<bool>("up")){
     arr q=bot.qHome;
     q(1) -= .5;
-    bot.move(q.reshape(1,-1), 2.);
+    bot.move(q.reshape(1,-1), {2.});
     while(bot.step(C));
   }
 
   if(rai::checkParameter<bool>("loop")){
     arr q=bot.qHome;
-    bot.move(q.reshape(1,-1), 2.);
+    bot.move(q.reshape(1,-1), {2.});
     while(bot.step(C));
 
     C.setJointState(bot.qHome);
     arr path = getLoopPath(C);
-    bot.move(path, 5.);
+    bot.move(path, {5.});
 
     while(bot.step(C));
   }
