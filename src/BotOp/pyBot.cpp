@@ -39,9 +39,18 @@ void init_PyBot(pybind11::module& m) {
   .def("get_q", &BotOp::get_q)
   .def("get_qDot", &BotOp::get_qDot)
   .def("getTimeToEnd", &BotOp::getTimeToEnd)
-  .def("step", &BotOp::step)
+
   .def("move", &BotOp::move) 
+  .def("moveOverride", &BotOp::moveOverride)
   .def("moveLeap", &BotOp::moveLeap)
+
+  .def("gripperOpen", &BotOp::gripperOpen)
+  .def("gripperClose", &BotOp::gripperClose)
+  .def("gripperPos", &BotOp::gripperPos)
+
+  .def("step", &BotOp::step)
+
+  .def("home", &BotOp::home)
   .def("hold", &BotOp::hold)
 
   ;

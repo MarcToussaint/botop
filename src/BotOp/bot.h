@@ -9,19 +9,6 @@
 
 //===========================================================================
 
-struct ZeroReference : rai::ReferenceFeed {
-  Var<arr> position_ref; ///< if set, defines a non-zero velocity reference
-  Var<arr> velocity_ref; ///< if set, defines a non-zero velocity reference
-
-  ZeroReference& setVelocityReference(const arr& _velocity_ref){ velocity_ref.set() = _velocity_ref; return *this; }
-  ZeroReference& setPositionReference(const arr& _position_ref){ position_ref.set() = _position_ref; return *this; }
-
-  /// callback called by a robot control loop
-  virtual void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime);
-};
-
-//===========================================================================
-
 struct BotOp{
   std::unique_ptr<rai::RobotAbstraction> robot;
   std::unique_ptr<rai::GripperAbstraction> gripper;
@@ -32,26 +19,47 @@ struct BotOp{
   BotOp(rai::Configuration& C, bool useRealRobot);
   ~BotOp();
 
-  template<class T> BotOp& setReference();
-
+  //-- state info
   double get_t();
   const arr& get_qHome(){ return qHome; }
   arr get_q();
   arr get_qDot();
-  double getTimeToEnd();
+  double getTimeToEnd(); //negative, if motion spline is done
 
-  bool step(rai::Configuration& C, double waitTime=.1);
-
+  //-- motion commands
+  void move(const arr& path, double timeCost);
   void move(const arr& path, const arr& times);
   void moveOverride(const arr& path, const arr& times);
   double moveLeap(const arr& q_target, double timeCost=1.);
 
-  void home(rai::Configuration& C);
+  //-- gripper commands - directly calling the gripper abstraction
+  void gripperOpen(double width=.075, double speed=.2){ gripper->open(width, speed); }
+  void gripperClose(double force=10, double width=.05, double speed=.1){ gripper->close(force, width, speed); }
+  double gripperPos(){ return gripper->pos(); }
 
+  //-- sync the user's C with the robot, update the display, return false if motion spline is done
+  bool step(rai::Configuration& C, double waitTime=.1);
+
+  //-- motion macros
+  void home(rai::Configuration& C);
   void hold(bool floating=true, bool damping=true);
 
 private:
+  template<class T> BotOp& setReference();
   std::shared_ptr<rai::SplineCtrlReference> getSplineRef();
+};
+
+//===========================================================================
+
+struct ZeroReference : rai::ReferenceFeed {
+  Var<arr> position_ref; ///< if set, defines a non-zero velocity reference
+  Var<arr> velocity_ref; ///< if set, defines a non-zero velocity reference
+
+  ZeroReference& setVelocityReference(const arr& _velocity_ref){ velocity_ref.set() = _velocity_ref; return *this; }
+  ZeroReference& setPositionReference(const arr& _position_ref){ position_ref.set() = _position_ref; return *this; }
+
+  /// callback called by a robot control loop
+  virtual void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime);
 };
 
 //===========================================================================

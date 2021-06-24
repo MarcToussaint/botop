@@ -3,21 +3,9 @@
 #include <Franka/help.h>
 #include <Kin/F_qFeatures.h>
 #include <Kin/viewer.h>
+#include <KOMO/pathTools.h>
 
-void ZeroReference::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
-  {
-    arr pos = position_ref.get()();
-    if(pos.N) q_ref = pos;
-    else q_ref = q_real;  //->no position gains at all
-  }
-  {
-    arr vel = velocity_ref.get()();
-    if(vel.N==1 && vel.scalar()==0.) qDot_ref.resize(qDot_real.N).setZero(); //[0] -> zero vel reference -> damping
-    else if(vel.N) qDot_ref = vel;
-    else qDot_ref = qDot_real;  //[] -> no damping at all!
-  }
-  qDDot_ref.resize(q_ref.N).setZero();
-}
+//===========================================================================
 
 BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   C.ensure_indexedJoints();
@@ -82,17 +70,27 @@ std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
     return sp;
 }
 
+void BotOp::move(const arr& path, double timeCost){
+  double T = path.d0;
+  double accSOS = sumOfSqr(getAccelerations_centralDifference(path, 1.));
+  double tau = sqrt( accSOS / (timeCost * T));
+  arr times(T);
+  for(uint t=0;t<T;t++) times(t) = tau*(t+1);
+  double ctrlTime = robot->state.get()->time;
+  getSplineRef()->append(path, times, ctrlTime, true);
+}
+
 void BotOp::move(const arr& path, const arr& times){
-    arr _times;
-    if(path.d0==times.N){
-        _times = times;  // all is good, nothing to do
-    }else{
-        CHECK_EQ(times.N,1, "");
-        CHECK_GE(path.d0, 2, "");
-        double duration = times.scalar();
-        _times = range(0., duration, path.d0-1);
-        _times += _times(1);
-    }
+  arr _times;
+  if(path.d0==times.N){
+    _times = times;  // all is good, nothing to do
+  }else{
+    CHECK_EQ(times.N,1, "");
+    CHECK_GE(path.d0, 2, "");
+    double duration = times.scalar();
+    _times = range(0., duration, path.d0-1);
+    _times += _times(1);
+  }
   double ctrlTime = robot->state.get()->time;
   getSplineRef()->append(path, _times, ctrlTime, true);
 }
@@ -151,6 +149,25 @@ void BotOp::hold(bool floating, bool damping){
     zref->setVelocityReference({0.});
   }
 }
+
+//===========================================================================
+
+void ZeroReference::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
+  {
+    arr pos = position_ref.get()();
+    if(pos.N) q_ref = pos;
+    else q_ref = q_real;  //->no position gains at all
+  }
+  {
+    arr vel = velocity_ref.get()();
+    if(vel.N==1 && vel.scalar()==0.) qDot_ref.resize(qDot_real.N).setZero(); //[0] -> zero vel reference -> damping
+    else if(vel.N) qDot_ref = vel;
+    else qDot_ref = qDot_real;  //[] -> no damping at all!
+  }
+  qDDot_ref.resize(q_ref.N).setZero();
+}
+
+//===========================================================================
 
 arr getLoopPath(rai::Configuration& C){
   //add some targets in position space

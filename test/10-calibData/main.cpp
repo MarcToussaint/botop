@@ -29,18 +29,16 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const arr& qHom
   komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e0}, {}, 1);
   komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e2});
 
-//  komo.initWithWaypoints({target_q});
+  komo.initWithWaypoints({target_q});
 //  komo.initWithConstant(target_q);
-  komo.optimize(0.);
+  komo.optimize(0., OptOptions().set_stopTolerance(1e-3));
 
   //  cout <<komo.getReport(true) <<endl;
   cout <<"  path -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
 
   arr path = komo.getPath_qOrg();
-//  FILE("z.path") <<path <<endl;
-//  while(komo.view_play(true));
 
-  if(komo.sos>50. || komo.ineq>.2 || komo.eq>.2){
+  if(komo.sos>50. || komo.ineq>.1 || komo.eq>.1){
     FILE("z.path") <<path <<endl;
     cout <<komo.getReport(true) <<endl;
     LOG(-2) <<"WARNING!";
@@ -88,13 +86,12 @@ void driveToPoses(rai::Configuration& C, const arr& X, const uint kStart=0) {
     bot.moveLeap(bot.qHome);
   }
 
-
   for(uint k=kStart;k<Kend;k++){
     cout <<"========== POSE " <<k <<" ===========" <<endl;
     C.setJointState(bot.get_q());
     arr path = getStartGoalPath(C, X[k], bot.qHome);
     if(!path.N) continue;
-    bot.move(path, {3.});
+    bot.move(path, .01);
 //    bot.moveLeap(X[k], 3.);
     while(bot.step(C));
     if(bot.keypressed=='q') break;
