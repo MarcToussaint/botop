@@ -70,8 +70,9 @@ std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
     return sp;
 }
 
-void BotOp::move(const arr& path, double timeCost){
+void BotOp::moveAutoTimed(const arr& path, double timeCost){
   double T = path.d0;
+  CHECK_GE(T, 16, "this only works for smooth paths!")
   double accSOS = sumOfSqr(getAccelerations_centralDifference(path, 1.));
   double tau = sqrt( accSOS / (timeCost * T));
   arr times(T);

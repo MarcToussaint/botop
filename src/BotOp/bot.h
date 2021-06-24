@@ -27,8 +27,8 @@ struct BotOp{
   double getTimeToEnd(); //negative, if motion spline is done
 
   //-- motion commands
-  void move(const arr& path, double timeCost);
   void move(const arr& path, const arr& times);
+  void moveAutoTimed(const arr& path, double timeCost);
   void moveOverride(const arr& path, const arr& times);
   double moveLeap(const arr& q_target, double timeCost=1.);
 

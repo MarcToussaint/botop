@@ -91,7 +91,7 @@ void driveToPoses(rai::Configuration& C, const arr& X, const uint kStart=0) {
     C.setJointState(bot.get_q());
     arr path = getStartGoalPath(C, X[k], bot.qHome);
     if(!path.N) continue;
-    bot.move(path, .01);
+    bot.moveAutoTimed(path, .01);
 //    bot.moveLeap(X[k], 3.);
     while(bot.step(C));
     if(bot.keypressed=='q') break;

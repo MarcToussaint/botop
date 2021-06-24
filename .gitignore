@@ -1,5 +1,5 @@
 %% compile temporaries
-build
+/build
 *.o
 *.a
 *.so
@@ -15,7 +15,6 @@ callgrind.out.*
 
 %% EXECUTABLE
 *.exe
-
 
 %% IDE temporaries
 *.kdev4
@@ -38,7 +37,7 @@ tags
 # PYTHON
 *.pyc
 _*.py
-
+.ipynb_checkpoints
 
 # EXECUTION
 core
@@ -53,7 +52,7 @@ nogit*
 *~
 z.*
 z/
-MT.log
+rai.log
 .#*#
 .#*
 #*#
@@ -117,7 +116,6 @@ share/extern/esdcan-*
 %% QUESTIONABLE ???!!!
 *.zip
 *_doc
-html
 *.tgz
 
 
