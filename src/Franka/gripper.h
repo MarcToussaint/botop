@@ -11,8 +11,8 @@ namespace franka{
 
 //The control message send to the robot
 struct GripperCmdMsg {
-    enum Command { _open, _close, _home };
-    Command cmd;
+    enum Command { _open, _close, _home, _done };
+    Command cmd=_done;
     double force=20;  //which is 1kg
     double width=.05; //which is 5cm
     double speed=.1;
@@ -41,5 +41,5 @@ struct FrankaGripper : rai::GripperAbstraction, Thread{
   void step();
 
 private:
-  shared_ptr<franka::Gripper> gripper;
+  std::shared_ptr<franka::Gripper> frankaGripper;
 };

@@ -94,7 +94,7 @@ void addBoxPlaceObjectives(KOMO& komo, double time, rai::ArgWord dir, const char
   }
 
   //position: fixed
-  komo.addObjective({time}, FS_positionDiff, {boxName, "table"}, OT_eq, {1e2}, {-.3, -.2, relPos});
+  komo.addObjective({time}, FS_positionDiff, {boxName, "table"}, OT_eq, {1e2}, {-.3, .0, relPos});
 
   //orientation: Y-up
   komo.addObjective({time-.2, time}, zVector, {boxName}, OT_eq, {1e1}, zVectorTarget);
@@ -402,7 +402,7 @@ void testPnp2() {
       }
 
       if(k==0){ bot.gripper->open(); rai::wait(.3); }
-      else if(k==1){ bot.gripper->close(35., .05, .2); rai::wait(.5); }
+      else if(k==1){ bot.gripper->close(100.); rai::wait(.5); }
       else if(k==2){ bot.gripper->open(); rai::wait(.3); }
 
       //send komo as spline:
