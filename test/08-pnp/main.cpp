@@ -206,10 +206,10 @@ void testPnp() {
   arr qHome = C.getJointState();
 
   //-- start a robot thread
-  BotOp bot(C, !rai::checkParameter<bool>("sim"));
+  BotOp bot(C, rai::checkParameter<bool>("real"));
   bot.home(C);
 
-  const char* gripperName="R_gripperCenter";
+  const char* gripperName="R_gripper";
   const char* palmName="R_panda_coll_hand";
   const char* boxName="target";
   const char* tableName="table";
@@ -338,7 +338,7 @@ void testPnp2() {
   C.addFrame("target", "table")
       ->setJoint(rai::JT_rigid)
       .setShape(rai::ST_ssBox, {.06,.15,.09,.01})
-      .setRelativePosition(arr{-.4,-.4,.075});
+      .setRelativePosition(arr{-.4,-.2,.075});
 
   C.addFrame("helper")
       ->setShape(rai::ST_marker, {.5})
@@ -348,11 +348,10 @@ void testPnp2() {
   cout <<"JOINT LIMITS:" <<C.getLimits() <<endl;
 
   //-- start a robot thread
-  BotOp bot(C, !rai::checkParameter<bool>("sim"));
+  BotOp bot(C, rai::checkParameter<bool>("real"));
   bot.home(C);
 
-
-  const char* gripperName="R_gripperCenter";
+  const char* gripperName="R_gripper";
   const char* palmName="R_panda_coll_hand";
   const char* boxName="target";
   const char* tableName="table";

@@ -21,7 +21,7 @@ void testLeapCtrl() {
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
 
   //add a target in position space
-  arr center = C["R_gripperCenter"]->getPosition();
+  arr center = C["R_gripper"]->getPosition();
   rai::Frame& target =
       C.addFrame("target")
       ->setShape(rai::ST_marker, {.1})
@@ -30,12 +30,12 @@ void testLeapCtrl() {
   arr q0 = C.getJointState();
 
   //-- start a robot thread
-  BotOp bot(C, !rai::checkParameter<bool>("sim"));
+  BotOp bot(C, rai::checkParameter<bool>("real"));
   bot.home(C);
 
 
   LeapMPC leap(C,1.);
-  leap.komo.addObjective({1.}, FS_positionDiff, {"R_gripperCenter", "target"}, OT_eq, {1e2});
+  leap.komo.addObjective({1.}, FS_positionDiff, {"R_gripper", "target"}, OT_eq, {1e2});
 
   for(uint t=0;;t++){
 

@@ -28,7 +28,7 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
         rai::Frame *f = C.getFrame(s);
         CHECK(f, "frame '" <<s <<"' does not exist");
         CHECK(f->joint, "frame '" <<s <<"' is not a joint");
-        CHECK(f->joint->qDim()==1, "joint '" <<s <<"' is not 1D");
+        CHECK(f->joint->dim==1, "joint '" <<s <<"' is not 1D");
         q_indices(i++) = f->joint->qIndex;
       }
       CHECK_EQ(i, joints.N, "");

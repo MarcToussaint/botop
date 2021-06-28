@@ -18,7 +18,7 @@ add_definitions(
   -DRAI_ROOT_PATH=\"${CMAKE_SOURCE_DIR}/rai\"
   -DRAI_X11 -DRAI_LAPACK -DRAI_EIGEN -DRAI_PTHREAD
   -DRAI_GL
-  -DRAI_GLFW -DRAI_ANN -DRAI_QHULL -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG
+  -DRAI_GLFW -DRAI_ANN -DRAI_QHULL -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
   -DRAI_SWIFT -DRAI_GJK -DRAI_FCL -DRAI_CCD
   -DRAI_OPENCV
   -DRAI_FRANKA
@@ -47,7 +47,8 @@ link_directories(
 file(GLOB SRC_Core rai/rai/Core/*.cpp)
 file(GLOB SRC_Optim rai/rai/Optim/*.cpp)
 file(GLOB SRC_Geo rai/rai/Geo/*.cpp)
-file(GLOB SRC_GeoPlus rai/rai/Geo/GJK/*.c)
+file(GLOB SRC_GeoGJK rai/rai/Geo/GJK/*.c)
+file(GLOB SRC_GeoPly rai/rai/Geo/ply/*.c)
 file(GLOB SRC_Algo rai/rai/Algo/*.cpp)
 file(GLOB SRC_Plot rai/rai/Plot/*.cpp)
 file(GLOB SRC_Gui rai/rai/Gui/*.cpp)
@@ -70,7 +71,8 @@ add_library(rai SHARED
   ${SRC_Core}
   ${SRC_Optim}
   ${SRC_Geo}
-  ${SRC_GeoPlus}
+  ${SRC_GeoGJK}
+  ${SRC_GeoPly}
   ${SRC_Algo}
   ${SRC_Plot}
   ${SRC_Gui}

@@ -172,7 +172,7 @@ void ZeroReference::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, cons
 
 arr getLoopPath(rai::Configuration& C){
   //add some targets in position space
-  arr center = C["R_gripperCenter"]->getPosition();
+  arr center = C["R_gripper"]->getPosition();
   C.addFrame("target1")
       ->setShape(rai::ST_marker, {.1})
       .setPosition(center + arr{+.3,.0,+.2});
@@ -194,10 +194,10 @@ arr getLoopPath(rai::Configuration& C){
   komo.setTiming(5, 10, 2., 2);
   komo.add_qControlObjective({}, 2, 1.);
 
-  komo.addObjective({1.}, FS_positionDiff, {"R_gripperCenter", "target1"}, OT_eq, {1e2});
-  komo.addObjective({2.}, FS_positionDiff, {"R_gripperCenter", "target2"}, OT_eq, {1e2});
-  komo.addObjective({3.}, FS_positionDiff, {"R_gripperCenter", "target3"}, OT_eq, {1e2});
-  komo.addObjective({4.}, FS_positionDiff, {"R_gripperCenter", "target4"}, OT_eq, {1e2});
+  komo.addObjective({1.}, FS_positionDiff, {"R_gripper", "target1"}, OT_eq, {1e2});
+  komo.addObjective({2.}, FS_positionDiff, {"R_gripper", "target2"}, OT_eq, {1e2});
+  komo.addObjective({3.}, FS_positionDiff, {"R_gripper", "target3"}, OT_eq, {1e2});
+  komo.addObjective({4.}, FS_positionDiff, {"R_gripper", "target4"}, OT_eq, {1e2});
   komo.addObjective({5.}, make_shared<F_qItself>(C.getCtrlFramesAndScale(), true), {}, OT_eq, {1e2});
   komo.addObjective({5.}, make_shared<F_qItself>(C.getCtrlFramesAndScale()), {}, OT_eq, {1e2}, {}, 1);
 

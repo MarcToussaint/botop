@@ -46,6 +46,13 @@ nice -19 make -j $(command nproc)
 make install
 ```
 
+* Install python and pybind
+```
+sudo apt-get install python3 python3-dev python3-numpy python3-pip python3-distutils
+# export PATH="${PATH}:$HOME/.local/bin"   #add this to your .bashrc, if not done already
+pip3 install --user jupyter nbconvert matplotlib pybind11
+```
+
 * Clone and compile this repo:
 ```
 mkdir -p $HOME/git

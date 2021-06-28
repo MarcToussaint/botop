@@ -1,3 +1,4 @@
+
 #include <Franka/controlEmulator.h>
 #include <Franka/franka.h>
 #include <Franka/help.h>
@@ -80,11 +81,10 @@ void driveToPoses(rai::Configuration& C, const arr& X, const uint kStart=0) {
   uint Kend=X.d0, Kmax=5000;
   if(Kend>Kmax) Kend=Kmax;
 
-  BotOp bot(C, !rai::checkParameter<bool>("sim"));
+  BotOp bot(C, rai::checkParameter<bool>("real"));
   bot.robot->writeData=0;
-  if(absMax(bot.get_q()-bot.qHome)>.01){
-    bot.moveLeap(bot.qHome);
-  }
+
+  bot.home(C);
 
   for(uint k=kStart;k<Kend;k++){
     cout <<"========== POSE " <<k <<" ===========" <<endl;
