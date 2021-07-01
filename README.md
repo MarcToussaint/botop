@@ -4,12 +4,9 @@
 
 This assumes a standard Ubuntu 18.04 or 20.04 machine.
 
-* The following assumes $HOME/git as your git path, and $HOME/opt
-to install 3rd-party libs -- please stick to this (no system-wide installs)
-
-* Add your ssh key to github: Use `ssh-keygen` and `cat ~/.ssh/id_rsa.pub`
-
-* Install [libfranka](https://github.com/frankaemika/libfranka)
+* The following assumes $HOME/git as your git path, and $HOME/opt to
+  install 3rd-party libs -- please stick to this (no system-wide
+  installs). Setup basics:
 ```
 sudo apt update
 sudo apt install --yes build-essential cmake git libpoco-dev libeigen3-dev
@@ -17,16 +14,23 @@ sudo apt install --yes build-essential cmake git libpoco-dev libeigen3-dev
 mkdir -p $HOME/git
 mkdir -p $HOME/opt/lib
 mkdir -p $HOME/opt/include
+```
+
+* Add your ssh key to github: Use `ssh-keygen` and `cat ~/.ssh/id_rsa.pub`
+
+* Install [libfranka](https://github.com/frankaemika/libfranka)
+```
 cd $HOME/git
 git clone --recursive https://github.com/frankaemika/libfranka
+
 cd libfranka
 git checkout 0.7.1 --recurse-submodules
-
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt \-DCMAKE_BUILD_TYPE=Release ..
+
 nice -19 make franka -j $(command nproc)
-#make install
+
 cp libfranka* $HOME/opt/lib
 cp -r ../include/franka $HOME/opt/include
 ```
@@ -35,16 +39,16 @@ cp -r ../include/franka $HOME/opt/include
 ```
 sudo apt install --yes libusb-1.0-0-dev libglfw3-dev libgtk-3-dev
 
-mkdir -p $HOME/git
-mkdir -p $HOME/opt
 cd $HOME/git
 git clone --recursive https://github.com/IntelRealSense/librealsense.git
-cd librealsense
 
+cd librealsense
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DCMAKE_BUILD_TYPE=Release ..
-nice -19 make -j $(command nproc)
+
+nice -19 make realsense2 -j $(command nproc)
+
 make install
 ```
 
@@ -57,17 +61,16 @@ pip3 install --user jupyter nbconvert matplotlib pybind11
 
 * Clone and compile this repo:
 ```
-mkdir -p $HOME/git
 cd $HOME/git
 git clone --recursive git@github.com:MarcToussaint/botop.git
-cd botop
 
+cd botop
 make -j1 installUbuntuAll  # calls sudo apt-get install; you can always interrupt
-# If this fails, please try `make -j1 printUbuntuAll` to print all packages and install manually
 
 mkdir build
 cd build
 cmake -Dpybind11_DIR=`python3 -m pybind11 --cmakedir` ..
+
 nice -19 make -j $(command nproc)
 ```
 
