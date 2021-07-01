@@ -44,6 +44,7 @@ void init_PyBot(pybind11::module& m) {
   .def("moveAutoTimed", &BotOp::move)
   .def("moveOverride", &BotOp::moveOverride)
   .def("moveLeap", &BotOp::moveLeap)
+  .def("setControllerWriteData", &BotOp::setControllerWriteData)
 
   .def("gripperOpen", &BotOp::gripperOpen)
   .def("gripperClose", &BotOp::gripperClose)

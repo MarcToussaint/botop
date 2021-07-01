@@ -20,10 +20,10 @@ struct BotOp{
   ~BotOp();
 
   //-- state info
-  double get_t();
-  const arr& get_qHome(){ return qHome; }
   arr get_q();
   arr get_qDot();
+  double get_t();
+  const arr& get_qHome(){ return qHome; }
   double getTimeToEnd(); //negative, if motion spline is done
 
   //-- motion commands
@@ -31,6 +31,7 @@ struct BotOp{
   void moveAutoTimed(const arr& path, double timeCost);
   void moveOverride(const arr& path, const arr& times);
   double moveLeap(const arr& q_target, double timeCost=1.);
+  void setControllerWriteData(int _writeData){ robot->writeData=_writeData; }
 
   //-- gripper commands - directly calling the gripper abstraction
   void gripperOpen(double width=.075, double speed=.2){ gripper->open(width, speed); }
