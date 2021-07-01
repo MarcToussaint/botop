@@ -47,6 +47,7 @@ void testFastPath() {
   //-- start a robot thread
   BotOp bot(C, rai::checkParameter<bool>("real"));
   bot.home(C);
+  bot.setControllerWriteData(1);
 
   //-- send path as spline:
   for(double speed=1.;speed<=5.;speed+=.5){

@@ -1,8 +1,7 @@
 set style data lines
-#plot [:] 'z' us 2:5, '' us 2:13#
-#plot [:] 'z.panda.dat' us 0:3 t 'real', '' us 0:10 t 'ref'
-#plot 'z' us 0:4, '' us 0:8, '' us 0:12, '' us 0:16
-plot 'z.panda.dat' us 0:($2-$9) t 'err1', \
+
+plot 'z.panda.dat' \
+     us 0:($2-$9) t 'err1', \
   '' us 0:($3-$10) t 'err2', \
   '' us 0:($4-$11) t 'err3', \
   '' us 0:($5-$12) t 'err4', \
@@ -19,9 +18,9 @@ plot 'z.panda.dat' us 0:($2-$9) t 'err1', \
 #  '' us 0:($8) t 'real7', '' us 0:($15) t 'ref7', \
 
 
-plot 'z.panda.dat' us 1:($26) t 'u_cmd', \
-'' us 1:($33) t 'u_measured', \
-'' us 1:($40) t 'gravity', \
-'' us 1:($40+$26) t 'gravity+u_cmd', \
+#plot 'z.panda.dat' us 1:($26) t 'u_cmd', \
+#'' us 1:($33) t 'u_measured', \
+#'' us 1:($40) t 'gravity', \
+#'' us 1:($40+$26) t 'gravity+u_cmd', \
 
 

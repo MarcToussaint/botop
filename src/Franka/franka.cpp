@@ -168,7 +168,6 @@ void FrankaThreadNew::step(){
 
     //-- construct torques from control message depending on the control type
     if(controlType == rai::ControlType::configRefs) { // plain qRef, qDotRef references
-      arr qDDot_des = zeros(7);
       //check for correct ctrl otherwise do something...
       if(q_ref.N!=7){
         if(!(steps%10)){
@@ -176,12 +175,14 @@ void FrankaThreadNew::step(){
         }
         return std::array<double, 7>({0., 0., 0., 0., 0., 0., 0.});
       }
+      //check for correct compliance objective
       if(P_compliance.N){
         if(!(P_compliance.nd==2 && P_compliance.d0==7 && P_compliance.d1==7)){
           cerr << "FRANKA: inconsistent ctrl P_compliance message" << endl;
           P_compliance.clear();
         }
       }
+
       //-- compute desired torques
       arr Kp(7), Kd(7);
       CHECK_EQ(Kp.N, 7,"");
@@ -200,19 +201,16 @@ void FrankaThreadNew::step(){
         Kp = diag(Kp);
       }
 
+      //-- feedback term
+      u.resize(7).setZero();
       if(q_ref.N==7){
-//        qDDot_des += qDDot_ref;
-        qDDot_des += Kp * (q_ref - q_real);
-        qDDot_des += Kd % (qDot_ref - qDot_real);
-        // if(!(steps%50)) cout <<"dot_ref" <<qdot_ref <<endl;
+        u += Kp * (q_ref - q_real);
+        u += Kd % (qDot_ref - qDot_real);
       }
 
-      u = qDDot_des;
-
-      //-- add qDDot_ref term
-      if(absMax(qDDot_des)>0.){
-        arr M = M_org + diag(ARR(0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2));
-
+      //-- feedforward term
+      if(absMax(qDDot_ref)>0.){
+        arr M = M_org; // + diag(ARR(0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2));
         u += M*qDDot_ref;
       }
 
