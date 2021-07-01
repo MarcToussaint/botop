@@ -7,8 +7,6 @@ set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
 find_package( OpenCV REQUIRED )
 #find_package( Bullet REQUIRED )
 find_package(pybind11)
-#find_package(Python COMPONENTS Interpreter Development REQUIRED)
-#find_package(pybind11 CONFIG REQUIRED)
 
 add_compile_options(
   -O3 -g -Wall -fPIC -std=c++14 -Wno-terminate -Wno-pragmas
@@ -24,8 +22,8 @@ add_definitions(
   -DRAI_FRANKA
   -DRAI_REALSENSE
   -DRAI_PYBIND
-  #-DRAI_PHYSX -D_DEBUG -DPX_DISABLE_FLUIDS -DCORELIB -DPX32 -DLINUX #physx
-  #-DRAI_BULLET #bullet
+  #-DRAI_PHYSX -D_DEBUG -DPX_DISABLE_FLUIDS -DCORELIB -DPX32 -DLINUX
+  #-DRAI_BULLET
   )
 
 include_directories(
@@ -99,7 +97,6 @@ target_link_libraries(rai
   ${OpenCV_LIBS}
   #${BULLET_LIBRARIES}
   #PhysX3Extensions PhysX3_x64 PhysX3Cooking_x64 PhysX3Common_x64 PxFoundation_x64
-  #BulletSoftBody BulletDynamics BulletCollision LinearMath 
   )
 
 pybind11_add_module(libry SHARED

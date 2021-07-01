@@ -7,6 +7,8 @@ This assumes a standard Ubuntu 18.04 or 20.04 machine.
 * The following assumes $HOME/git as your git path, and $HOME/opt
 to install 3rd-party libs -- please stick to this (no system-wide installs)
 
+* Add your ssh key to github: Use `ssh-keygen` and `cat ~/.ssh/id_rsa.pub`
+
 * Install [libfranka](https://github.com/frankaemika/libfranka)
 ```
 sudo apt update
@@ -49,7 +51,7 @@ make install
 * Install python and pybind
 ```
 sudo apt-get install python3 python3-dev python3-numpy python3-pip python3-distutils
-# export PATH="${PATH}:$HOME/.local/bin"   #add this to your .bashrc, if not done already
+echo 'export PATH="${PATH}:$HOME/.local/bin"' >> ~/.bashrc   #add this to your .bashrc, if not done already
 pip3 install --user jupyter nbconvert matplotlib pybind11
 ```
 
@@ -57,7 +59,6 @@ pip3 install --user jupyter nbconvert matplotlib pybind11
 ```
 mkdir -p $HOME/git
 cd $HOME/git
-#git clone --recursive git@git.tu-berlin.de:lis/botop.git
 git clone --recursive git@github.com:MarcToussaint/botop.git
 cd botop
 
@@ -72,7 +73,7 @@ nice -19 make -j $(command nproc)
 
 * Add binaries to your $PATH; or add symbolic links to your user bin 
 ```
-export PATH="$HOME/git/botop/build:$PATH"
+echo 'export PATH="$HOME/git/botop/build:$PATH"' >> ~/.bashrc
 OR SOMETHING LIKE:
 ln -s $HOME/git/botop/build/bot $HOME/bin/
 ln -s $HOME/git/botop/build/kinEdit $HOME/bin/
@@ -80,8 +81,7 @@ ln -s $HOME/git/botop/build/kinEdit $HOME/bin/
 
 * Test the things in test/
 ```
-make tests
-test/01-.../x.exe
+bot -sim -loop
 ```
 
 
@@ -91,9 +91,9 @@ test/01-.../x.exe
 ```
 sudo usermod -a -G realtime <username>
 ```
-You need to log out/in or even reboot for this to take effect. Check with `groups` in a terminal.
+You need to log out and back in (or even reboot) for this to take effect. Check with `groups` in a terminal.
 * Turn on the power switch at the control box
-* Open the panda web interface at `https://172.16.0.2/desk/`. You'll need to log in with user `mti` and passwd `mti-engage`
+* Open the panda web interface at `https://172.16.0.2/desk/`. Accept the security risk. You'll need to log in with user `mti` and passwd `mti-engage`
 * Unlock the joints
 * **ALWAYS 2 PEOPLE ARE REQUIRED! ONE TO HOLD THE EMERGENCY STOP**
 * Perform a series of tests
@@ -124,6 +124,7 @@ include $(BASE)/build/generic.mk
 * `bot -loop -speed 2`
 * `bot -float`
 * `bot -hold`
+* `bot -damp`
 
 
 
