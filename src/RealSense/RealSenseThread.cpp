@@ -1,5 +1,7 @@
 #include "RealSenseThread.h"
 
+#ifdef RAI_REALSENSE
+
 #include <librealsense2/rs.hpp>
 #include <librealsense2/rsutil.h>
 
@@ -206,3 +208,12 @@ float get_depth_scale(rs2::device dev){
 
 
 void rs2_get_motion_intrinsics(const rs2_stream_profile* mode, rs2_motion_device_intrinsic * intrinsics, rs2_error ** error);
+
+#else //REALSENSE
+RealSenseThread::RealSenseThread(const Var<byteA>& _color, const Var<floatA>& _depth) : Thread("RealSenseThread") { NICO }
+RealSenseThread::~RealSenseThread(){ NICO }
+void RealSenseThread::open(){ NICO }
+void RealSenseThread::close(){ NICO }
+void RealSenseThread::step(){ NICO }
+
+#endif

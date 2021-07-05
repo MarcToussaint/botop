@@ -35,7 +35,7 @@ cp libfranka* $HOME/opt/lib
 cp -r ../include/franka $HOME/opt/include
 ```
 
-* Install [librealsense](https://github.com/IntelRealSense/librealsense)
+* OPTIONAL (if enabled with ccmake ..) install [librealsense](https://github.com/IntelRealSense/librealsense)
 ```
 sudo apt install --yes libusb-1.0-0-dev libglfw3-dev libgtk-3-dev
 
@@ -69,7 +69,7 @@ make -j1 installUbuntuAll  # calls sudo apt-get install; you can always interrup
 
 mkdir build
 cd build
-cmake -Dpybind11_DIR=`python3 -m pybind11 --cmakedir` ..
+cmake ..
 
 nice -19 make -j $(command nproc)
 ```
