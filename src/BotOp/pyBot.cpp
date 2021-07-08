@@ -41,7 +41,7 @@ void init_PyBot(pybind11::module& m) {
   .def("getTimeToEnd", &BotOp::getTimeToEnd)
 
   .def("move", &BotOp::move) 
-  .def("moveAutoTimed", &BotOp::move)
+  .def("moveAutoTimed", &BotOp::moveAutoTimed)
   .def("moveOverride", &BotOp::moveOverride)
   .def("moveLeap", &BotOp::moveLeap)
   .def("setControllerWriteData", &BotOp::setControllerWriteData)
