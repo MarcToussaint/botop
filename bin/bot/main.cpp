@@ -5,6 +5,7 @@
 #include <Gui/viewer.h>
 
 #include <BotOp/bot.h>
+#include <BotOp/motionHelpers.h>
 
 //===========================================================================
 

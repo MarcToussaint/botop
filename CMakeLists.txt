@@ -72,7 +72,7 @@ file(GLOB SRC_ry rai/rai/ry/*.cpp)
 
 file(GLOB SRC_Franka src/Franka/*.cpp)
 file(GLOB SRC_RealSense src/RealSense/*.cpp)
-file(GLOB SRC_BotOp src/BotOp/bot.cpp)
+file(GLOB SRC_BotOp src/BotOp/*.cpp)
 
 add_library(rai SHARED
   ${SRC_Core}
@@ -129,7 +129,7 @@ target_link_libraries(libry PRIVATE
   )
 
 pybind11_add_module(libpybot SHARED
-  src/BotOp/pyBot.cpp
+  src/BotOp/pyBot.cxx
   )
 target_link_libraries(libpybot PRIVATE
   rai

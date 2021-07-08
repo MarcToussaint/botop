@@ -76,4 +76,3 @@ template<class T> BotOp& BotOp::setReference(){
 
 //===========================================================================
 
-arr getLoopPath(rai::Configuration& C);
