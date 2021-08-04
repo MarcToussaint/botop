@@ -1,19 +1,12 @@
 cmake_minimum_required(VERSION 3.4)
 
-project(LISRobotLab)
+project(LISRobotOperation)
 
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
 
-execute_process(
-    COMMAND bash "-c" "python3 -m pybind11 --cmakedir" 
-    OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE pybind11_DIR
-)
-
-option(USE_OPENCV "Link to opencv" OFF)
-option(USE_REALSENSE "Link to realsense2 driver library" OFF)
-
-#find_package( Bullet REQUIRED )
-find_package(pybind11)
+option(USE_PYBIND "build python bindings" ON)
+option(USE_OPENCV "link to opencv" OFF)
+option(USE_REALSENSE "link to realsense2 driver library" OFF)
 
 add_compile_options(
   -O3 -g -Wall -fPIC -std=c++14 -Wno-terminate -Wno-pragmas
@@ -28,9 +21,6 @@ add_definitions(
   -DRAI_GLFW -DRAI_ANN -DRAI_QHULL -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
   -DRAI_SWIFT -DRAI_GJK -DRAI_FCL -DRAI_CCD
   -DRAI_FRANKA
-  -DRAI_PYBIND
-  #-DRAI_PHYSX -D_DEBUG -DPX_DISABLE_FLUIDS -DCORELIB -DPX32 -DLINUX
-  #-DRAI_BULLET
   )
 
 ################################################################################
@@ -40,15 +30,10 @@ include_directories(
   rai/rai
   /usr/include/eigen3
   $ENV{HOME}/opt/include
-  #${BULLET_INCLUDE_DIRS}
-  #$ENV{HOME}/opt/physx3.4/include $ENV{HOME}/opt/physx3.4/include/physx
-  #$ENV{HOME}/opt/include/bullet/
   )
 
 link_directories(
   $ENV{HOME}/opt/lib
-  #$ENV{HOME}/opt/physx3.4/lib
-  #/opt/ros/kinetic/lib
   )
 
 file(GLOB SRC_Core rai/rai/Core/*.cpp)
@@ -92,7 +77,6 @@ add_library(rai SHARED
   ${SRC_Perception}
   ${SRC_Control}
   #${SRC_Operate}
-  #  ${SRC_ry}
   ${SRC_Franka}
   ${SRC_BotOp}
   ${SRC_RealSense}
@@ -102,11 +86,18 @@ target_link_libraries(rai
   jsoncpp lapack blas pthread rt X11
   assimp fcl ann glfw GLEW glut GLU GL png qhull
   franka
-  #${BULLET_LIBRARIES}
-  #PhysX3Extensions PhysX3_x64 PhysX3Cooking_x64 PhysX3Common_x64 PxFoundation_x64
   )
 
 ################################################################################
+
+if(USE_PYBIND)
+  execute_process(
+    COMMAND bash "-c" "python3 -m pybind11 --cmakedir" 
+    OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE pybind11_DIR
+  )
+  find_package(pybind11)
+  add_definitions(-DRAI_PYBIND)
+endif()
 
 if(USE_OPENCV)
   find_package(OpenCV REQUIRED)
