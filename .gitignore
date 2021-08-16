@@ -24,6 +24,8 @@ vc60.idb
 .*.creator.user*
 .*.files
 .*.includes
+.*.cflags
+.*.cxxflags
 
 .cproject
 .project

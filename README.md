@@ -24,7 +24,8 @@ cd $HOME/git
 git clone --recursive https://github.com/frankaemika/libfranka
 
 cd libfranka
-git checkout 0.7.1 --recurse-submodules
+#git checkout 0.7.1 --recurse-submodules ##FOR THE OLD ARM!!!
+git checkout 0.8.0 --recurse-submodules
 mkdir build
 cd build
 cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt \-DCMAKE_BUILD_TYPE=Release ..

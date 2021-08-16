@@ -22,10 +22,10 @@ inline byteA franka_getFrameMaskMap(const rai::Configuration& K){
   frameMaskMap.setZero();
   for(rai::Frame *f:K.frames){
     if(f->shape){
-      if(f->getUpwardLink()->name.startsWith("L_")){
+      if(f->getUpwardLink()->name.startsWith("l_")){
         frameMaskMap(f->ID)=PL_robot;
       }
-      if(f->getUpwardLink()->name.startsWith("R_")){
+      if(f->getUpwardLink()->name.startsWith("r_")){
         frameMaskMap(f->ID)=PL_robot+1;
       }
       if(f->getUpwardLink()->name.startsWith("perc_")){
@@ -42,10 +42,10 @@ inline byteA franka_getFrameMaskMap(const rai::Configuration& K){
 inline void franka_setFrameMaskMapLabels(rai::Configuration& K){
   for(rai::Frame *f:K.frames){
     if(f->shape){
-      if(f->getUpwardLink()->name.startsWith("L_")){
+      if(f->getUpwardLink()->name.startsWith("l_")){
         f->ats->getNew<int>("label") = PL_robot;
       }
-      if(f->getUpwardLink()->name.startsWith("R_")){
+      if(f->getUpwardLink()->name.startsWith("r_")){
         f->ats->getNew<int>("label") = PL_robot+1;
       }
     }

@@ -10,8 +10,12 @@
 //===========================================================================
 
 struct BotOp{
-  std::unique_ptr<rai::RobotAbstraction> robot;
-  std::unique_ptr<rai::GripperAbstraction> gripper;
+  Var<rai::CtrlCmdMsg> cmd;
+  Var<rai::CtrlStateMsg> state;
+  std::unique_ptr<rai::RobotAbstraction> robotL;
+  std::unique_ptr<rai::RobotAbstraction> robotR;
+  std::unique_ptr<rai::GripperAbstraction> gripperL;
+  std::unique_ptr<rai::GripperAbstraction> gripperR;
   std::shared_ptr<rai::ReferenceFeed> ref;
   arr qHome;
   int keypressed=0;
@@ -31,12 +35,12 @@ struct BotOp{
   void moveAutoTimed(const arr& path, double timeCost);
   void moveOverride(const arr& path, const arr& times);
   double moveLeap(const arr& q_target, double timeCost=1.);
-  void setControllerWriteData(int _writeData){ robot->writeData=_writeData; }
+  void setControllerWriteData(int _writeData){ if(robotL) robotL->writeData=_writeData;  if(robotR) robotR->writeData=_writeData;  }
 
   //-- gripper commands - directly calling the gripper abstraction
-  void gripperOpen(double width=.075, double speed=.2){ gripper->open(width, speed); }
-  void gripperClose(double force=10, double width=.05, double speed=.1){ gripper->close(force, width, speed); }
-  double gripperPos(){ return gripper->pos(); }
+  void gripperOpen(double width=.075, double speed=.2){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->open(width, speed); }
+  void gripperClose(double force=10, double width=.05, double speed=.1){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->close(force, width, speed); }
+  double gripperPos(){ if(!gripperL){ LOG(-1) <<"gripper disabled"; return 0.; }else return gripperL->pos(); }
 
   //-- sync the user's C with the robot, update the display, return false if motion spline is done
   bool step(rai::Configuration& C, double waitTime=.1);
@@ -68,7 +72,7 @@ struct ZeroReference : rai::ReferenceFeed {
 template<class T> BotOp& BotOp::setReference(){
   //comment the next line to only get gravity compensation instead of 'zero reference following' (which includes damping)
   ref = make_shared<T>();
-  robot->cmd.set()->ref = ref;
+  cmd.set()->ref = ref;
 //  ref->setPositionReference(q_now);
 //ref->setVelocityReference({.0,.0,.2,0,0,0,0});
   return *this;

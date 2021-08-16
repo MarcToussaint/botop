@@ -8,7 +8,8 @@ int main(int argc, char * argv[]){
 
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
 
   BotOp bot(C, !rai::checkParameter<bool>("sim"));
 
@@ -53,12 +54,12 @@ int main(int argc, char * argv[]){
   }
 
   if(rai::checkParameter<bool>("close")){
-    bot.gripper->close();
+    bot.gripperL->close();
     rai::wait(.5);
   }
 
   if(rai::checkParameter<bool>("open")){
-    bot.gripper->open();
+    bot.gripperL->open();
     rai::wait(.5);
   }
 

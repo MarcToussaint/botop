@@ -7,9 +7,16 @@ void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio)
 
 const char *frankaIpAddresses[2] = {"172.16.0.2", "172.17.0.2"};
 
-FrankaThreadNew::FrankaThreadNew(uint whichRobot, const uintA& _qIndices)
-  : Thread("FrankaThread"),
-    qIndices(_qIndices) {
+FrankaThreadNew::~FrankaThreadNew(){
+  stop = true;
+  rai::wait(.1);
+  threadClose();
+}
+
+long c = 0;
+
+void FrankaThreadNew::init(uint whichRobot, const uintA& _qIndices) {
+  qIndices=_qIndices;
 
   CHECK_EQ(qIndices.N, 7, "");
   qIndices_max = qIndices.max();
@@ -27,14 +34,6 @@ FrankaThreadNew::FrankaThreadNew(uint whichRobot, const uintA& _qIndices)
   threadStep();  //this is not looping! The step method passes a callback to robot.control, which is blocking! (that's why we use a thread) until stop becomes true
   while(requiresInitialization) rai::wait(.01);
 }
-
-FrankaThreadNew::~FrankaThreadNew(){
-  stop = true;
-  rai::wait(.1);
-  threadClose();
-}
-
-long c = 0;
 
 void FrankaThreadNew::step(){
   // connect to robot
@@ -65,15 +64,11 @@ void FrankaThreadNew::step(){
     while(stateSet->q.N<=qIndices_max) stateSet->q.append(0.);
     while(stateSet->qDot.N<=qIndices_max) stateSet->qDot.append(0.);
     while(stateSet->tauExternal.N<=qIndices_max) stateSet->tauExternal.append(0.);
-//    while(ref->qRef.N<=qIndices_max) ref->qRef.append(0.);
-//    while(ref->qDotRef.N<=qIndices_max) ref->qDotRef.append(0.);
 
     for(uint i=0; i < 7; i++){
       stateSet->q(qIndices(i)) = q_real(i);
       stateSet->qDot(qIndices(i)) = qDot_real(i);
       stateSet->tauExternal(qIndices(i)) = 0.;
-//      ref->qRef(qIndices(i)) = q(i);
-//      ref->qDotRef(qIndices(i)) = 0.;
     }
   }
 
@@ -98,6 +93,7 @@ void FrankaThreadNew::step(){
     //ctrlTime = rai::realTime();
 
     //-- publish state
+    arr state_q_real, state_qDot_real;
     {
       auto stateSet = state.set();
       stateSet->time = ctrlTime;
@@ -106,6 +102,8 @@ void FrankaThreadNew::step(){
         stateSet->qDot(qIndices(i)) = qDot_real(i);
         stateSet->tauExternal(qIndices(i)) = torquesExternal_real(i);
       }
+      state_q_real = stateSet->q;
+      state_qDot_real = stateSet->qDot;
     }
 
     //-- get current ctrl command
@@ -120,24 +118,29 @@ void FrankaThreadNew::step(){
 
       arr cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref;
       if(cmdGet->ref){
-        cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, q_real, qDot_real, ctrlTime);
+        cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, state_q_real, state_qDot_real, ctrlTime);
+        CHECK(cmd_q_ref.N > qIndices_max, "");
+        CHECK(cmd_qDot_ref.N > qIndices_max, "");
+        CHECK(cmd_qDDot_ref.N > qIndices_max, "");
       }
 
-      if(cmd_q_ref.N >= 7) q_ref.resize(7).setZero();
-      if(cmd_qDot_ref.N >= 7) qDot_ref.resize(7).setZero();
-      if(cmd_qDDot_ref.N >= 7) qDDot_ref.resize(7).setZero();
-      if(cmdGet->Kp.d0 >= 7 && cmdGet->Kp.d1 >=7 && cmdGet->Kp.d0 == cmdGet->Kp.d1) KpRef.resize(7, 7);
-      if(cmdGet->Kd.d0 >= 7 && cmdGet->Kd.d1 >=7 && cmdGet->Kd.d0 == cmdGet->Kd.d1) KdRef.resize(7, 7);
+      if(cmd_q_ref.N) q_ref.resize(7).setZero();
+      if(cmd_qDot_ref.N) qDot_ref.resize(7).setZero();
+      if(cmd_qDDot_ref.N) qDDot_ref.resize(7).setZero();
 
-      for(uint i = 0; i < 7; i++) {
-        if(cmd_q_ref.N >= 7) q_ref(i) = cmd_q_ref(qIndices(i));
-        if(cmd_qDot_ref.N >= 7) qDot_ref(i) = cmd_qDot_ref(qIndices(i));
-        if(cmd_qDDot_ref.N >= 7) qDDot_ref(i) = cmd_qDDot_ref(qIndices(i));
+      for(uint i=0; i<7; i++) {
+        if(cmd_q_ref.N) q_ref(i) = cmd_q_ref(qIndices(i));
+        if(cmd_qDot_ref.N) qDot_ref(i) = cmd_qDot_ref(qIndices(i));
+        if(cmd_qDDot_ref.N) qDDot_ref(i) = cmd_qDDot_ref(qIndices(i));
+      }
 
-        for(uint j = 0; j < 7; j++) {
-          if(cmdGet->Kp.d0 >= 7 && cmdGet->Kp.d1 >=7 && cmdGet->Kp.d0 == cmdGet->Kp.d1) KpRef(i, j) = cmdGet->Kp(qIndices(i), qIndices(j));
-          if(cmdGet->Kd.d0 >= 7 && cmdGet->Kd.d1 >=7 && cmdGet->Kd.d0 == cmdGet->Kd.d1) KdRef(i, j) = cmdGet->Kd(qIndices(i), qIndices(j));
-        }
+      if(cmdGet->Kp.d0 >= 7 && cmdGet->Kp.d1 >=7 && cmdGet->Kp.d0 == cmdGet->Kp.d1){
+        KpRef.resize(7, 7);
+        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) KpRef(i, j) = cmdGet->Kp(qIndices(i), qIndices(j));
+      }
+
+      if(cmdGet->Kd.d0 >= 7 && cmdGet->Kd.d1 >=7 && cmdGet->Kd.d0 == cmdGet->Kd.d1){
+        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) KdRef(i, j) = cmdGet->Kd(qIndices(i), qIndices(j));
       }
 
       if(cmdGet->P_compliance.N) {

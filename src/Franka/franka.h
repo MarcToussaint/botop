@@ -7,7 +7,8 @@
 
 
 struct FrankaThreadNew : rai::RobotAbstraction, Thread{
-  FrankaThreadNew(uint whichRobot=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6});
+  FrankaThreadNew(uint whichRobot=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6}) : Thread("FrankaThread"){ init(whichRobot, _qIndices); }
+  FrankaThreadNew(uint whichRobot, const uintA& _qIndices, const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state) : RobotAbstraction(_cmd, _state), Thread("FrankaThread"){ init(whichRobot, _qIndices); }
   ~FrankaThreadNew();
 
 private:
@@ -22,5 +23,6 @@ private:
   ofstream dataFile;
   double ctrlTime=0.;
 
+  void init(uint whichRobot, const uintA& _qIndices);
   void step();
 };
