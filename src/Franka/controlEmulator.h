@@ -17,9 +17,12 @@ struct GripperAbstraction {
 
 struct ControlEmulator : rai::RobotAbstraction, Thread {
   ControlEmulator(const rai::Configuration& _sim_config,
+                  const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state,
                   const StringA& joints={},
                   double _tau=.001,
-                  double hyperSpeed=1.);
+                  double hyperSpeed=1.
+                  );
+
   ~ControlEmulator();
 
 private:

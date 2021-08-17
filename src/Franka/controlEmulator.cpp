@@ -6,9 +6,11 @@
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
 ControlEmulator::ControlEmulator(const rai::Configuration& C,
+                                 const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state,
                                  const StringA& joints,
                                  double _tau, double hyperSpeed)
-  : Thread("FrankaThread_Emulated", _tau/hyperSpeed),
+  : RobotAbstraction(_cmd, _state),
+    Thread("FrankaThread_Emulated", _tau/hyperSpeed),
     tau(_tau),
     emuConfig(C){
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));

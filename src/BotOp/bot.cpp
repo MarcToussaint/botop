@@ -32,7 +32,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       HALT("you need a botUseArm configuration (right, left, both)");
     }
   }else{
-    robotL = make_unique<ControlEmulator>(C); //, StringA(), .001, 10.);
+    robotL = make_unique<ControlEmulator>(C, cmd, state); //, StringA(), .001, 10.);
     if(useGripper) gripperL = make_unique<GripperEmulator>();
   }
   C.setJointState(get_q());

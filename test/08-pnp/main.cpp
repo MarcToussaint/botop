@@ -21,7 +21,7 @@
 void testPnp() {
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
 
   //add a target object
   C.addFrame("target", "table")
@@ -34,8 +34,8 @@ void testPnp() {
   BotOp bot(C, rai::checkParameter<bool>("real"));
   bot.home(C);
 
-  const char* gripperName="R_gripper";
-  const char* palmName="R_panda_coll_hand";
+  const char* gripperName="r_gripper";
+  const char* palmName="r_palm";
   const char* boxName="target";
   const char* tableName="table";
 
@@ -79,9 +79,9 @@ void testPnp() {
 
   for(uint k=0;k<path.N;k++){
 //    rai::wait();
-    if(k==0){ bot.gripper->open(); rai::wait(.3); }
-    if(k==1){ bot.gripper->close(); rai::wait(.5); }
-    if(k==2){ bot.gripper->open(); rai::wait(.3); }
+    if(k==0){ bot.gripperL->open(); rai::wait(.3); }
+    if(k==1){ bot.gripperL->close(); rai::wait(.5); }
+    if(k==2){ bot.gripperL->open(); rai::wait(.3); }
 
     //send komo as spline:
     bot.move(path(k), {4.});
@@ -117,9 +117,9 @@ arr getPnpKeyframes(const rai::Configuration& C,
   komo.addModeSwitch({2.,-1.}, rai::SY_stable, {"table", boxName}, false);
   addBoxPlaceObjectives(komo, 2., placeDirection, boxName, boxSize, gripperName, palmName);
 
-  komo.addObjective({}, FS_distance, {"R_panda_coll6", "table"}, OT_ineq, {1e2}, {});
-  komo.addObjective({}, FS_distance, {"R_panda_coll7", "table"}, OT_ineq, {1e2}, {});
-  komo.addObjective({}, FS_distance, {"R_panda_coll_hand", "table"}, OT_ineq, {1e2}, {});
+  komo.addObjective({}, FS_distance, {"r_panda_coll6", "table"}, OT_ineq, {1e2}, {});
+  komo.addObjective({}, FS_distance, {"r_panda_coll7", "table"}, OT_ineq, {1e2}, {});
+  komo.addObjective({}, FS_distance, {"r_palm", "table"}, OT_ineq, {1e2}, {});
 
   //-- home
 //  komo.addObjective({3.}, FS_qItself, {}, OT_eq, {1e1}, q0);
@@ -158,12 +158,12 @@ arr getPnpKeyframes(const rai::Configuration& C,
 
 void testPnp2() {
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
 
   C.addFrame("target", "table")
       ->setJoint(rai::JT_rigid)
       .setShape(rai::ST_ssBox, {.06,.15,.09,.01})
-      .setRelativePosition(arr{-.4,-.2,.075});
+      .setRelativePosition(arr{-.4,-.2,.095});
 
   C.addFrame("helper")
       ->setShape(rai::ST_marker, {.5})
@@ -176,12 +176,12 @@ void testPnp2() {
   BotOp bot(C, rai::checkParameter<bool>("real"));
   bot.home(C);
 
-  const char* gripperName="R_gripper";
-  const char* palmName="R_panda_coll_hand";
+  const char* gripperName="l_gripper";
+  const char* palmName="l_palm";
   const char* boxName="target";
   const char* tableName="table";
-  const char* arm1Name="R_panda_coll7";
-  const char* arm2Name="R_panda_coll6";
+  const char* arm1Name="l_panda_coll7";
+  const char* arm2Name="l_panda_coll6";
 
   uint L=50;
   for(uint l=0;l<=L;l++){
@@ -226,9 +226,9 @@ void testPnp2() {
                                 }, gripperName, false, true);
       }
 
-      if(k==0){ bot.gripper->open(); rai::wait(.3); }
-      else if(k==1){ bot.gripper->close(100.); rai::wait(.5); }
-      else if(k==2){ bot.gripper->open(); rai::wait(.3); }
+      if(k==0){ bot.gripperL->open(); rai::wait(.3); }
+      else if(k==1){ bot.gripperL->close(100.); rai::wait(.5); }
+      else if(k==2){ bot.gripperL->open(); rai::wait(.3); }
 
       //send komo as spline:
 //      bot.move(path, {2.5});
