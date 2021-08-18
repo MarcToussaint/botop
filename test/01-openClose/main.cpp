@@ -9,20 +9,37 @@ int main(int argc, char** argv) {
     std::cout<<"hello"<<std::endl;
 
     std::shared_ptr<rai::GripperAbstraction> G_ri;
-    if(rai::getParameter<bool>("robotiq")){
+    if(rai::getParameter<bool>("robotiq", true)){
       G_ri = make_shared<RobotiqGripper>(0);
     }else{
       G_ri = make_shared<FrankaGripper>(1);
     }
     std::cout <<"gripper pos:" <<G_ri->pos() /*<<" isGrasped:" <<G_ri->isGrasped()*/ <<std::endl;
+    rai::wait();
 
     std::cout <<"=========== fast close (is not faster) ..." <<std::endl;
-    G_ri->close(20, .05, .2);
+    G_ri->close(2, .01, .1);
     for(uint t=0;t<10;t++){
         std::cout <<"gripper pos while running:" <<G_ri->pos() /*<<" isGrasped:" <<G_ri->isGrasped()*/ <<std::endl;
     }
     G_ri->waitForIdle();
     cout <<"done" <<endl;
+    rai::wait();
+
+    G_ri->open();
+    rai::wait();
+
+    G_ri->close();
+    rai::wait();
+    G_ri->open();
+    rai::wait();
+
+    G_ri->close();
+    rai::wait();
+    G_ri->open();
+    rai::wait();
+
+#if 0
     rai::wait();
     cout <<"=========== Normal open..." <<std::endl;
     G_ri->open();
@@ -53,6 +70,7 @@ int main(int argc, char** argv) {
 //    G_ri->homing();
 //    G_ri->waitForIdle();
 //    cout <<"done" <<endl;
+#endif
   }
 
   return 0;

@@ -91,9 +91,10 @@ bot -sim -loop
 
 ## Panda robot operation
 
-* The user needs to be part of the `realtime` unix group:
+* The user needs to be part of the `realtime` and `dialout` unix group:
 ```
 sudo usermod -a -G realtime <username>
+sudo usermod -a -G dialout <username>
 ```
 You need to log out and back in (or even reboot) for this to take effect. Check with `groups` in a terminal.
 * Turn on the power switch at the control box
