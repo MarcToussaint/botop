@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
     for(double w=.3;w<=1.;w+=.1){
       G_ri->close(0., w);
       cout <<"w: " <<w <<"pos: " <<G_ri->pos() <<endl;;
-      rai::wait(.1);
+      rai::wait(.3);
     }
 
     cout <<"=========== Normal open..." <<std::endl;

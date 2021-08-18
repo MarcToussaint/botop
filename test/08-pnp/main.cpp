@@ -226,9 +226,9 @@ void testPnp2() {
                                 }, gripperName, false, true);
       }
 
-      if(k==0){ bot.gripperL->open(); rai::wait(.3); }
-      else if(k==1){ bot.gripperL->close(100.); rai::wait(.5); }
-      else if(k==2){ bot.gripperL->open(); rai::wait(.3); }
+      if(k==0){ bot.gripperL->open(); while(!bot.gripperL->isDone()) rai::wait(.1); }
+      else if(k==1){ bot.gripperL->close(); while(!bot.gripperL->isDone()) rai::wait(.1); }
+      else if(k==2){ bot.gripperL->open(); while(!bot.gripperL->isDone()) rai::wait(.1); }
 
       //send komo as spline:
 //      bot.move(path, {2.5});
@@ -236,6 +236,8 @@ void testPnp2() {
 
       while(bot.step(C));
       if(bot.keypressed=='q' || bot.keypressed==27) return;
+
+//      if(l==0 && k==0) rai::wait();
     }
   }
 
@@ -247,6 +249,7 @@ int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
 //  rnd.clockSeed();
+  rnd.seed(0);
 
 //  testPnp();
   testPnp2();
