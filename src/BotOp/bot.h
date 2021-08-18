@@ -41,7 +41,7 @@ struct BotOp{
   void gripperOpen(double width=.075, double speed=.2){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->open(width, speed); }
   void gripperClose(double force=10, double width=.05, double speed=.1){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->close(force, width, speed); }
   double gripperPos(){ if(!gripperL){ LOG(-1) <<"gripper disabled"; return 0.; } else return gripperL->pos(); }
-  void waitGripperIdle() {if(!gripperL){ LOG(-1) <<"gripper disabled"; return; } else return gripperL->waitForIdle(); }
+  bool isDone() {if(!gripperL){ LOG(-1) <<"gripper disabled"; return false; } else return gripperL->isDone(); }
 
   //-- sync the user's C with the robot, update the display, return false if motion spline is done
   bool step(rai::Configuration& C, double waitTime=.1);

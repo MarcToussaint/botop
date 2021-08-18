@@ -36,7 +36,7 @@ struct FrankaGripper : rai::GripperAbstraction, Thread{
 
   double pos();
 
-  void waitForIdle(){ Thread::waitForIdle(); }
+  bool isDone(){ return Thread::isIdle(); }
 
   bool isGrasped();
 

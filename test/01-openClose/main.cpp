@@ -14,63 +14,47 @@ int main(int argc, char** argv) {
     }else{
       G_ri = make_shared<FrankaGripper>(1);
     }
-    std::cout <<"gripper pos:" <<G_ri->pos() /*<<" isGrasped:" <<G_ri->isGrasped()*/ <<std::endl;
-    rai::wait();
 
-    std::cout <<"=========== fast close (is not faster) ..." <<std::endl;
-    G_ri->close(2, .01, .1);
-    for(uint t=0;t<10;t++){
-        std::cout <<"gripper pos while running:" <<G_ri->pos() /*<<" isGrasped:" <<G_ri->isGrasped()*/ <<std::endl;
+    std::cout <<"=========== standard close ..." <<std::endl;
+    G_ri->close();
+    while(!G_ri->isDone()){
+      std::cout <<"gripper pos while running:" <<G_ri->pos() /*<<" isGrasped:" <<G_ri->isGrasped()*/ <<std::endl;
+      rai::wait(.1);
     }
-    G_ri->waitForIdle();
-    cout <<"done" <<endl;
-    rai::wait();
+    cout <<"...done" <<endl;
 
-    G_ri->open();
-    rai::wait();
+    std::cout <<"=========== intermediate steps ..." <<std::endl;
+    for(double w=.3;w<=1.;w+=.1){
+      G_ri->close(0., w);
+      cout <<"w: " <<w <<"pos: " <<G_ri->pos() <<endl;;
+      rai::wait(.1);
+    }
 
-    G_ri->close();
-    rai::wait();
-    G_ri->open();
-    rai::wait();
-
-    G_ri->close();
-    rai::wait();
-    G_ri->open();
-    rai::wait();
-
-#if 0
-    rai::wait();
     cout <<"=========== Normal open..." <<std::endl;
     G_ri->open();
-    G_ri->waitForIdle();
-    rai::wait();
+    while(!G_ri->isDone()) rai::wait(.1);
 
-    cout <<"=========== slow weak close (slow, but not weaker)..." <<flush;
-    G_ri->close(2, .05, .02);
-    G_ri->waitForIdle();
+    cout <<"=========== slow & weak ..." <<flush;
+    G_ri->close(0, .2, .02);
+    while(!G_ri->isDone()) rai::wait(.1);
     cout <<"done" <<endl;
     rai::wait();
-    cout <<"=========== Normal open..." <<std::endl;
     G_ri->open();
-    G_ri->waitForIdle();
-    rai::wait();
+    while(!G_ri->isDone()) rai::wait(.1);
 
-    cout <<"=========== strong close (becomes strong late) ..." <<flush;
-    G_ri->close(100.);
-    G_ri->waitForIdle();
+    cout <<"=========== fast & strong..." <<flush;
+    G_ri->close(1., .2, 1.);
+    while(!G_ri->isDone()) rai::wait(.1);
     cout <<"done" <<endl;
     rai::wait();
-    cout <<"=========== Normal open..." <<std::endl;
     G_ri->open();
-    G_ri->waitForIdle();
-    rai::wait();
+    while(!G_ri->isDone()) rai::wait(.1);
 
 //    cout <<"=========== homing (measures the close/open positions) ..." <<flush;
 //    G_ri->homing();
 //    G_ri->waitForIdle();
 //    cout <<"done" <<endl;
-#endif
+
   }
 
   return 0;

@@ -5,6 +5,7 @@
 https://assets.robotiq.com/website-assets/support_documents/document/2F-85_2F-140_General_PDF_20210623.pdf
 */
 
+// all values taken from docs of gripper
 const double MAX_WIDTH = 0.85; // in mm
 
 const double MIN_FORCE = 20;
@@ -13,6 +14,14 @@ const double MAX_FORCE = 235; // in Newton
 const double MIN_SPEED = 0.02;
 const double MAX_SPEED = 0.15; // in  mm/s
 
+static int msg_len=0;
+static uint8_t msg[301];
+
+void writeHex(uint8_t *msg, int len){
+  cout <<"\nSERIAL MSG: ";
+  for(int i=0;i<len;i++) printf("x%02hhx", msg[i]);
+  cout <<endl;
+}
 
 /**
   METHOD TAKEN FROM git/robotiq/robotiq_ft_sensor/src/rq_sensor_com.cpp !!!
@@ -55,75 +64,46 @@ static uint16_t rq_com_compute_crc(uint8_t const * adr, int32_t length ) {
 RobotiqGripper::RobotiqGripper(uint whichRobot) {
   //-- choose robot/ipAddress
   CHECK_LE(whichRobot, 1, "");
-//  robotiqGripper = make_shared<robotiq::Gripper>(gripperIpAddresses[whichRobot]);
 
-  io_service io;
-  serialPort = std::make_shared<serial_port>(io);
+  boost::asio::io_service io;
+  serialPort = std::make_shared<boost::asio::serial_port>(io);
 
   serialPort->open("/dev/ttyUSB0");
 
-  serialPort->set_option(serial_port_base::baud_rate(115200));
-  serialPort->set_option(serial_port_base::stop_bits(serial_port_base::stop_bits::one));
+  serialPort->set_option(boost::asio::serial_port_base::baud_rate(115200));
+  serialPort->set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));
   //serialPort->set_option(serial_port_base::ce(8));
-  serialPort->set_option(serial_port_base::parity(serial_port_base::parity::none));
+  serialPort->set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
 
-  // send initialization command
-  serialPort->write_some(buffer(
-          "\x09\x10\x03\xE8\x00\x03\x06\x00\x00\x00\x00\x00\x00\x73\x30",
-                                15));
-  std::cout<<"hex value for init is: "<< "\x09\x10\x03\xE8\x00\x03\x06\x00\x00\x00\x00\x00\x00\x73\x30"<< std::endl;
+  // send initialization command09 10 03 E8 00 03 01 30 -- NOT NECESSARY! closes gripper
+//  serialPort->write_some(boost::asio::buffer(
+//          "\x09\x10\x03\xE8\x00\x03\x06\x00\x00\x00\x00\x00\x00\x73\x30",
+//                                15));
+//  msg_len = serialPort->read_some(boost::asio::buffer(msg, 300));
+//  writeHex(msg, msg_len);
+//  response: 09 10 03 E8 00 03 01 30
 }
 
 RobotiqGripper::~RobotiqGripper(){
-  serialPort->close();
+//  serialPort->cancel();
+//  serialPort->close();
+  serialPort.reset();
 }
 
-void RobotiqGripper::open(double width, double speed){
-  //convert values to ints between 0 and 256 (one byte)
-  int val_width = int(256* width/MAX_WIDTH);
-
-  std::cout<<"Int value for width is: "<<val_width<<std::endl;
-
-  //convert to hex string
-  std::stringstream stream;
-  stream <<std::hex <<val_width;
-  std::cout<<"hex value for width is: "<< stream.str()<< std::endl;
-
-  byte cmd[16] = "\x09\x10\x03\xE8\x00\x03\x06\x09\x00\x00\x00\xFF\xFF\x72\x19"; //template command (p.60 of documentation)
-
-  serialPort->write_some(buffer(
-                           cmd,
-                           15));
-}
-
-
-void RobotiqGripper::close(double force, double width, double speed){
-  byte cmd[16] = "\x09\x10\x03\xE8\x00\x03\x06\x09\x00\x00\xFF\xFF\xFF\x42\x29"; //template command (p.57 of documentation)
+void RobotiqGripper::goTo(double force, double width, double speed){
+  uint8_t cmd[16] = "\x09\x10\x03\xE8\x00\x03\x06\x09\x00\x00\xFF\xFF\xFF\x42\x29"; //template command (p.57 of documentation)
 
 //  cout <<"\nBEFORE: ";
 //  for(uint i=0;i<sizeof(cmd);i++) printf("x%02hhx", cmd[i]);
 //  cout <<endl;
 
   //width
-  if(width>MAX_WIDTH){
-    LOG(0) <<"width " <<width <<" exceeds max width " <<MAX_WIDTH <<" -- clipping";
-    width=MAX_WIDTH;
-  }
-//  cmd[10]=(byte)(255.*width/MAX_WIDTH);
-
-  //speed
-  if(speed>MAX_SPEED){
-    LOG(0) <<"speed " <<speed <<" exceeds max speed " <<MAX_SPEED <<" -- clipping";
-    speed=MAX_SPEED;
-  }
-  cmd[11]=(byte)(255.*speed/MAX_SPEED);
-
-  //force
-  if(force>MAX_FORCE){
-    LOG(0) <<"force " <<force <<" exceeds max force " <<MAX_FORCE <<" -- clipping";
-    force=MAX_FORCE;
-  }
-  cmd[12]=(byte)(255.*force/MAX_FORCE);
+  clip(force, 0., 1.);
+  clip(width, 0., 1.);
+  clip(speed, 0., 1.);
+  cmd[10]=(byte)(255.*(1.-width));
+  cmd[11]=(byte)(255.*speed);
+  cmd[12]=(byte)(255.*force);
 
   //recompute & overwrite CRC
   uint16_t r = rq_com_compute_crc(cmd, 13);
@@ -134,14 +114,34 @@ void RobotiqGripper::close(double force, double width, double speed){
 //  for(uint i=0;i<sizeof(cmd);i++) printf("x%02hhx", cmd[i]);
 //  cout <<endl;
 
-  serialPort->write_some(buffer(cmd, 15));
+  serialPort->write_some(boost::asio::buffer(cmd, 15));
+  msg_len = serialPort->read_some(boost::asio::buffer(msg, 300));
+//  writeHex(msg, msg_len);
+//  response: 09 10 03 E8 00 03 01 30
 }
 
 double RobotiqGripper::pos(){
-  LOG(0) <<"NIY";
+  getStatus();
+  if(msg_len==11){
+    return (255-int(msg[7]))/255.;
+  }
   return 0;
 }
 
-void RobotiqGripper::waitForIdle() {
-  LOG(0) <<"NIY";
+bool RobotiqGripper::isDone() {
+  getStatus();
+  if(msg_len==11 && msg[3]&0xc0) return true; //zero gOBJ means 'fingers are in motion'
+  return false;
+}
+
+void RobotiqGripper::getStatus(){
+  uint8_t cmd[9] = "\x09\x03\x07\xD0\x00\x03\x04\x0E";
+  serialPort->write_some(boost::asio::buffer(cmd, 8));
+  msg_len = serialPort->read_some(boost::asio::buffer(msg, 300));
+//  writeHex(msg, msg_len);
+//  if(msg_len==11){ //that's the right response!
+//    cout <<"status:" <<(int)msg[3] <<" goto bit: " <<int(msg[3]&0x8) <<" status bits: " <<int(msg[3]&0xc0) <<endl;
+//    cout <<"position:" <<(int)msg[7] <<endl;
+//    cout <<"current:" <<(int)msg[8] <<endl;
+//  }
 }
