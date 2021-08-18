@@ -9,7 +9,7 @@ option(USE_OPENCV "link to opencv" OFF)
 option(USE_REALSENSE "link to realsense2 driver library" OFF)
 
 add_compile_options(
-  -O3 -g -Wall -fPIC -std=c++14 -Wno-terminate -Wno-pragmas
+  -O3 -g -Wall -fPIC -std=c++14 -Wno-terminate -Wno-pragmas -lboost_system
   )
 
 ################################################################################
@@ -21,6 +21,7 @@ add_definitions(
   -DRAI_GLFW -DRAI_ANN -DRAI_QHULL -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
   -DRAI_SWIFT -DRAI_GJK -DRAI_FCL -DRAI_CCD
   -DRAI_FRANKA
+  -BOOST_ERROR_CODE_HEADER_ONLY
   )
 
 ################################################################################
@@ -58,6 +59,7 @@ file(GLOB SRC_ry rai/rai/ry/*.cpp)
 file(GLOB SRC_Franka src/Franka/*.cpp)
 file(GLOB SRC_RealSense src/RealSense/*.cpp)
 file(GLOB SRC_BotOp src/BotOp/*.cpp)
+file(GLOB SRC_Robotiq src/Robotiq/*.cpp)
 
 add_library(rai SHARED
   ${SRC_Core}
@@ -78,6 +80,7 @@ add_library(rai SHARED
   ${SRC_Control}
   #${SRC_Operate}
   ${SRC_Franka}
+  ${SRC_Robotiq}
   ${SRC_BotOp}
   ${SRC_RealSense}
   )
@@ -85,6 +88,7 @@ add_library(rai SHARED
 target_link_libraries(rai
   jsoncpp lapack blas pthread rt X11
   assimp fcl ann glfw GLEW glut GLU GL png qhull
+  boost_system
   franka
   )
 

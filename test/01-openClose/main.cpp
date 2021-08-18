@@ -1,21 +1,24 @@
-#include <Franka/gripper.h>
+//#include <Franka/gripper.h>
+#include <Robotiq/RobotiqGripper.h>
 #include <Franka/controlEmulator.h>
 
 int main(int argc, char** argv) {
 
   {
-    std::shared_ptr<FrankaGripper> G_ri = make_shared<FrankaGripper>(0);
+    std::cout<<"hello"<<std::endl;
+    std::shared_ptr<RobotiqGripper> G_ri = make_shared<RobotiqGripper>(0);
 //    auto G_le = make_shared<FrankaGripper>(1);
-    cout <<"gripper pos:" <<G_ri->pos() <<" isGrasped:" <<G_ri->isGrasped() <<endl;
+    std::cout <<"gripper pos:" <<G_ri->pos() <<" isGrasped:" <<G_ri->isGrasped() <<std::endl;
 
-    cout <<"=========== fast close (is not faster) ..." <<endl;
+    std::cout <<"=========== fast close (is not faster) ..." <<std::endl;
     G_ri->close(20, .05, .2);
     for(uint t=0;t<10;t++){
-      cout <<"gripper pos while running:" <<G_ri->pos() <<" isGrasped:" <<G_ri->isGrasped() <<endl;
+        std::cout <<"gripper pos while running:" <<G_ri->pos() <<" isGrasped:" <<G_ri->isGrasped() <<std::endl;
     }
     G_ri->waitForIdle();
     cout <<"done" <<endl;
     rai::wait();
+    cout <<"=========== Normal open..." <<std::endl;
     G_ri->open();
     G_ri->waitForIdle();
     rai::wait();
@@ -25,6 +28,7 @@ int main(int argc, char** argv) {
     G_ri->waitForIdle();
     cout <<"done" <<endl;
     rai::wait();
+    cout <<"=========== Normal open..." <<std::endl;
     G_ri->open();
     G_ri->waitForIdle();
     rai::wait();
@@ -34,6 +38,7 @@ int main(int argc, char** argv) {
     G_ri->waitForIdle();
     cout <<"done" <<endl;
     rai::wait();
+    cout <<"=========== Normal open..." <<std::endl;
     G_ri->open();
     G_ri->waitForIdle();
     rai::wait();
