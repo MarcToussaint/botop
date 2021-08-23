@@ -26,7 +26,7 @@ arr getStartGoalPath2(rai::Configuration& C, const arr& target_q, const arr& qHo
   komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e0}, {}, 1);
 
   //homing
-  if(qHome.N) komo.addObjective({.4,.6}, FS_qItself, {}, OT_sos, {1.}, qHome);
+  if(qHome.N) komo.addObjective({.4,.6}, FS_qItself, {}, OT_sos, {1e-1}, qHome);
 
   // collision avoidances
   if(collisionPairs.N){
@@ -101,7 +101,7 @@ void rndPoses(){
         continue;
       }
       cout <<" === path feasible -> executing === " <<endl;
-      bot.moveAutoTimed(path, .01);
+      bot.moveAutoTimed(path, .02);
       while(bot.step(C));
       if(bot.keypressed=='q') break;
     }else{
