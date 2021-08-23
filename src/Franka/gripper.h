@@ -13,7 +13,7 @@ namespace franka{
 struct GripperCmdMsg {
     enum Command { _open, _close, _home, _done };
     Command cmd=_done;
-    double force=20;  //which is 1kg
+    double force=20;  //which is 2kg
     double width=.05; //which is 5cm
     double speed=.1;
 };
@@ -35,6 +35,8 @@ struct FrankaGripper : rai::GripperAbstraction, Thread{
              double speed=.1);
 
   double pos();
+
+  bool isDone(){ return Thread::isIdle(); }
 
   bool isGrasped();
 

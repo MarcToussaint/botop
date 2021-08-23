@@ -55,12 +55,12 @@ int main(int argc, char * argv[]){
 
   if(rai::checkParameter<bool>("close")){
     bot.gripperL->close();
-    rai::wait(.5);
+    while(!bot.gripperL->isDone()) rai::wait(.1);
   }
 
   if(rai::checkParameter<bool>("open")){
     bot.gripperL->open();
-    rai::wait(.5);
+    while(!bot.gripperL->isDone()) rai::wait(.1);
   }
 
   cout <<"bye bye" <<endl;

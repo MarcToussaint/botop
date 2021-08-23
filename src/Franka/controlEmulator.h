@@ -6,12 +6,13 @@
 
 namespace rai{
 struct GripperAbstraction {
-  virtual void open(double width=.075, //which is 7.5cm
-                    double speed=.2) = 0;
-  virtual void close(double force=10,  //which is 1kg
-                     double width=.05, //which is 5cm
-                     double speed=.1) = 0;
+  virtual void open(double width=1.,
+                    double speed=1.) = 0;
+  virtual void close(double force=.0, //relative to [min,max]
+                     double width=.2, //relative to [min,max]
+                     double speed=.2) = 0; //relative to [min,max]
   virtual double pos() = 0;
+  virtual bool isDone() = 0;
 };
 }
 
@@ -52,4 +53,5 @@ struct GripperEmulator : rai::GripperAbstraction, Thread{
              double speed=.1) { q=width; }
 
   double pos(){ return q; }
+  bool isDone(){ return true; }
 };
