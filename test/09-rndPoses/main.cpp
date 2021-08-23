@@ -9,13 +9,12 @@
 
 //===========================================================================
 
-#if 1
 arr getStartGoalPath2(rai::Configuration& C, const arr& target_q, const arr& qHome, const FrameL& collisionPairs) {
 
   arr q0 = C.getJointState();
 
   KOMO komo;
-  komo.setModel(C, false);
+  komo.setModel(C, true);
   komo.setTiming(1., 32, 5., 2);
   komo.add_qControlObjective({}, 2, 1.);
 
@@ -30,45 +29,66 @@ arr getStartGoalPath2(rai::Configuration& C, const arr& target_q, const arr& qHo
 
   // collision avoidances
   if(collisionPairs.N){
-    komo.addObjective({}, FS_distance, framesToNames(collisionPairs), OT_ineq, {1e2}, {-.001});
+//    komo.addObjective({}, FS_distance, framesToNames(collisionPairs), OT_ineq, {1e2}, {-.001});
   }
 //  for(const Avoid& a:avoids){
 //    komo.addObjective(a.times, FS_distance, a.frames, OT_ineq, {1e1}, {-a.dist});
 //  }
-//  komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e2});
+  komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e1});
 
-//  komo.initWithWaypoints({target_q});
-//  komo.initWithConstant(target_q);
-  komo.optimize(.1, OptOptions().set_stopTolerance(1e-3));
+  bool feasible=false;
+  uint Trials=3;
+  for(uint trial=0;trial<Trials;trial++){
+    komo.reset();
+    if(trial%2) komo.initWithConstant(target_q);
+    else komo.initWithConstant(q0);
+    komo.optimize(.1, OptOptions().set_stopTolerance(1e-3));
 
-  //  cout <<komo.getReport(true) <<endl;
-  cout <<"  path -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
+    //  cout <<komo.getReport(true) <<endl;
+    feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
+
+    if(!feasible){
+      cout <<komo.getReport(false);
+      //komo.pathConfig.reportProxies();
+      StringA collisionPairs = komo.getCollisionPairs(.01);
+      if(collisionPairs.N){
+        komo.addObjective({}, FS_distance, collisionPairs, OT_ineq, {1e2}, {-.001});
+      }
+    }
+
+    cout <<"  path trial " <<trial <<" -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
+    if(feasible) break;
+  }
+
+  if(!feasible) return {};
 
   arr path = komo.getPath_qOrg();
 
-  if(komo.sos>50. || komo.ineq>.1 || komo.eq>.1){
+#if 0
+  if(){
     FILE("z.path") <<path <<endl;
     cout <<komo.getReport(true) <<endl;
     LOG(-2) <<"WARNING!";
     while(komo.view_play(true));
 #if 0
     //repeat
+    komo.reset();
     komo.initWithConstant(q0);
     komo.optimize(.1, OptOptions().set_stopTolerance(1e-3));
 #endif
 
     return {};
   }
+#endif
 
   return path;
 }
-#endif
 
 //===========================================================================
 
 void rndPoses(){
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
 
   arr qHome = C.getJointState();
   arr limits = C.getLimits();

@@ -121,15 +121,13 @@ void ControlEmulator::step(){
   //-- check for collisions!
 #if 0
   emuConfig.setJointState(q_real);
-  auto coll = F_PairCollision().eval(collisionPairs);
-  bool doesCollide=false;
-  for(uint i=0;i<coll.y.N;i++){
-    if(coll.y.elem(i)>1e-4){
-      LOG(-1) <<"in collision: " <<collisionPairs(i,0)->name <<'-' <<collisionPairs(i,1)->name <<' ' <<coll.y.elem(i);
-      doesCollide=true;
-    }
+  emuConfig.ensure_proxies();
+  double p = emuConfig.getTotalPenetration();
+  if(p>0.){
+    emuConfig.reportProxies(std::cout, 0.01, false);
+    emuConfig.watch(false, "EMU CONFIG IN COLLISION");
+    rai::wait(); metronome.reset(tau);
   }
-  if(doesCollide){ rai::wait(); metronome.reset(tau); }
 #endif
 
   //-- data log?
