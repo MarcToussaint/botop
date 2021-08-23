@@ -22,7 +22,7 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const arr& qHom
 
   KOMO komo;
   komo.setModel(C, true);
-  komo.setTiming(1., 32, 3., 2);
+  komo.setTiming(1., 32, 5., 2);
   komo.add_qControlObjective({}, 2, 1.);
 
 //  komo.addObjective({.4,.6}, FS_qItself, {}, OT_sos, {1.}, qHome);
@@ -30,9 +30,9 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const arr& qHom
   komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e0}, {}, 1);
   komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e2});
 
-  komo.initWithWaypoints({target_q});
+//  komo.initWithWaypoints({target_q});
 //  komo.initWithConstant(target_q);
-  komo.optimize(0., OptOptions().set_stopTolerance(1e-3));
+  komo.optimize(.1, OptOptions().set_stopTolerance(1e-3));
 
   //  cout <<komo.getReport(true) <<endl;
   cout <<"  path -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
@@ -44,6 +44,12 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const arr& qHom
     cout <<komo.getReport(true) <<endl;
     LOG(-2) <<"WARNING!";
     while(komo.view_play(true));
+#if 0
+    //repeat
+    komo.initWithConstant(q0);
+    komo.optimize(.1, OptOptions().set_stopTolerance(1e-3));
+#endif
+
     return {};
   }
 
@@ -82,7 +88,7 @@ void driveToPoses(rai::Configuration& C, const arr& X, const uint kStart=0) {
   if(Kend>Kmax) Kend=Kmax;
 
   BotOp bot(C, rai::checkParameter<bool>("real"));
-  bot.robot->writeData=0;
+  bot.robotL->writeData=0;
 
   bot.home(C);
 
@@ -95,21 +101,22 @@ void driveToPoses(rai::Configuration& C, const arr& X, const uint kStart=0) {
 //    bot.moveLeap(X[k], 3.);
     while(bot.step(C));
     if(bot.keypressed=='q') break;
-    bot.robot->writeData=2;
+    bot.robotL->writeData=2;
     rai::wait(.1);
-    bot.robot->writeData=0;
+    bot.robotL->writeData=0;
   }
 
 }
 
 //===========================================================================
 
-int main(int argc, char * argv[]){
-  rai::initCmdLine(argc, argv);
-
+void driveToPoses(){
   //-- setup a configuration
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+  //  C["R_finger1"]->setShape(rai::ST_capsule, {0.02, 0.05}); //make fingers huge
+  //  C["R_finger2"]->setShape(rai::ST_capsule, {0.02, 0.05}); //make fingers huge
+  //  C["R_panda_coll_hand"]->setShape(rai::ST_capsule, {0.14, 0.08}); //make thing 3cm larger
 
   //-- load configurations
   arr X;
@@ -119,6 +126,59 @@ int main(int argc, char * argv[]){
   fixPoses(X, C);
 
   driveToPoses(C, X);
+}
+
+//===========================================================================
+
+void rndPoses(){
+  rai::Configuration C;
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+
+  arr qHome = C.getJointState();
+  arr limits = C.getLimits();
+  FrameL collisionPairs = C.getCollisionAllPairs();
+  for(uint i=0;i<collisionPairs.d0;i++){
+    cout <<"PAIR: " <<collisionPairs(i,0)->name <<' ' <<collisionPairs(i,1)->name <<endl;
+  }
+
+  BotOp bot(C, rai::checkParameter<bool>("real"));
+  bot.home(C);
+  arr bounds = ~C.getLimits();
+
+  uint N=100;
+  for(uint i=0;i<N;i++){
+    arr x = bounds[0] + (bounds[1]-bounds[0]) % rand(qHome.N);
+
+    C.setJointState(x);
+    //C.watch(false, STRING("conf " <<i));
+    bool succ = checkCollisionsAndLimits(C, collisionPairs, limits, true);
+    if(succ){
+      x = C.getJointState();
+      cout <<" === sending POSE " <<i <<" === " <<endl;
+      //C.watch(true, STRING("conf " <<i));
+
+      C.setJointState(bot.get_q());
+      arr path = getStartGoalPath(C, x, bot.qHome);
+      if(!path.N){
+        LOG(0) <<"no path found - discarding pose " <<i;
+        continue;
+      }
+      bot.moveAutoTimed(path, .01);
+      while(bot.step(C));
+      if(bot.keypressed=='q') break;
+    }
+  }
+}
+
+//===========================================================================
+
+int main(int argc, char * argv[]){
+  rai::initCmdLine(argc, argv);
+
+  rnd.clockSeed();
+
+  //  driveToPoses();
+  rndPoses();
 
   return 0;
 }
