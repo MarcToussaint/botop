@@ -1,5 +1,5 @@
 /***
- * TAKEN FROM https://github.com/USC-ACTLab/libmotioncapture
+ * TAKEN FROM https://github.com/IMRCLab/libmotioncapture
  * Aug 26, 2021
  */
 
@@ -8,19 +8,21 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include <map>
 
-#include <Eigen/Dense>
-
-// PCL
-//#include <pcl/point_cloud.h>
-//#include <pcl/point_types.h>
+// Eigen
+#include <Eigen/Geometry>
 
 namespace libmotioncapture {
 
-  class Object
+  typedef Eigen::Matrix<float, Eigen::Dynamic, 3> PointCloud;
+
+  const char* version();
+
+  class RigidBody
   {
   public:
-    Object(
+    RigidBody(
       const std::string& name,
       const Eigen::Vector3f& position,
       Eigen::Quaternionf& rotation)
@@ -31,7 +33,7 @@ namespace libmotioncapture {
     {
     }
 
-    Object(
+    RigidBody(
       const std::string& name)
       : m_name(name)
       , m_position()
@@ -40,7 +42,7 @@ namespace libmotioncapture {
     {
     }
 
-    Object()
+    RigidBody()
       : m_name()
       , m_position()
       , m_rotation()
@@ -97,6 +99,10 @@ namespace libmotioncapture {
   class MotionCapture
   {
   public:
+    static MotionCapture* connect(
+      const std::string& type,
+      const std::string& hostname);
+
     virtual ~MotionCapture()
     {
     }
@@ -106,35 +112,64 @@ namespace libmotioncapture {
 
     // Query data
 
-    // returns reference to objects available in the current frame
-    virtual void getObjects(std::vector<Object>& result) const = 0;
+    // returns reference to rigid bodies available in the current frame
+    virtual const std::map<std::string, RigidBody>& rigidBodies() const
+    {
+      rigidBodies_.clear();
+      return rigidBodies_;
+    }
 
-    // returns an object with a specified name
-    virtual void getObjectByName(
-      const std::string& name,
-      Object& result) const;
+    // returns copy of rigid body with a specified name
+    virtual RigidBody rigidBodyByName(
+      const std::string& name) const;
 
     // returns pointer to point cloud (all unlabled markers)
-//    virtual void getPointCloud(
-//      pcl::PointCloud<pcl::PointXYZ>::Ptr result) const = 0;
+    virtual const PointCloud& pointCloud() const
+    {
+      pointcloud_.resize(0, Eigen::NoChange);
+      return pointcloud_;
+    }
 
     // return latency information
-    virtual void getLatency(
-      std::vector<LatencyInfo>& result) const = 0;
+    virtual const std::vector<LatencyInfo>& latency() const
+    {
+      latencies_.clear();
+      return latencies_;
+    }
 
     // returns timestamp in microseconds
-    virtual uint64_t getTimeStamp() const = 0;
+    virtual uint64_t timeStamp() const
+    {
+      return 0;
+    }
 
     // Query API capabilities
 
     // return true, if tracking of objects is supported
-    virtual bool supportsObjectTracking() const = 0;
+    virtual bool supportsRigidBodyTracking() const
+    {
+      return false;
+    }
     // returns true, if latency can be estimated
-    virtual bool supportsLatencyEstimate() const = 0;
+    virtual bool supportsLatencyEstimate() const
+    {
+      return false;
+    }
     // returns true if raw point cloud is available
-    virtual bool supportsPointCloud() const = 0;
+    virtual bool supportsPointCloud() const
+    {
+      return false;
+    }
     // returns true if timestamp is available
-    virtual bool supportsTimeStamp() const = 0;
+    virtual bool supportsTimeStamp() const
+    {
+      return false;
+    }
+
+  protected:
+    mutable std::map<std::string, RigidBody> rigidBodies_;
+    mutable PointCloud pointcloud_;
+    mutable std::vector<LatencyInfo> latencies_;
   };
 
 } // namespace libobjecttracker

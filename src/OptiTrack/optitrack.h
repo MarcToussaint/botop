@@ -1,5 +1,5 @@
 /***
- * TAKEN FROM https://github.com/USC-ACTLab/libmotioncapture
+ * TAKEN FROM https://github.com/IMRCLab/libmotioncapture
  * Aug 26, 2021
  */
 
@@ -18,20 +18,19 @@ namespace libmotioncapture {
 
     const std::string& version() const;
 
+    // implementations for MotionCapture interface
     virtual void waitForNextFrame();
-    virtual void getObjects(
-      std::vector<Object>& result) const;
+    virtual const std::map<std::string, RigidBody>& rigidBodies() const;
+    virtual const PointCloud& pointCloud() const;
 
-//    virtual void getPointCloud(
-//      pcl::PointCloud<pcl::PointXYZ>::Ptr result) const;
-    virtual void getLatency(
-      std::vector<LatencyInfo>& result) const;
-    virtual uint64_t getTimeStamp() const;
-
-    virtual bool supportsObjectTracking() const;
-    virtual bool supportsLatencyEstimate() const;
-    virtual bool supportsPointCloud() const;
-    virtual bool supportsTimeStamp() const;
+    virtual bool supportsRigidBodyTracking() const
+    {
+      return true;
+    }
+    virtual bool supportsPointCloud() const
+    {
+      return true;
+    }
 
   private:
     MotionCaptureOptitrackImpl * pImpl;

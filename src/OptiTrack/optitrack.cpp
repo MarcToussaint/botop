@@ -1,5 +1,5 @@
 /***
- * TAKEN FROM https://github.com/USC-ACTLab/libmotioncapture
+ * TAKEN FROM https://github.com/IMRCLab/libmotioncapture
  * Aug 26, 2021
  */
 
@@ -637,10 +637,10 @@ namespace libmotioncapture {
 
   }
 
-  void MotionCaptureOptitrack::getObjects(
-    std::vector<Object> & result) const
+  const std::map<std::string, RigidBody>& MotionCaptureOptitrack::rigidBodies() const
   {
-    result.clear();
+    // TODO: avoid copies here...
+    rigidBodies_.clear();
     for (const auto& rb : pImpl->rigidBodies) {
       if (rb.bTrackingValid) {
         const auto& def = pImpl->rigidBodyDefinitions[rb.ID];
@@ -656,30 +656,21 @@ namespace libmotioncapture {
           rb.qy, // y
           rb.qz  // z
           );
-
-        result.push_back(Object(def.name, position, rotation));
+        rigidBodies_[def.name] = RigidBody(def.name, position, rotation);
       }
     }
+    return rigidBodies_;
   }
 
-//  void MotionCaptureOptitrack::getPointCloud(
-//    pcl::PointCloud<pcl::PointXYZ>::Ptr result) const
-//  {
-//    result->clear();
-//    for (const auto& marker : pImpl->markers) {
-//      result->push_back(pcl::PointXYZ(marker.x, marker.y, marker.z));
-//    }
-//  }
-
-  void MotionCaptureOptitrack::getLatency(
-    std::vector<libmotioncapture::LatencyInfo> & result) const
+  const PointCloud& MotionCaptureOptitrack::pointCloud() const
   {
-    result.clear();
-  }
-
-  uint64_t MotionCaptureOptitrack::getTimeStamp() const
-  {
-    return 0;
+    // TODO: avoid copies here...
+    pointcloud_.resize(pImpl->markers.size(), Eigen::NoChange);
+    for (size_t r = 0; r < pImpl->markers.size(); ++r) {
+      const auto& marker = pImpl->markers[r];
+      pointcloud_.row(r) << marker.x, marker.y, marker.z;
+    }
+    return pointcloud_;
   }
 
   MotionCaptureOptitrack::~MotionCaptureOptitrack()
@@ -687,24 +678,5 @@ namespace libmotioncapture {
     delete pImpl;
   }
 
-  bool MotionCaptureOptitrack::supportsObjectTracking() const
-  {
-    return true;
-  }
-
-  bool MotionCaptureOptitrack::supportsLatencyEstimate() const
-  {
-    return false;
-  }
-
-  bool MotionCaptureOptitrack::supportsPointCloud() const
-  {
-    return true;
-  }
-
-  bool MotionCaptureOptitrack::supportsTimeStamp() const
-  {
-    return false;
-  }
 }
 
