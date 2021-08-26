@@ -4,16 +4,17 @@
 
 #include <Kin/frame.h>
 
-OptiTrack::OptiTrack(rai::Configuration& _C) : C(_C) {
-    mocap = libmotioncapture::MotionCapture::connect("optitrack",
-                                                     rai::getParameter<rai::String>("optitrack/host").p);
-}
+namespace rai{
 
-OptiTrack::~OptiTrack(){
+  OptiTrack::OptiTrack() {
+    mocap = libmotioncapture::MotionCapture::connect("optitrack", rai::getParameter<rai::String>("optitrack/host", "130.149.82.29").p);
+  }
+
+  OptiTrack::~OptiTrack(){
     delete mocap;
-}
+  }
 
-void OptiTrack::step(){
+  void OptiTrack::step(rai::Configuration& C){
     // Get a frame
     mocap->waitForNextFrame();
     uint64_t timeStamp = mocap->timeStamp();
@@ -22,28 +23,30 @@ void OptiTrack::step(){
 
     //-- update configuration
     for (auto const& item: rigidBodies) {
-        //get (or create) frame
-        const char* name = item.first.c_str();
-        rai::Frame *f = C.getFrame(name, false);
-        if(!f){//create a new marker frame!
-            LOG(0) <<"creating new frame '" <<name <<"'";
-            f = C.addFrame(name);
-            f->setShape(rai::ST_marker, {.3});
-            f->setColor({.8, .8, .2});
-        }
+      //get (or create) frame
+      const char* name = item.first.c_str();
+      rai::Frame *f = C.getFrame(name, false);
+      if(!f){//create a new marker frame!
+        LOG(0) <<"creating new frame '" <<name <<"'";
+        f = C.addFrame(name);
+        f->setShape(rai::ST_marker, {.3});
+        f->setColor({.8, .8, .2});
+      }
 
-        //set pose of frame
-        const auto& rigidBody = item.second;
-        if (rigidBody.occluded() == false) {
-            const Eigen::Vector3f& position = rigidBody.position();
-            const Eigen::Quaternionf& rotation = rigidBody.rotation();
-            {
-                auto X = f->set_X();
-                X->pos.set(position(0), position(1), position(2));
-                X->rot.set(rotation.w(), rotation.vec()(0), rotation.vec()(1), rotation.vec()(2));
-            }
+      //set pose of frame
+      const auto& rigidBody = item.second;
+      if (rigidBody.occluded() == false) {
+        const Eigen::Vector3f& position = rigidBody.position();
+        const Eigen::Quaternionf& rotation = rigidBody.rotation();
+        {
+          auto X = f->set_X();
+          X->pos.set(position(0), position(1), position(2));
+          X->rot.set(rotation.w(), rotation.vec()(0), rotation.vec()(1), rotation.vec()(2));
         }
+      }
     }
 
     C.watch();
-}
+  }
+
+} //namespace

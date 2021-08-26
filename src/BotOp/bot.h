@@ -3,20 +3,25 @@
 #include <Kin/kin.h>
 #include <KOMO/komo.h>
 #include <Control/CtrlMsgs.h>
+
+//since each of the following interfaces is already pimpl, we don't have to hide them again
 #include <Franka/franka.h>
 #include <Franka/gripper.h>
 #include <Franka/controlEmulator.h>
+#include <OptiTrack/optitrack.h>
 
 //===========================================================================
 
 struct BotOp{
   Var<rai::CtrlCmdMsg> cmd;
   Var<rai::CtrlStateMsg> state;
+  //since each of the following interfaces is already pimpl, we don't have to hide them again
   std::unique_ptr<rai::RobotAbstraction> robotL;
   std::unique_ptr<rai::RobotAbstraction> robotR;
   std::unique_ptr<rai::GripperAbstraction> gripperL;
   std::unique_ptr<rai::GripperAbstraction> gripperR;
   std::shared_ptr<rai::ReferenceFeed> ref;
+  std::unique_ptr<rai::OptiTrack> optitrack;
   arr qHome;
   int keypressed=0;
 

@@ -4,12 +4,15 @@
 
 namespace libmotioncapture{ class MotionCapture; }
 
+namespace rai{
+
 struct OptiTrack {
-  rai::Configuration& C;
   libmotioncapture::MotionCapture *mocap = 0;
 
-  OptiTrack(rai::Configuration& _C);
+  OptiTrack();
   ~OptiTrack();
 
-  void step();
+  void step(rai::Configuration& C);
 };
+
+} //namespace

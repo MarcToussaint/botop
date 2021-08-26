@@ -80,9 +80,15 @@ arr getStartGoalPath2(rai::Configuration& C, const arr& target_q, const arr& qHo
 
 void rndPoses(){
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
-  C.addFrame("l_gripper_target") ->setShape(rai::ST_marker, {.2});
-  C.addFrame("r_gripper_target") ->setShape(rai::ST_marker, {.2});
+  rai::String useArm = rai::getParameter<rai::String>("bot/useArm", "both");
+  if(useArm=="both"){
+    C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+    C.addFrame("l_gripper_target") ->setShape(rai::ST_marker, {.2});
+    C.addFrame("r_gripper_target") ->setShape(rai::ST_marker, {.2});
+  }else{
+    C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+    C.addFrame("l_gripper_target") ->setShape(rai::ST_marker, {.2});
+  }
 
   arr qHome = C.getJointState();
   arr limits = C.getLimits();
@@ -115,7 +121,7 @@ void rndPoses(){
         continue;
       }
       cout <<" === path feasible -> executing === " <<endl;
-      bot.moveAutoTimed(path, .02);
+      bot.moveAutoTimed(path, .01);
       while(bot.step(C));
       if(bot.keypressed=='q') break;
     }else{

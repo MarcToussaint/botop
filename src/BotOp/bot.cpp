@@ -9,9 +9,10 @@
 //===========================================================================
 
 BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
-  bool useGripper = rai::getParameter<bool>("botUseGripper", true);
-  bool robotiq = rai::getParameter<bool>("botRobotiq", true);
-  rai::String useArm = rai::getParameter<rai::String>("botUseArm", "both");
+  //-- launch arm(s) & gripper(s)
+  bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
+  bool robotiq = rai::getParameter<bool>("bot/useRobotiq", true);
+  rai::String useArm = rai::getParameter<rai::String>("bot/useArm", "both");
 
   C.ensure_indexedJoints();
   qHome = C.getJointState();
@@ -42,6 +43,13 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     if(useGripper) gripperL = make_unique<GripperEmulator>();
   }
   C.setJointState(get_q());
+
+  //-- launch OptiTrack
+  if(rai::getParameter<bool>("bot/useOptiTrack", false)){
+    optitrack = make_unique<rai::OptiTrack>();
+    optitrack->step(C);
+  }
+
   C.watch(false, STRING("time: 0"));
 }
 
@@ -73,12 +81,15 @@ double BotOp::getTimeToEnd(){
 }
 
 bool BotOp::step(rai::Configuration& C, double waitTime){
+  if(optitrack) optitrack->step(C);
+
   C.setJointState(state.get()->q);
 //  C.gl()->raiseWindow();
   double ctrlTime = state.get()->time;
-  keypressed = C.watch(false,STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
+  keypressed = C.watch(false, STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
   if(keypressed==13) return false;
   if(keypressed=='q' || keypressed==27) return false;
+  if(keypressed) C.gl()->resetPressedKey();
   auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
   if(sp && ctrlTime>sp->getEndTime()) return false;
   if(waitTime) rai::wait(waitTime);
