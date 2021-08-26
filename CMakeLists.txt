@@ -58,6 +58,7 @@ file(GLOB SRC_Operate rai/rai/Operate/*.cpp)
 file(GLOB SRC_ry rai/rai/ry/*.cpp)
 
 file(GLOB SRC_Franka src/Franka/*.cpp)
+file(GLOB SRC_OptiTrack src/OptiTrack/*.cpp)
 file(GLOB SRC_RealSense src/RealSense/*.cpp)
 file(GLOB SRC_BotOp src/BotOp/*.cpp)
 file(GLOB SRC_Robotiq src/Robotiq/*.cpp)
@@ -81,6 +82,7 @@ add_library(rai SHARED
   ${SRC_Control}
   #${SRC_Operate}
   ${SRC_Franka}
+  ${SRC_OptiTrack}
   ${SRC_Robotiq}
   ${SRC_BotOp}
   ${SRC_RealSense}
