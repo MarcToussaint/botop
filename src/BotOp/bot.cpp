@@ -86,13 +86,13 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
 }
 
 std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
-    auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
-    if(!sp){
-      setReference<rai::SplineCtrlReference>();
-      sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
-      CHECK(sp, "this is not a spline reference!")
-    }
-    return sp;
+  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  if(!sp){
+    setReference<rai::SplineCtrlReference>();
+    sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+    CHECK(sp, "this is not a spline reference!")
+  }
+  return sp;
 }
 
 void BotOp::moveAutoTimed(const arr& path, double timeCost){
@@ -137,8 +137,8 @@ double BotOp::moveLeap(const arr& q_target, double timeCost){
   if(dist<1e-4 || T<.2) T=.2;
   auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
   if(sp){
-      double ctrlTime = state.get()->time;
-      sp->overrideSmooth(~q_target, {T}, ctrlTime);
+    double ctrlTime = state.get()->time;
+    sp->overrideSmooth(~q_target, {T}, ctrlTime);
   }
   else move(~q_target, {T});
   return T;
@@ -148,10 +148,10 @@ void BotOp::home(rai::Configuration& C){
     C.gl()->raiseWindow();
     arr q=get_q();
     if(maxDiff(q,qHome)>1e-3){
-        moveLeap(qHome, 1.);
-        while(step(C));
+      moveLeap(qHome, 1.);
+      while(step(C));
     }else{
-        move(~qHome, {.1});
+      move(~qHome, {.1});
     }
 }
 

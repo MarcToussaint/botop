@@ -139,94 +139,107 @@ void addBoxPlaceObjectives(KOMO& komo, double time, rai::ArgWord dir, const char
 
 //===========================================================================
 
-arr getStartGoalPath(rai::Configuration& C, const arr& qTarget, const arr& qHome, const rai::Array<Avoid>& avoids, const char* endeff, bool endeffApproach, bool endeffRetract) {
+arr getStartGoalPath(rai::Configuration& C, const arr& qTarget, const arr& qHome, const rai::Array<Avoid>& avoids, StringA endeffectors, bool endeffApproach, bool endeffRetract) {
 
   arr q0 = C.getJointState();
-  rai::Transformation start, target; //start/target endeff poses
-  if(endeff){
-    start = C[endeff]->ensure_X();
+
+  //set endeff target helper frames
+  if(endeffectors.N){
     C.setJointState(qTarget);
-    target = C[endeff]->ensure_X();
-    C["helper"]->set_X() = target;
+    for(rai::String endeff:endeffectors){
+      C[STRING(endeff<<"_target")]->set_X() = C[endeff]->ensure_X();
+    }
     C.setJointState(q0);
   }
 
   KOMO komo;
-  komo.setModel(C, false);
+  komo.setModel(C, true);
   komo.setTiming(1., 32, 5., 2);
   komo.add_qControlObjective({}, 2, 1.);
 
-  //constrain target - either endeff target or qTarget
-  if(endeff){
-    komo.addObjective({1.}, FS_poseDiff, {endeff, "helper"}, OT_eq, {1e0});
+  // constrain target - either hard endeff target (and soft q), or hard qTarget
+  if(endeffectors.N){
+    for(rai::String endeff:endeffectors){
+      komo.addObjective({1.}, FS_poseDiff, {endeff, STRING(endeff<<"_target")}, OT_eq, {1e0}); //uses endeff target helper frames
+    }
+    komo.addObjective({1.}, FS_qItself, {}, OT_sos, {1e0}, qTarget);
   }else{
     komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e0}, qTarget);
   }
 
-  //final still
+  // final still
   komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e0}, {}, 1);
 
-  //homing
-  if(qHome.N) komo.addObjective({.4,.6}, FS_qItself, {}, OT_sos, {1.}, qHome);
+  // homing
+  if(qHome.N) komo.addObjective({.4,.6}, FS_qItself, {}, OT_sos, {1e-1}, qHome);
 
-  // collision avoidances
+  // generic collisions
+#if 0 //explicit enumeration -- but that's inefficient for large scenes; the iterative approach using accumulated is more effective
+  if(collisionPairs.N){
+    komo.addObjective({}, FS_distance, framesToNames(collisionPairs), OT_ineq, {1e2}, {-.001});
+  }
+#else
+  komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e1});
+#endif
+
+  // explicit collision avoidances
   for(const Avoid& a:avoids){
     komo.addObjective(a.times, FS_distance, a.frames, OT_ineq, {1e1}, {-a.dist});
   }
 
-  //retract: only longitudial velocity
+  // retract: only longitudial velocity, only about-z rotation
   if(endeffRetract){
-    arr ori = ~start.rot.getArr();
-    arr yz = ori({1,2});
-    komo.addObjective({0.,.2}, FS_position, {endeff}, OT_eq, ori[0].reshape(1,-1)*1e2, {}, 1);
-    komo.addObjective({0.,.2}, FS_angularVel, {endeff}, OT_eq, yz*1e1, {}, 1);
-//    komo.addObjective({0.,.2}, FS_vectorX, {retract}, OT_eq, {1e1}, ori[0]);
-//    komo.addObjective({0.,.2}, FS_vectorY, {retract}, OT_eq, {1e1}, ori[1]);
-//    komo.addObjective({0.,.2}, FS_vectorZ, {retract}, OT_eq, {1e1}, ori[2]);
-  }
-
-  //approach: only longitudial velocity
-  if(endeffApproach){
-    arr ori = ~target.rot.getArr();
-    arr yz = ori({1,2});
-    komo.addObjective({.8,1.}, FS_position, {endeff}, OT_eq, ori[0].reshape(1,-1)*1e2, {}, 1);
-    komo.addObjective({.8,1.}, FS_angularVel, {endeff}, OT_eq, yz*1e1, {}, 1);
-//    komo.addObjective({.8,1.}, FS_vectorX, {approach}, OT_eq, {1e1}, ori[0]);
-//    komo.addObjective({.8,1.}, FS_vectorY, {approach}, OT_eq, {1e1}, ori[1]);
-//    komo.addObjective({.8,1.}, FS_vectorZ, {approach}, OT_eq, {1e1}, ori[2]);
-  }
-
-//  komo.initWithWaypoints({target_q});
-//  komo.initWithConstant(target_q);
-  komo.optimize(0., OptOptions().set_stopTolerance(1e-3));
-//  cout <<komo.getReport(true) <<endl;
-  cout <<"  path -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
-
-  arr path = komo.getPath_qOrg();
-//  FILE("z.path") <<path <<endl;
-//  while(komo.view_play(true));
-
-  if(komo.sos>50. || komo.ineq>.1 || komo.eq>.1){
-    FILE("z.path") <<path <<endl;
-    cout <<komo.getReport(true) <<endl;
-    LOG(-2) <<"WARNING!";
-    while(komo.view_play(true));
-
-    komo.reset();
-//    komo.initWithWaypoints({target_q});
-    komo.initWithConstant(q0);
-//    komo.animateOptimization=4;
-//    komo.verbose=8;
-    komo.optimize();
-    if(komo.sos>50. || komo.ineq>.1 || komo.eq>.1){
-      LOG(-1) <<"INFEASIBLE";
-      while(komo.view_play(true));
-      return {};
-    }else{
-      LOG(-1) <<"FEASIBLE";
-      komo.view(true);
+    for(rai::String endeff:endeffectors){
+      arr ori = ~C[endeff]->ensure_X().rot.getArr();
+      arr yz = ori({1,2});
+      komo.addObjective({0.,.2}, FS_position, {endeff}, OT_eq, ori[0].reshape(1,-1)*1e2, {}, 1);
+      komo.addObjective({0.,.2}, FS_angularVel, {endeff}, OT_eq, yz*1e1, {}, 1);
     }
   }
+
+  // approach: only longitudial velocity, only about-z rotation
+  if(endeffApproach){
+    for(rai::String endeff:endeffectors){
+      arr ori = ~C[STRING(endeff<<"_target")]->get_X().rot.getArr();
+      arr yz = ori({1,2});
+      komo.addObjective({.8,1.}, FS_position, {endeff}, OT_eq, ori[0].reshape(1,-1)*1e2, {}, 1);
+      komo.addObjective({.8,1.}, FS_angularVel, {endeff}, OT_eq, yz*1e1, {}, 1);
+    }
+  }
+
+
+  //-- run several times with random initialization
+  bool feasible=false;
+  uint trials=3;
+  for(uint trial=0;trial<trials;trial++){
+    //initialize with constant q0 or qTarget
+    komo.reset();
+    if(trial%2) komo.initWithConstant(qTarget);
+    else komo.initWithConstant(q0);
+
+    //optimize
+    komo.optimize(.01*trial, OptOptions().set_stopTolerance(1e-3)); //trial=0 -> no noise!
+
+    //is feasible?
+    feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
+
+    //if not feasible -> add explicit collision pairs (from proxies presently in komo.pathConfig)
+    if(!feasible){
+      cout <<komo.getReport(false);
+      //komo.pathConfig.reportProxies();
+      StringA collisionPairs = komo.getCollisionPairs(.01);
+      if(collisionPairs.N){
+        komo.addObjective({}, FS_distance, collisionPairs, OT_ineq, {1e2}, {-.001});
+      }
+    }
+
+    cout <<"  path trial " <<trial <<" -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
+    if(feasible) break;
+  }
+
+  if(!feasible) return {};
+
+  arr path = komo.getPath_qOrg();
 
   return path;
 }

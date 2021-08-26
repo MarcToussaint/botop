@@ -9,7 +9,8 @@
 
 //===========================================================================
 
-arr getStartGoalPath2(rai::Configuration& C, const arr& target_q, const arr& qHome, const FrameL& collisionPairs) {
+//arr getStartGoalPath(rai::Configuration& C, const arr& qTarget, const arr& qHome, const rai::Array<Avoid>& avoids={}, const char* endeff=0, bool endeffApproach=false, bool endeffRetract=false);
+arr getStartGoalPath2(rai::Configuration& C, const arr& target_q, const arr& qHome, const rai::Array<Avoid>& avoids={}, uint trials=3) {
 
   arr q0 = C.getJointState();
 
@@ -28,25 +29,33 @@ arr getStartGoalPath2(rai::Configuration& C, const arr& target_q, const arr& qHo
   if(qHome.N) komo.addObjective({.4,.6}, FS_qItself, {}, OT_sos, {1e-1}, qHome);
 
   // collision avoidances
+#if 0 //explicit enumeration -- but that's inefficient for large scenes; the iterative approach using accumulated is more effective
   if(collisionPairs.N){
-//    komo.addObjective({}, FS_distance, framesToNames(collisionPairs), OT_ineq, {1e2}, {-.001});
+    komo.addObjective({}, FS_distance, framesToNames(collisionPairs), OT_ineq, {1e2}, {-.001});
   }
+#else
+  komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e1});
+#endif
+
 //  for(const Avoid& a:avoids){
 //    komo.addObjective(a.times, FS_distance, a.frames, OT_ineq, {1e1}, {-a.dist});
 //  }
-  komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e1});
 
+  //-- run several times with random initialization
   bool feasible=false;
-  uint Trials=3;
-  for(uint trial=0;trial<Trials;trial++){
+  for(uint trial=0;trial<trials;trial++){
+    //initialize with constant q0 or target_q
     komo.reset();
     if(trial%2) komo.initWithConstant(target_q);
     else komo.initWithConstant(q0);
-    komo.optimize(.1, OptOptions().set_stopTolerance(1e-3));
 
-    //  cout <<komo.getReport(true) <<endl;
+    //optimize
+    komo.optimize(.02, OptOptions().set_stopTolerance(1e-3));
+
+    //is feasible?
     feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
 
+    //if not feasible -> add explicit collision pairs (from proxies presently in komo.pathConfig)
     if(!feasible){
       cout <<komo.getReport(false);
       //komo.pathConfig.reportProxies();
@@ -64,23 +73,6 @@ arr getStartGoalPath2(rai::Configuration& C, const arr& target_q, const arr& qHo
 
   arr path = komo.getPath_qOrg();
 
-#if 0
-  if(){
-    FILE("z.path") <<path <<endl;
-    cout <<komo.getReport(true) <<endl;
-    LOG(-2) <<"WARNING!";
-    while(komo.view_play(true));
-#if 0
-    //repeat
-    komo.reset();
-    komo.initWithConstant(q0);
-    komo.optimize(.1, OptOptions().set_stopTolerance(1e-3));
-#endif
-
-    return {};
-  }
-#endif
-
   return path;
 }
 
@@ -89,6 +81,8 @@ arr getStartGoalPath2(rai::Configuration& C, const arr& target_q, const arr& qHo
 void rndPoses(){
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+  C.addFrame("l_gripper_target") ->setShape(rai::ST_marker, {.2});
+  C.addFrame("r_gripper_target") ->setShape(rai::ST_marker, {.2});
 
   arr qHome = C.getJointState();
   arr limits = C.getLimits();
@@ -115,7 +109,7 @@ void rndPoses(){
       //C.watch(true, STRING("conf " <<i));
 
       C.setJointState(bot.get_q());
-      arr path = getStartGoalPath2(C, x, bot.qHome, collisionPairs);
+      arr path = getStartGoalPath(C, x, bot.qHome); //, {}, {"l_gripper", "r_gripper"}, true, true);
       if(!path.N){
         cout <<" === path infeasible === " <<endl;
         continue;

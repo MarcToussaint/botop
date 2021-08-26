@@ -5,6 +5,7 @@ project(LISRobotOperation)
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
 
 option(USE_PYBIND "build python bindings" ON)
+option(USE_BULLET "link to bullet" OFF)
 option(USE_OPENCV "link to opencv" OFF)
 option(USE_REALSENSE "link to realsense2 driver library" OFF)
 
@@ -94,13 +95,12 @@ target_link_libraries(rai
 
 ################################################################################
 
-if(USE_PYBIND)
-  execute_process(
-    COMMAND bash "-c" "python3 -m pybind11 --cmakedir" 
-    OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE pybind11_DIR
-  )
-  find_package(pybind11)
-  add_definitions(-DRAI_PYBIND)
+
+if(USE_BULLET)
+  find_package(Bullet REQUIRED)
+  add_definitions(-DRAI_BULLET)
+  include_directories(${BULLET_INCLUDE_DIRS})
+  target_link_libraries(rai ${BULLET_LIBRARIES})
 endif()
 
 if(USE_OPENCV)
@@ -116,20 +116,29 @@ endif()
 
 ################################################################################
 
-pybind11_add_module(libry SHARED
-  ${SRC_ry}
+if(USE_PYBIND)
+  execute_process(
+    COMMAND bash "-c" "python3 -m pybind11 --cmakedir" 
+    OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE pybind11_DIR
   )
-target_link_libraries(libry PRIVATE
-  rai
+  find_package(pybind11)
+  add_definitions(-DRAI_PYBIND)
+
+  pybind11_add_module(libry SHARED
+    ${SRC_ry}
+  )
+  target_link_libraries(libry PRIVATE
+    rai
   )
 
-pybind11_add_module(libpybot SHARED
-  src/BotOp/pyBot.cxx
+  pybind11_add_module(libpybot SHARED
+    src/BotOp/pyBot.cxx
   )
-target_link_libraries(libpybot PRIVATE
-  rai
-  libry
+  target_link_libraries(libpybot PRIVATE
+    rai
+    libry
   )
+endif()
 
 ################################################################################
 
