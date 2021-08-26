@@ -11,7 +11,7 @@
 #include "libmotioncapture/vicon.h"
 #endif
 #ifdef ENABLE_OPTITRACK
-#include "optitrack.h"
+#include "motioncapture_optitrack.h"
 #endif
 #ifdef ENABLE_QUALISYS
 #include "libmotioncapture/qualisys.h"
