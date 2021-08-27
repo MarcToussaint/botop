@@ -147,7 +147,9 @@ arr getStartGoalPath(rai::Configuration& C, const arr& qTarget, const arr& qHome
   if(endeffectors.N){
     C.setJointState(qTarget);
     for(rai::String endeff:endeffectors){
-      C[STRING(endeff<<"_target")]->set_X() = C[endeff]->ensure_X();
+      rai::Frame *f = C[STRING(endeff<<"_target")];
+      if(!f) f = C.addFrame(STRING(endeff<<"_target"));
+      f->set_X() = C[endeff]->ensure_X();
     }
     C.setJointState(q0);
   }
@@ -171,7 +173,7 @@ arr getStartGoalPath(rai::Configuration& C, const arr& qTarget, const arr& qHome
   komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e0}, {}, 1);
 
   // homing
-  if(qHome.N) komo.addObjective({.4,.6}, FS_qItself, {}, OT_sos, {1e-1}, qHome);
+  if(qHome.N) komo.addObjective({.4,.6}, FS_qItself, {}, OT_sos, {.1}, qHome);
 
   // generic collisions
 #if 0 //explicit enumeration -- but that's inefficient for large scenes; the iterative approach using accumulated is more effective
@@ -221,11 +223,11 @@ arr getStartGoalPath(rai::Configuration& C, const arr& qTarget, const arr& qHome
     komo.optimize(.01*trial, OptOptions().set_stopTolerance(1e-3)); //trial=0 -> no noise!
 
     //is feasible?
-    feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
+    feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.2;
 
     //if not feasible -> add explicit collision pairs (from proxies presently in komo.pathConfig)
     if(!feasible){
-      cout <<komo.getReport(false);
+//      cout <<komo.getReport(false);
       //komo.pathConfig.reportProxies();
       StringA collisionPairs = komo.getCollisionPairs(.01);
       if(collisionPairs.N){
@@ -233,7 +235,7 @@ arr getStartGoalPath(rai::Configuration& C, const arr& qTarget, const arr& qHome
       }
     }
 
-    cout <<"  path trial " <<trial <<" -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
+    cout <<"  path trial " <<trial <<(feasible?" good":" FAIL") <<" -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
     if(feasible) break;
   }
 

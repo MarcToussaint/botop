@@ -130,13 +130,16 @@ arr getPnpKeyframes(const rai::Configuration& C,
 //  cout <<q0 <<endl <<komo.getPath_qOrg() <<endl;
 //  while(komo.view_play(true, .5));
 
-  if(komo.getConstraintViolations()>.1){
+  bool feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
+
+  if(!feasible){
     LOG(-1) <<"INFEASIBLE";
     komo.view(false);
     komo.reset();
     komo.initWithConstant(qHome);
     komo.optimize();
-    if(komo.getConstraintViolations()>.1){
+    feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
+    if(!feasible){
       cout <<komo.getReport(true);
       LOG(-1) <<"INFEASIBLE";
       komo.view(true);
@@ -188,7 +191,7 @@ void testPnp2() {
     //-- compute keyframes
     rai::Enum<rai::ArgWord> placeDirection = random(rai::Array<rai::ArgWord>{rai::_yAxis, rai::_zAxis, rai::_yNegAxis, rai::_zNegAxis });
 //    placeDirection = rai::_yNegAxis;
-    cout <<"PLACING: " <<placeDirection <<endl;
+    cout <<"========= PLACEMENT " <<l <<": " <<placeDirection <<endl;
     C.setJointState(bot.get_q());
     arr keyframes = getPnpKeyframes(C, rai::_xAxis, placeDirection, boxName, gripperName, palmName, tableName, qHome);
 
@@ -206,7 +209,7 @@ void testPnp2() {
                                                           {{}, {palmName, boxName}, .0},
                                                           {{}, {arm1Name, tableName}, .0},
                                                           {{}, {arm2Name, tableName}, .0},
-                                                        }, gripperName, true, true);
+                                                        }, {gripperName}, true, true);
         if(!path.N) break;
       }
       if(k==1){ //move to keyframes[1]
@@ -215,15 +218,15 @@ void testPnp2() {
                                                           {{}, {boxName, tableName}, .0},
                                                           {{}, {arm1Name, tableName}, .0},
                                                           {{}, {arm2Name, tableName}, .0}
-                                                        }, gripperName, false, false);
-        if(!path.N) return;
+                                                        }, {gripperName}, false, false);
+        if(!path.N) break;
       }
       if(k==2){ //move to home
         C.attach(tableName, boxName);
         path = getStartGoalPath(C, qHome, qHome, { {{.3,.5}, {palmName, boxName}, .1},
                                                    {{}, {palmName, boxName}, .0},
                                                    {{}, {arm1Name, tableName}, .0}
-                                }, gripperName, false, true);
+                                }, {gripperName}, false, true);
       }
 
       if(k==0){ bot.gripperL->open(); while(!bot.gripperL->isDone()) rai::wait(.1); }

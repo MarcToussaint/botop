@@ -71,7 +71,7 @@ namespace libmotioncapture {
     {
       const char *ptr = data;
       int major = versionMajor;
-      int minor = versionMinor;
+//      int minor = versionMinor;
 
       // First 2 Bytes is message ID
       int MessageID = 0;
@@ -623,7 +623,7 @@ namespace libmotioncapture {
         short params = 0;  memcpy(&params, ptr, 2);
         ptr += 2;
         // bool bIsRecording = (params & 0x01) != 0;                  // 0x01 Motive is recording
-        bool bTrackedModelsChanged = (params & 0x02) != 0;         // 0x02 Actively tracked model list has changed
+//        bool bTrackedModelsChanged = (params & 0x02) != 0;         // 0x02 Actively tracked model list has changed
 
         // end of data tag
         // int eod = 0; memcpy(&eod, ptr, 4); ptr += 4;
