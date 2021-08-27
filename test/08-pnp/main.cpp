@@ -16,6 +16,11 @@
 #include <BotOp/bot.h>
 #include <BotOp/motionHelpers.h>
 
+/* TODO:
+ * startToGoal -> solver that returns PathQuery
+ * pnpKeyframes -> same, with identical collision constraints
+ */
+
 //===========================================================================
 
 void testPnp() {
@@ -101,11 +106,21 @@ arr getPnpKeyframes(const rai::Configuration& C,
   arr q0 = C.getJointState();
 
   KOMO komo;
-  komo.setModel(C, false);
+  komo.setModel(C, true);
   komo.setTiming(2, 1, 3., 1);
-  //  komo.add_qControlObjective({}, 2, 1e-1);
   komo.add_qControlObjective({}, 1, 1e-1);
-  komo.addObjective({}, FS_qItself, {}, OT_sos, {1.}, qHome);
+
+  // homing
+  if(qHome.N) komo.addObjective({}, FS_qItself, {}, OT_sos, {.1}, qHome);
+
+  // generic collisions
+#if 0 //explicit enumeration -- but that's inefficient for large scenes; the iterative approach using accumulated is more effective
+  if(collisionPairs.N){
+    komo.addObjective({}, FS_distance, framesToNames(collisionPairs), OT_ineq, {1e2}, {-.001});
+  }
+#else
+  komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e1});
+#endif
 
   arr boxSize={.06,.15,.09};
 
@@ -117,44 +132,51 @@ arr getPnpKeyframes(const rai::Configuration& C,
   komo.addModeSwitch({2.,-1.}, rai::SY_stable, {"table", boxName}, false);
   addBoxPlaceObjectives(komo, 2., placeDirection, boxName, boxSize, gripperName, palmName);
 
-  komo.addObjective({}, FS_distance, {"r_panda_coll6", "table"}, OT_ineq, {1e2}, {});
-  komo.addObjective({}, FS_distance, {"r_panda_coll7", "table"}, OT_ineq, {1e2}, {});
-  komo.addObjective({}, FS_distance, {"r_palm", "table"}, OT_ineq, {1e2}, {});
+  // explicit collision avoidances
+//  for(const Avoid& a:avoids){
+//    komo.addObjective(a.times, FS_distance, a.frames, OT_ineq, {1e1}, {-a.dist});
+//  }
 
-  //-- home
-//  komo.addObjective({3.}, FS_qItself, {}, OT_eq, {1e1}, q0);
+//  komo.addObjective({}, FS_distance, {"r_panda_coll6", "table"}, OT_ineq, {1e2}, {});
+//  komo.addObjective({}, FS_distance, {"r_panda_coll7", "table"}, OT_ineq, {1e2}, {});
+//  komo.addObjective({}, FS_distance, {"r_palm", "table"}, OT_ineq, {1e2}, {});
 
-  komo.optimize();
-  cout <<"  seq  -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
-//  komo.getReport(true);
-//  cout <<q0 <<endl <<komo.getPath_qOrg() <<endl;
-//  while(komo.view_play(true, .5));
 
-  bool feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
-
-  if(!feasible){
-    LOG(-1) <<"INFEASIBLE";
-    komo.view(false);
+  //-- run several times with random initialization
+  bool feasible=false;
+  uint trials=3;
+  for(uint trial=0;trial<trials;trial++){
+    //initialize with constant q0 or qTarget
     komo.reset();
-    komo.initWithConstant(qHome);
-    komo.optimize();
+    if(trial%2) komo.initWithConstant(qHome);
+    else komo.initWithConstant(q0);
+
+    //optimize
+    komo.optimize(.01*trial, OptOptions().set_stopTolerance(1e-3)); //trial=0 -> no noise!
+
+    //is feasible?
     feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
+
+    //if not feasible -> add explicit collision pairs (from proxies presently in komo.pathConfig)
     if(!feasible){
-      cout <<komo.getReport(true);
-      LOG(-1) <<"INFEASIBLE";
-      komo.view(true);
-//      komo.reset();
-//      komo.initWithConstant(q0);
-//      komo.animateOptimization=4;
-//      komo.optimize();
-      return {};
-    }else{
-      LOG(-1) <<"FEASIBLE";
-      komo.view(false);
+//      cout <<komo.getReport(false);
+      //komo.pathConfig.reportProxies();
+      StringA collisionPairs = komo.getCollisionPairs(.01);
+      if(collisionPairs.N){
+        komo.addObjective({}, FS_distance, collisionPairs, OT_ineq, {1e2}, {-.001});
+      }
     }
+
+    cout <<"  seq  trial " <<trial <<(feasible?" good":" FAIL") <<" -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
+    if(feasible) break;
   }
 
-  return komo.getPath_qOrg();
+
+  if(!feasible) return {};
+
+  arr path = komo.getPath_qOrg();
+
+  return path;
 }
 
 //===========================================================================
@@ -167,10 +189,6 @@ void testPnp2() {
       ->setJoint(rai::JT_rigid)
       .setShape(rai::ST_ssBox, {.06,.15,.09,.01})
       .setRelativePosition(arr{-.4,-.2,.095});
-
-  C.addFrame("helper")
-      ->setShape(rai::ST_marker, {.5})
-      .setColor({1.,1.,0,.5});
 
   arr qHome = C.getJointState();
   cout <<"JOINT LIMITS:" <<C.getLimits() <<endl;

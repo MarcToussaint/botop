@@ -148,7 +148,11 @@ arr getStartGoalPath(rai::Configuration& C, const arr& qTarget, const arr& qHome
     C.setJointState(qTarget);
     for(rai::String endeff:endeffectors){
       rai::Frame *f = C[STRING(endeff<<"_target")];
-      if(!f) f = C.addFrame(STRING(endeff<<"_target"));
+      if(!f){
+        f = C.addFrame(STRING(endeff<<"_target"));
+        f->setShape(rai::ST_marker, {.5})
+            .setColor({1.,1.,0,.5});
+      }
       f->set_X() = C[endeff]->ensure_X();
     }
     C.setJointState(q0);
@@ -223,7 +227,7 @@ arr getStartGoalPath(rai::Configuration& C, const arr& qTarget, const arr& qHome
     komo.optimize(.01*trial, OptOptions().set_stopTolerance(1e-3)); //trial=0 -> no noise!
 
     //is feasible?
-    feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.2;
+    feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
 
     //if not feasible -> add explicit collision pairs (from proxies presently in komo.pathConfig)
     if(!feasible){
