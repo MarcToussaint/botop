@@ -118,6 +118,12 @@ void ControlEmulator::step(){
   qDot_real += tau * qDDot_des;
   q_real += .5 * tau * qDot_real;
 
+  //-- display?
+  if(!(step_count%40)){
+    emuConfig.setJointState(q_real);
+    emuConfig.watch(false, STRING("EMULATION - time " <<ctrlTime));
+  }
+
   //-- check for collisions!
 #if 0
   emuConfig.setJointState(q_real);
