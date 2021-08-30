@@ -188,7 +188,7 @@ void testPnp2() {
   C.addFrame("target", "table")
       ->setJoint(rai::JT_rigid)
       .setShape(rai::ST_ssBox, {.06,.15,.09,.01})
-      .setRelativePosition(arr{-.4,-.2,.095});
+      .setRelativePosition(arr{-.3,-.2,.095});
 
   arr qHome = C.getJointState();
   cout <<"JOINT LIMITS:" <<C.getLimits() <<endl;
@@ -247,13 +247,15 @@ void testPnp2() {
                                 }, {gripperName}, false, true);
       }
 
-      if(k==0){ bot.gripperL->open(); while(!bot.gripperL->isDone()) rai::wait(.1); }
-      else if(k==1){ bot.gripperL->close(); while(!bot.gripperL->isDone()) rai::wait(.1); }
-      else if(k==2){ bot.gripperL->open(); while(!bot.gripperL->isDone()) rai::wait(.1); }
+      if(bot.gripperL){
+        if(k==0){ bot.gripperL->open(); while(!bot.gripperL->isDone()) rai::wait(.1); }
+        else if(k==1){ bot.gripperL->close(); while(!bot.gripperL->isDone()) rai::wait(.1); }
+        else if(k==2){ bot.gripperL->open(); while(!bot.gripperL->isDone()) rai::wait(.1); }
+      }
 
       //send komo as spline:
 //      bot.move(path, {2.5});
-      bot.moveAutoTimed(path, .01);
+      bot.moveAutoTimed(path, .003);
 
       while(bot.step(C));
       if(bot.keypressed=='q' || bot.keypressed==27) return;

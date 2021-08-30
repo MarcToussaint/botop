@@ -51,7 +51,7 @@ void rndPoses(){
       cout <<" === path feasible  === " <<endl;
       while(bot.step(C));
       cout <<" === -> executing === " <<endl;
-      bot.moveAutoTimed(path, .01);
+      bot.moveAutoTimed(path, .02);
       if(bot.keypressed=='q') break;
     }else{
       cout <<" === pose infeasible === " <<endl;
