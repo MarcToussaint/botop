@@ -21,7 +21,7 @@ void testLeapCtrl() {
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
 
   //add a target in position space
-  arr center = C["R_gripper"]->getPosition();
+  arr center = C["l_gripper"]->getPosition();
   rai::Frame& target =
       C.addFrame("target")
       ->setShape(rai::ST_marker, {.1})
@@ -35,7 +35,7 @@ void testLeapCtrl() {
 
 
   LeapMPC leap(C,1.);
-  leap.komo.addObjective({1.}, FS_positionDiff, {"R_gripper", "target"}, OT_eq, {1e2});
+  leap.komo.addObjective({1.}, FS_positionDiff, {"l_gripper", "target"}, OT_eq, {1e2});
 
   for(uint t=0;;t++){
 
@@ -51,7 +51,7 @@ void testLeapCtrl() {
     double ctrlTime;
     arr q,qDot;
     {
-      auto stateGet = bot.robot->state.get();
+      auto stateGet = bot.robotL->state.get();
       ctrlTime = stateGet->time;
       q = stateGet->q;
       qDot = stateGet->qDot;
@@ -61,7 +61,6 @@ void testLeapCtrl() {
     leap.reinit(q, qDot); //zeros(q.N));
     leap.solve();
     rai::Graph R = leap.komo.getReport();
-
 
 #if 1
     double T = bot.moveLeap(leap.xT);

@@ -159,7 +159,7 @@ arr getStartGoalPath(rai::Configuration& C, const arr& qTarget, const arr& qHome
   }
 
   KOMO komo;
-  komo.verbose=0;
+  komo.opt.verbose=0;
   komo.setModel(C, true);
   komo.setTiming(1., 32, 5., 2);
   komo.add_qControlObjective({}, 2, 1.);

@@ -45,6 +45,7 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
 }
 
 ControlEmulator::~ControlEmulator(){
+  emuConfig.glClose();
   threadClose();
 }
 

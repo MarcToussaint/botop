@@ -55,7 +55,7 @@ void init_PyBot(pybind11::module& m) {
   .def("home", &BotOp::home)
   .def("hold", &BotOp::hold)
 
-  .def("waitGripperIdle", &BotOp::waitGripperIdle)
+  .def("isDone", &BotOp::isDone)
 
   ;
 

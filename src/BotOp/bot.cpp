@@ -54,8 +54,8 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 }
 
 BotOp::~BotOp(){
-  robotL.release();
-  robotR.release();
+  if(robotL) robotL.release();
+  if(robotR) robotR.release();
 }
 
 double BotOp::get_t(){
@@ -87,9 +87,9 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
 //  C.gl()->raiseWindow();
   double ctrlTime = state.get()->time;
   keypressed = C.watch(false, STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
+  if(keypressed) C.gl()->resetPressedKey();
   if(keypressed==13) return false;
   if(keypressed=='q' || keypressed==27) return false;
-  if(keypressed) C.gl()->resetPressedKey();
   auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
   if(sp && ctrlTime>sp->getEndTime()) return false;
   if(waitTime) rai::wait(waitTime);

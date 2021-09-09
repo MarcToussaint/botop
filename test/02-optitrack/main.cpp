@@ -5,7 +5,7 @@
 void test(){
   rai::Configuration C;
 
-  OptiTrack OT;
+  rai::OptiTrack OT;
 
   for(;;) OT.step(C);
 }

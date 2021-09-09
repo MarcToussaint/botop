@@ -3,6 +3,6 @@ BASE2 = ../../src
 
 DEPEND = Core Gui Geo Franka Kin Control
 
-LIBS = -lpthread
+LIBS = -lpthread -lboost_system
 
 include $(BASE)/build/generic.mk
