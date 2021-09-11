@@ -1,0 +1,8 @@
+set style data lines
+plot 'z.dat' us 0:1, '' us 0:4,\
+'' us 0:2, '' us 0:5,\
+'' us 0:3, '' us 0:6,\
+'' us 0:7, '' us 0:10,\
+'' us 0:8, '' us 0:11,\
+'' us 0:9, '' us 0:12
+

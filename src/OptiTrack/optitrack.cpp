@@ -22,13 +22,32 @@ namespace rai{
     std::map<std::string, libmotioncapture::RigidBody> rigidBodies = mocap->rigidBodies();
 
     //-- update configuration
+    //we need a base frame
+    const char* name = "optitrack_base";
+    rai::Frame *base = C.getFrame(name, false);
+    if(!base){
+      LOG(0) <<"creating new frame 'optitrack_base'";
+      base = C.addFrame(name);
+      base->setShape(rai::ST_marker, {.3});
+      base->setColor({.8, .8, .2});
+      if(rai::checkParameter<arr>("optitrack_baseFrame")){
+        arr X = rai::getParameter<arr>("optitrack_baseFrame");
+        base->setPose(rai::Transformation(X));
+      }else{
+        LOG(0) <<"WARNING: optitrack_baseFrame not set - using non-calibrated default [0 0 1]";
+        base->setPosition({0., 0., 1.});
+      }
+    }
+
+    //loop through all ot signals
     for (auto const& item: rigidBodies) {
-      //get (or create) frame
+      //get (or create) frame for that body
       const char* name = item.first.c_str();
       rai::Frame *f = C.getFrame(name, false);
       if(!f){//create a new marker frame!
         LOG(0) <<"creating new frame '" <<name <<"'";
         f = C.addFrame(name);
+        f->setParent(base);
         f->setShape(rai::ST_marker, {.3});
         f->setColor({.8, .8, .2});
       }
@@ -39,9 +58,9 @@ namespace rai{
         const Eigen::Vector3f& position = rigidBody.position();
         const Eigen::Quaternionf& rotation = rigidBody.rotation();
         {
-          auto X = f->set_X();
-          X->pos.set(position(0), position(1), position(2));
-          X->rot.set(rotation.w(), rotation.vec()(0), rotation.vec()(1), rotation.vec()(2));
+          auto Q = f->set_Q();
+          Q->pos.set(position(0), position(1), position(2));
+          Q->rot.set(rotation.w(), rotation.vec()(0), rotation.vec()(1), rotation.vec()(2));
         }
       }
     }

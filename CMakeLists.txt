@@ -97,7 +97,6 @@ target_link_libraries(rai
 
 ################################################################################
 
-
 if(USE_BULLET)
   find_package(Bullet REQUIRED)
   add_definitions(-DRAI_BULLET)
