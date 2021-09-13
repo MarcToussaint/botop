@@ -47,7 +47,7 @@ void load(){
 
   //-- create "morpho joints" - constant joints that are optimized/calibrated
   C["optitrack_base"] ->setJoint(rai::JT_free) .addAttribute("constant", 1.);
-  C["l_panda_base"] ->setJoint(rai::JT_transXYPhi) .addAttribute("constant", 1.);
+//  C["l_panda_base"] ->setJoint(rai::JT_transXYPhi) .addAttribute("constant", 1.);
   C["r_panda_base"] ->setJoint(rai::JT_transXYPhi) .addAttribute("constant", 1.);
   C["l_robotiq_base"] ->setJoint(rai::JT_transZ) .addAttribute("constant", 1.);
   C["r_robotiq_base"] ->setJoint(rai::JT_transZ) .addAttribute("constant", 1.);
@@ -60,7 +60,7 @@ void load(){
 
   //-- set the joint path with loaded q -- using set_x we first need to deactivate the morpho joints
   komo.pathConfig["optitrack_base"]->joint->setActive(false);
-  komo.pathConfig["l_panda_base"]->joint->setActive(false);
+//  komo.pathConfig["l_panda_base"]->joint->setActive(false);
   komo.pathConfig["r_panda_base"]->joint->setActive(false);
   komo.pathConfig["l_robotiq_base"]->joint->setActive(false);
   komo.pathConfig["r_robotiq_base"]->joint->setActive(false);
@@ -78,7 +78,7 @@ void load(){
   //-- now we deactivate all normal joints, and only activate the morpho joints
   komo.pathConfig.setActiveJoints({});
   komo.pathConfig["optitrack_base"]->joint->setActive(true);
-  komo.pathConfig["l_panda_base"]->joint->setActive(true);
+//  komo.pathConfig["l_panda_base"]->joint->setActive(true);
   komo.pathConfig["r_panda_base"]->joint->setActive(true);
   komo.pathConfig["l_robotiq_base"]->joint->setActive(true);
   komo.pathConfig["r_robotiq_base"]->joint->setActive(true);
@@ -88,6 +88,7 @@ void load(){
   komo.addObjective({}, FS_positionDiff, {"otL", "l_robotiq_optitrackMarker"}, OT_sos);
   komo.addObjective({}, FS_positionDiff, {"otR", "r_robotiq_optitrackMarker"}, OT_sos);
   //komo.addObjective({}, FS_positionDiff, {"otL", "l_calibMarker"}, OT_sos);
+  //komo.addObjective({}, FS_qItself, {"l_panda_base"}, OT_eq, {1e1}, {-.4, -.3,0.5*RAI_PI});
 
   //-- optimize
   komo.opt.verbose=6;

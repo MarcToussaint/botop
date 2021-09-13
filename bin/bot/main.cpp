@@ -9,7 +9,7 @@ int main(int argc, char * argv[]){
   //-- setup a configuration
   rai::Configuration C;
 
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable-calibrated.g"));
 
   BotOp bot(C, !rai::checkParameter<bool>("sim"));
 

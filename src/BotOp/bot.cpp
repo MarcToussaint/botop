@@ -45,7 +45,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   C.setJointState(get_q());
 
   //-- launch OptiTrack
-  if(rai::getParameter<bool>("bot/useOptiTrack", false)){
+  if(rai::getParameter<bool>("bot/useOptitrack", false)){
     optitrack = make_unique<rai::OptiTrack>();
     optitrack->step(C);
   }

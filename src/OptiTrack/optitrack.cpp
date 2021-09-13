@@ -34,8 +34,7 @@ namespace rai{
         arr X = rai::getParameter<arr>("optitrack_baseFrame");
         base->setPose(rai::Transformation(X));
       }else{
-        LOG(0) <<"WARNING: optitrack_baseFrame not set - using non-calibrated default [0 0 1]";
-        base->setPosition({0., 0., 1.});
+        LOG(0) <<"WARNING: optitrack_baseFrame not set - using non-calibrated default [0 0 0]!";
       }
     }
 
