@@ -1,0 +1,15 @@
+
+x: [-0.38976, -0.310867, 1.67922, 0.0506166, 0.406422, -0.22687, 1.67134, 0.0515884, -0.0173225, -0.0399192, -0.399372, -0.999011, -0.00129801, -0.00179615, -0.0444096]
+
+optitrack_base (world) 	{  Q:[-0.0173225, -0.0399192, -0.399372, -0.999011, -0.00129801, -0.00179615, -0.0444096], joint:free, shape:marker, size:[0.1], constant:1 }
+
+l_panda_base (table) 	{  Q:[-0.38976, -0.310867, 0, 0.667754, 0, 0, 0.744382], joint:transXYPhi, constant:1 }
+
+r_panda_base (table) 	{  Q:[0.406422, -0.22687, 0, 0.67068, 0, 0, 0.741747], joint:transXYPhi, constant:1 }
+
+l_robotiq_base (l_panda_joint8) 	{  Q:[0, 0, 0.0506166, 1, 0, 0, 0], joint:transZ, constant:1 }
+
+r_robotiq_base (r_panda_joint8) 	{  Q:[0, 0, 0.0515884, 1, 0, 0, 0], joint:transZ, constant:1 }
+
+sos: 0.00654237 RMSE: 0.00138962
+Closing Gnuplot

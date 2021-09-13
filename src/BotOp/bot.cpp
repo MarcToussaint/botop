@@ -81,9 +81,12 @@ double BotOp::getTimeToEnd(){
 }
 
 bool BotOp::step(rai::Configuration& C, double waitTime){
+  //update q state
+  C.setJointState(state.get()->q);
+
+  //update optitrack state
   if(optitrack) optitrack->step(C);
 
-  C.setJointState(state.get()->q);
 //  C.gl()->raiseWindow();
   double ctrlTime = state.get()->time;
   keypressed = C.watch(false, STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
@@ -92,7 +95,7 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   if(keypressed=='q' || keypressed==27) return false;
   auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
   if(sp && ctrlTime>sp->getEndTime()) return false;
-  if(waitTime) rai::wait(waitTime);
+  if(waitTime>0.) rai::wait(waitTime);
   return true;
 }
 

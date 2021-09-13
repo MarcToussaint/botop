@@ -16,23 +16,26 @@ void load(){
   C.watch();
 
   //-- load data from
-  ifstream fil("pandaCalibData.dat");
+  ifstream fil("21-09-13.dat");
   arr _q, _poseL, _poseR, _poseTable;
-  arr q(0,14), poseL(0,7), poseR(0,7), poseTable(0,7);
+  arr q(0,14), poseL(0,7), poseR(0,7), poseTable(0,7), times;
   for(uint t=0;;t++){
     rai::skip(fil);
     if(!fil.good()) break;
-    fil >>PARSE("q") >>_q >>PARSE("poseL") >>_poseL >>PARSE("poseR") >>_poseR >>PARSE("poseTable") >>_poseTable;
+    fil >>times.append() >>PARSE("q") >>_q >>PARSE("poseL") >>_poseL >>PARSE("poseR") >>_poseR;// >>PARSE("poseTable") >>_poseTable;
     q.append(_q);
-    if(!t) q.append(_q); //TO BE REMOVED
     poseR.append(_poseR);
     poseL.append(_poseL);
-    poseTable.append(_poseTable);
+//    poseTable.append(_poseTable);
     //C.setJointState(_q);  C.watch();  rai::wait(.01);
   }
   fil.close();
 
-  q.resizeCopy(poseR.d0, q.d1); //TO BE REMOVED
+  int ot_delay = 2; //in steps of 10msec!
+  q.delRows(-ot_delay, ot_delay);
+  poseL.delRows(0, ot_delay);
+  poseR.delRows(0, ot_delay);
+  uint T = poseL.d0;
 
   //-- get/create relevant frame for markers and ot signals
   rai::Frame *calL = C["l_robotiq_optitrackMarker"];
@@ -52,7 +55,7 @@ void load(){
   //-- create komo
   KOMO komo;
   komo.setModel(C, false);
-  komo.setTiming(1., q.d0, 1., 1);
+  komo.setTiming(1., T, 1., 1);
   komo.setupPathConfig();
 
   //-- set the joint path with loaded q -- using set_x we first need to deactivate the morpho joints
@@ -69,7 +72,7 @@ void load(){
   for(uint t=0;t<komo.T;t++){
     komo.timeSlices(komo.k_order+t, otL->ID)->setPosition(poseL(t,{0,2}));
     komo.timeSlices(komo.k_order+t, otR->ID)->setPosition(poseR(t,{0,2}));
-    komo.timeSlices(komo.k_order+t, otT->ID)->setPosition(poseTable(t,{0,2}));
+//    komo.timeSlices(komo.k_order+t, otT->ID)->setPosition(pose(t,{0,2}));
   }
 
   //-- now we deactivate all normal joints, and only activate the morpho joints
@@ -108,6 +111,8 @@ void load(){
     double err=0.;
     arr pos_ot, pos_bot;
     for(uint t=0;t<komo.T;t++){
+      fil <<times(t) <<' ';
+
       pos_ot = komo.timeSlices(komo.k_order+t, otL->ID)->getPosition();
       pos_bot = komo.timeSlices(komo.k_order+t, calL->ID)->getPosition();
       err += sumOfSqr(pos_ot - pos_bot);

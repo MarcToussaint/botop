@@ -2,20 +2,14 @@
 
 //#include "orgTest.cxx"
 
-void test(){
-  rai::Configuration C;
-
-  rai::OptiTrack OT;
-
-  for(;;) OT.step(C);
-}
-
 int main(int argc, char** argv) {
   rai::initCmdLine(argc, argv);
 
 //  return rawTest("optitrack", rai::getParameter<rai::String>("optitrack/host"));
 
-  test();
+  rai::Configuration C;
+  rai::OptiTrack OT;
+  for(;;) OT.step(C);
 
   return 0;
 }
