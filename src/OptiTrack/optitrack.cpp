@@ -47,8 +47,8 @@ namespace rai{
         LOG(0) <<"creating new frame '" <<name <<"'";
         f = C.addFrame(name);
         f->setParent(base);
-        f->setShape(rai::ST_marker, {.3});
-        f->setColor({.8, .8, .2});
+        f->setShape(rai::ST_marker, {.1});
+        f->setColor({.8, .8, .2, .5});
       }
 
       //set pose of frame

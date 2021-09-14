@@ -16,7 +16,7 @@ void load(){
   C.watch();
 
   //-- load data from
-  ifstream fil("21-09-13.dat");
+  ifstream fil("21-09-14.dat");
   arr _q, _poseL, _poseR, _poseTable;
   arr q(0,14), poseL(0,7), poseR(0,7), poseTable(0,7), times;
   for(uint t=0;;t++){
@@ -31,7 +31,7 @@ void load(){
   }
   fil.close();
 
-  int ot_delay = 2; //in steps of 10msec!
+  int ot_delay = 1; //in steps of 10msec!
   q.delRows(-ot_delay, ot_delay);
   poseL.delRows(0, ot_delay);
   poseR.delRows(0, ot_delay);
@@ -49,8 +49,8 @@ void load(){
   C["optitrack_base"] ->setJoint(rai::JT_free) .addAttribute("constant", 1.);
 //  C["l_panda_base"] ->setJoint(rai::JT_transXYPhi) .addAttribute("constant", 1.);
   C["r_panda_base"] ->setJoint(rai::JT_transXYPhi) .addAttribute("constant", 1.);
-  C["l_robotiq_base"] ->setJoint(rai::JT_transZ) .addAttribute("constant", 1.);
-  C["r_robotiq_base"] ->setJoint(rai::JT_transZ) .addAttribute("constant", 1.);
+  C["l_robotiq_optitrackMarker"] ->setJoint(rai::JT_trans3) .addAttribute("constant", 1.);
+  C["r_robotiq_optitrackMarker"] ->setJoint(rai::JT_trans3) .addAttribute("constant", 1.);
 
   //-- create komo
   KOMO komo;
@@ -62,8 +62,8 @@ void load(){
   komo.pathConfig["optitrack_base"]->joint->setActive(false);
 //  komo.pathConfig["l_panda_base"]->joint->setActive(false);
   komo.pathConfig["r_panda_base"]->joint->setActive(false);
-  komo.pathConfig["l_robotiq_base"]->joint->setActive(false);
-  komo.pathConfig["r_robotiq_base"]->joint->setActive(false);
+  komo.pathConfig["l_robotiq_optitrackMarker"]->joint->setActive(false);
+  komo.pathConfig["r_robotiq_optitrackMarker"]->joint->setActive(false);
 
   komo.set_x(q);
   //komo.view(true, "KOMO with initialized joint path");
@@ -80,8 +80,8 @@ void load(){
   komo.pathConfig["optitrack_base"]->joint->setActive(true);
 //  komo.pathConfig["l_panda_base"]->joint->setActive(true);
   komo.pathConfig["r_panda_base"]->joint->setActive(true);
-  komo.pathConfig["l_robotiq_base"]->joint->setActive(true);
-  komo.pathConfig["r_robotiq_base"]->joint->setActive(true);
+  komo.pathConfig["l_robotiq_optitrackMarker"]->joint->setActive(true);
+  komo.pathConfig["r_robotiq_optitrackMarker"]->joint->setActive(true);
 
   //-- add objectives: just square errors in marker positions
   komo.addSquaredQuaternionNorms();
@@ -100,8 +100,8 @@ void load(){
   cout <<*komo.pathConfig["optitrack_base"] <<endl;
   cout <<*komo.pathConfig["l_panda_base"] <<endl;
   cout <<*komo.pathConfig["r_panda_base"] <<endl;
-  cout <<*komo.pathConfig["l_robotiq_base"] <<endl;
-  cout <<*komo.pathConfig["r_robotiq_base"] <<endl;
+  cout <<*komo.pathConfig["l_robotiq_optitrackMarker"] <<endl;
+  cout <<*komo.pathConfig["r_robotiq_optitrackMarker"] <<endl;
 
   //-- for extra plotting, and RMSE
   {

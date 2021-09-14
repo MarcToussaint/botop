@@ -65,7 +65,7 @@ void testFastPath() {
   ofstream fil("z.dat");
   //-- send path as spline:
   for(double speed=1.;speed<=5.;speed+=.5){
-    bot.move(path, ARR(10.)/speed);
+    bot.move(path, ARR(30.)/speed);
 
     Metronome tic(.01);
     while(bot.step(C, -1.)){
