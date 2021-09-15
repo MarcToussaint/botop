@@ -12,7 +12,7 @@ struct OptiTrack {
   OptiTrack();
   ~OptiTrack();
 
-  void step(rai::Configuration& C);
+  void pull(rai::Configuration& C);
 };
 
 } //namespace

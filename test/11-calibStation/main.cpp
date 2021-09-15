@@ -1,22 +1,105 @@
 #include <Kin/kin.h>
 #include <Kin/frame.h>
-
 #include <KOMO/komo.h>
 
-/*
- *
- * DELAY: Bug during data recording: take q from C, not from bot!
- */
+#include <BotOp/bot.h>
+#include <BotOp/motionHelpers.h>
 
 //===========================================================================
 
-void load(){
+void collectData(){
+  //-- setup a configuration
+  rai::Configuration C;
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+
+  arr points=rai::getParameter<arr>("points");
+  points.reshape(-1,2,3);
+
+  //-- start a robot thread
+  BotOp bot(C, rai::checkParameter<bool>("real"));
+  bot.home(C);
+
+  //-- prepare storing optitrack data ?
+  ofstream fil("z.calib.dat");
+  rai::Frame *optiFrameR=0, *optiFrameL = 0;
+  if(bot.optitrack){
+    rai::wait(1.);
+    optiFrameR = C["ot_r_panda_gripper"];
+    optiFrameL = C["ot_l_panda_gripper"];
+  }
+
+  arr q_last=bot.get_q();
+  uint L = points.d0;
+  for(uint l=0;l<=L;l++){
+    arr q_target;
+
+    //compute pose
+    if(l<L){
+      KOMO komo;
+      komo.setModel(C, true);
+      komo.setTiming(1, 1, 3., 1);
+      komo.add_qControlObjective({}, 1, 1e-1);
+      komo.addObjective({}, FS_qItself, {}, OT_sos, {.1}, bot.qHome);
+      komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e1});
+
+      komo.addObjective({}, FS_positionDiff, {"l_gripper", "table_base"}, OT_eq, {1e2}, points(l,0,{}));
+      komo.addObjective({}, FS_positionDiff, {"r_gripper", "table_base"}, OT_eq, {1e2}, points(l,1,{}));
+
+      komo.optimize();
+
+      //is feasible?
+      bool feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
+
+      if(!feasible){
+        cout <<" === pose infeasible ===\n" <<points[l] <<endl;
+        continue;
+      }
+
+      q_target = komo.x;
+      cout <<" === pose feasible  === " <<endl;
+    }else{
+      q_target = bot.qHome;
+    }
+
+    //compute path
+    C.setJointState(q_last);
+    arr path = getStartGoalPath(C, q_target, bot.qHome);
+    if(!path.N){
+      cout <<" === path infeasible === " <<endl;
+      continue;
+    }
+    q_last = q_target;
+    cout <<" === path feasible  === " <<endl;
+
+    cout <<" === -> executing === " <<endl;
+    bot.moveAutoTimed(path);
+
+    if(bot.optitrack){
+      Metronome tic(.01);
+      while(bot.step(C, -1.)){
+        tic.waitForTic();
+        arr q = bot.get_q();
+        bot.optitrack->pull(C);
+        fil <<rai::realTime() <<" q " <<q <<" poseL " <<optiFrameL->get_X() <<" poseR " <<optiFrameR->get_X() <<endl; // <<" poseTable " <<optiTable->get_X() <<endl;
+      }
+    }else{
+      while(bot.step(C));
+    }
+    if(bot.keypressed=='q' || bot.keypressed==27) break;
+  }
+
+  fil.close();
+}
+
+//===========================================================================
+
+void computeCalibration(){
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
   C.watch();
 
   //-- load data from
-  ifstream fil("21-09-14.dat");
+  ifstream fil("z.calib.dat");
   arr _q, _poseL, _poseR, _poseTable;
   arr q(0,14), poseL(0,7), poseR(0,7), poseTable(0,7), times;
   for(uint t=0;;t++){
@@ -43,7 +126,6 @@ void load(){
   rai::Frame *ot = & C.addFrame("optitrack_base", "world")->setShape(rai::ST_marker, {.1});
   rai::Frame *otL = & C.addFrame("otL", "optitrack_base")->setShape(rai::ST_marker, {.1});
   rai::Frame *otR = & C.addFrame("otR", "optitrack_base")->setShape(rai::ST_marker, {.1});
-  rai::Frame *otT = & C.addFrame("otT", "optitrack_base")->setShape(rai::ST_marker, {.1});
 
   //-- create "morpho joints" - constant joints that are optimized/calibrated
   C["optitrack_base"] ->setJoint(rai::JT_free) .addAttribute("constant", 1.);
@@ -72,7 +154,6 @@ void load(){
   for(uint t=0;t<komo.T;t++){
     komo.timeSlices(komo.k_order+t, otL->ID)->setPosition(poseL(t,{0,2}));
     komo.timeSlices(komo.k_order+t, otR->ID)->setPosition(poseR(t,{0,2}));
-//    komo.timeSlices(komo.k_order+t, otT->ID)->setPosition(pose(t,{0,2}));
   }
 
   //-- now we deactivate all normal joints, and only activate the morpho joints
@@ -87,21 +168,23 @@ void load(){
   komo.addSquaredQuaternionNorms();
   komo.addObjective({}, FS_positionDiff, {"otL", "l_robotiq_optitrackMarker"}, OT_sos);
   komo.addObjective({}, FS_positionDiff, {"otR", "r_robotiq_optitrackMarker"}, OT_sos);
-  //komo.addObjective({}, FS_positionDiff, {"otL", "l_calibMarker"}, OT_sos);
   //komo.addObjective({}, FS_qItself, {"l_panda_base"}, OT_eq, {1e1}, {-.4, -.3,0.5*RAI_PI});
 
   //-- optimize
-  komo.opt.verbose=6;
-  komo.optimize();
+  komo.optimize(0., OptOptions()
+                .set_verbose(6)
+                .set_damping(1e-6)
+                .set_stopTolerance(1e-6) );
 
   //-- report
   cout <<komo.getReport(true) <<endl;
-  cout <<"\nx: " <<komo.x <<endl <<endl;
-  cout <<*komo.pathConfig["optitrack_base"] <<endl;
-  cout <<*komo.pathConfig["l_panda_base"] <<endl;
-  cout <<*komo.pathConfig["r_panda_base"] <<endl;
-  cout <<*komo.pathConfig["l_robotiq_optitrackMarker"] <<endl;
-  cout <<*komo.pathConfig["r_robotiq_optitrackMarker"] <<endl;
+  cout <<"\n CALIBRATION FILE:\n\n" <<endl;
+  cout <<"Include 'pandasTable.g'" <<endl;
+  cout <<"optitrack_base (world) { Q:" <<komo.pathConfig["optitrack_base"]->get_Q() <<" }" <<endl;
+  cout <<"Edit r_panda_base { Q:" <<komo.pathConfig["l_panda_base"]->get_Q() <<" }" <<endl;
+  cout <<"Edit l_robotiq_optitrackMarker { Q:" <<komo.pathConfig["l_robotiq_optitrackMarker"]->get_Q() <<" }" <<endl;
+  cout <<"Edit r_robotiq_optitrackMarker { Q:" <<komo.pathConfig["r_robotiq_optitrackMarker"]->get_Q() <<" }" <<endl;
+  cout <<endl;
 
   //-- for extra plotting, and RMSE
   {
@@ -138,9 +221,11 @@ void load(){
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
-  rnd.clockSeed();
+  collectData();
 
-  load();
+//  computeCalibration();
+
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
 
   return 0;
 }

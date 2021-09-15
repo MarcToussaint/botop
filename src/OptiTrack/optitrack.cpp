@@ -14,7 +14,7 @@ namespace rai{
     delete mocap;
   }
 
-  void OptiTrack::step(rai::Configuration& C){
+  void OptiTrack::pull(rai::Configuration& C){
     // Get a frame
     mocap->waitForNextFrame();
     uint64_t timeStamp = mocap->timeStamp();
@@ -63,8 +63,6 @@ namespace rai{
         }
       }
     }
-
-    C.watch();
   }
 
 } //namespace

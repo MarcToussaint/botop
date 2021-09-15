@@ -37,7 +37,7 @@ struct BotOp{
 
   //-- motion commands
   void move(const arr& path, const arr& times);
-  void moveAutoTimed(const arr& path, double timeCost);
+  void moveAutoTimed(const arr& path, double maxVel=1., double maxAcc=1.); //double timeCost);
   void moveOverride(const arr& path, const arr& times);
   double moveLeap(const arr& q_target, double timeCost=1.);
   void setControllerWriteData(int _writeData){ if(robotL) robotL->writeData=_writeData;  if(robotR) robotR->writeData=_writeData;  }

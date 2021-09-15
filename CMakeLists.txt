@@ -118,10 +118,11 @@ endif()
 ################################################################################
 
 if(USE_PYBIND)
+  set(PYTHON_EXECUTABLE "python3")
   execute_process(
     COMMAND bash "-c" "python3 -m pybind11 --cmakedir" 
     OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE pybind11_DIR
-  )
+    )
   find_package(pybind11)
   add_definitions(-DRAI_PYBIND)
 

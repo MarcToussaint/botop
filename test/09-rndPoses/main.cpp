@@ -7,6 +7,7 @@
 
 void rndPoses(){
   rai::Configuration C;
+  bool writeData = rai::getParameter<bool>("bot/writeData", false);
   rai::String useArm = rai::getParameter<rai::String>("bot/useArm", "both");
   if(useArm=="both"){
     C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
@@ -34,25 +35,35 @@ void rndPoses(){
 
     C.setJointState(x);
     //C.watch(false, STRING("conf " <<i));
-//    bool succ = checkCollisionsAndLimits(C, collisionPairs, limits, true);
     bool succ = PoseTool(C,0).checkLimitsAndCollisions(limits, {}, true);
     if(succ){
       cout <<" === pose made feasible === " <<endl;
       x = C.getJointState();
       //C.watch(true, STRING("conf " <<i));
 
+      //compute path
       C.setJointState(x_last);
-      arr path = getStartGoalPath(C, x, bot.qHome); //, {}, {"l_gripper", "r_gripper"}, true, true);
+      arr path = getStartGoalPath(C, x, bot.qHome);
       if(!path.N){
         cout <<" === path infeasible === " <<endl;
         continue;
       }
       x_last = x;
       cout <<" === path feasible  === " <<endl;
+
+      //wait til finished and update gui
       while(bot.step(C));
+      if(bot.keypressed=='q') break;
+
+      //write data
+      if(writeData){
+        bot.robotL->writeData=2;
+        rai::wait(.05);
+        bot.robotL->writeData=0;
+      }
+
       cout <<" === -> executing === " <<endl;
       bot.moveAutoTimed(path, .02);
-      if(bot.keypressed=='q') break;
     }else{
       cout <<" === pose infeasible === " <<endl;
     }
@@ -66,7 +77,7 @@ int main(int argc, char * argv[]){
 
 //  rnd.clockSeed();
   rnd.seed(2);
-  //  driveToPoses();
+
   rndPoses();
 
   return 0;

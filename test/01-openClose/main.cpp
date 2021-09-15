@@ -1,13 +1,16 @@
 #include <Franka/gripper.h>
 #include <Robotiq/RobotiqGripper.h>
-#include <Franka/controlEmulator.h>
 
-int main(int argc, char** argv) {
+const char *USAGE =
+    "\nTest of low-level (without bot interface) RobotiqGripper and FrankaGripper interfaces"
+    "\n";
+
+int main(int argc,char **argv){
   rai::initCmdLine(argc, argv);
 
-  {
-    std::cout<<"hello"<<std::endl;
+  cout <<USAGE <<endl;
 
+  {
     std::shared_ptr<rai::GripperAbstraction> G_ri;
     if(rai::getParameter<bool>("bot/useRobotiq", true)){
       G_ri = make_shared<RobotiqGripper>(0);
@@ -56,6 +59,8 @@ int main(int argc, char** argv) {
 //    cout <<"done" <<endl;
 
   }
+
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
 
   return 0;
 }

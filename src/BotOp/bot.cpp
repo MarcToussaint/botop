@@ -47,7 +47,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   //-- launch OptiTrack
   if(rai::getParameter<bool>("bot/useOptitrack", false)){
     optitrack = make_unique<rai::OptiTrack>();
-    optitrack->step(C);
+    optitrack->pull(C);
   }
 
   C.watch(false, STRING("time: 0"));
@@ -85,7 +85,7 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   C.setJointState(state.get()->q);
 
   //update optitrack state
-  if(optitrack) optitrack->step(C);
+  if(optitrack) optitrack->pull(C);
 
 //  C.gl()->raiseWindow();
   double ctrlTime = state.get()->time;
@@ -109,11 +109,15 @@ std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
   return sp;
 }
 
-void BotOp::moveAutoTimed(const arr& path, double timeCost){
+void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
   double T = path.d0;
-  CHECK_GE(T, 16, "this only works for smooth paths!")
+  CHECK_GE(T, 16, "this only works for smooth paths!");
+#if 0
   double accSOS = sumOfSqr(getAccelerations_centralDifference(path, 1.));
   double tau = sqrt( accSOS / (timeCost * T));
+#else
+  double tau = getMinDuration(path, maxVel, maxAcc)/T;
+#endif
   arr times(T);
   for(uint t=0;t<T;t++) times(t) = tau*(t+1);
   double ctrlTime = state.get()->time;

@@ -1,8 +1,13 @@
 #include <Franka/franka.h>
 #include <Franka/help.h>
 
-// define your own reference feed
 
+const char *USAGE =
+    "\nTest of low-level (without bot interface) FrankaThreadNew with trivial reference interface"
+    "\n";
+
+
+// define your own reference feed
 struct ZeroReference : rai::ReferenceFeed {
   Var<arr> position_ref; ///< if set, defines a non-zero velocity reference
   Var<arr> velocity_ref; ///< if set, defines a non-zero velocity reference
@@ -15,12 +20,13 @@ struct ZeroReference : rai::ReferenceFeed {
     {
       arr pos = position_ref.get()();
       if(pos.N) q_ref = pos;
-      else q_ref = q_real;
+      else q_ref = q_real;  //->no position gains at all
     }
     {
       arr vel = velocity_ref.get()();
-      if(vel.N) qDot_ref = vel;
-      else qDot_ref.resize(qDot_real.N).setZero();
+      if(vel.N==1 && vel.scalar()==0.) qDot_ref.resize(qDot_real.N).setZero(); //[0] -> zero vel reference -> damping
+      else if(vel.N) qDot_ref = vel;
+      else qDot_ref = qDot_real;  //[] -> no damping at all!
     }
     qDDot_ref.resize(q_ref.N).setZero();
   }
@@ -40,7 +46,7 @@ void test() {
   //comment the next line to only get gravity compensation instead of 'zero reference following' (which includes damping)
   auto ref = make_shared<ZeroReference>();
   robot.cmd.set()->ref = ref;
-//  ref->setPositionReference(q_now);
+  //ref->setPositionReference(q_now);
   //ref->setVelocityReference({.0,.0,.2,0,0,0,0});
 
   for(;;){
@@ -50,12 +56,15 @@ void test() {
   }
 }
 
-int main(int argc, char * argv[]){
+
+int main(int argc,char **argv){
   rai::initCmdLine(argc, argv);
+
+  cout <<USAGE <<endl;
 
   test();
 
-  cout <<"bye bye" <<endl;
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
 
   return 0;
 }

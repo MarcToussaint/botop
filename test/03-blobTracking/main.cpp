@@ -134,14 +134,14 @@ void tracking2(){
       hsvFilter = rai::getParameter<arr>("hsvFilter").reshape(2,3);
     }
   }
-
-  LOG(0) <<"bye bye";
 }
 
 int main(int argc,char **argv){
   rai::initCmdLine(argc,argv);
 
   tracking2();
+
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
 
   return 0;
 }

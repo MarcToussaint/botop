@@ -250,3 +250,80 @@ arr getStartGoalPath(rai::Configuration& C, const arr& qTarget, const arr& qHome
 
   return path;
 }
+
+arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, rai::ArgWord placeDirection, const char* boxName, const char* gripperName, const char* palmName, const char* tableName, const arr& qHome) {
+  arr q0 = C.getJointState();
+
+  KOMO komo;
+  komo.setModel(C, true);
+  komo.setTiming(2, 1, 3., 1);
+  komo.add_qControlObjective({}, 1, 1e-1);
+
+  // homing
+  if(qHome.N) komo.addObjective({}, FS_qItself, {}, OT_sos, {.1}, qHome);
+
+  // generic collisions
+#if 0 //explicit enumeration -- but that's inefficient for large scenes; the iterative approach using accumulated is more effective
+  if(collisionPairs.N){
+    komo.addObjective({}, FS_distance, framesToNames(collisionPairs), OT_ineq, {1e2}, {-.001});
+  }
+#else
+  komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e1});
+#endif
+
+  arr boxSize={.06,.15,.09};
+
+  //-- pick
+  komo.addModeSwitch({1.,2.}, rai::SY_stable, {gripperName, boxName}, true);
+  addBoxPickObjectives(komo, 1., pickDirection, boxName, boxSize, gripperName, palmName, tableName);
+
+  //-- place
+  komo.addModeSwitch({2.,-1.}, rai::SY_stable, {"table", boxName}, false);
+  addBoxPlaceObjectives(komo, 2., placeDirection, boxName, boxSize, gripperName, palmName);
+
+  // explicit collision avoidances
+  //  for(const Avoid& a:avoids){
+  //    komo.addObjective(a.times, FS_distance, a.frames, OT_ineq, {1e1}, {-a.dist});
+  //  }
+
+  //  komo.addObjective({}, FS_distance, {"r_panda_coll6", "table"}, OT_ineq, {1e2}, {});
+  //  komo.addObjective({}, FS_distance, {"r_panda_coll7", "table"}, OT_ineq, {1e2}, {});
+  //  komo.addObjective({}, FS_distance, {"r_palm", "table"}, OT_ineq, {1e2}, {});
+
+
+  //-- run several times with random initialization
+  bool feasible=false;
+  uint trials=3;
+  for(uint trial=0;trial<trials;trial++){
+    //initialize with constant q0 or qTarget
+    komo.reset();
+    if(trial%2) komo.initWithConstant(qHome);
+    else komo.initWithConstant(q0);
+
+    //optimize
+    komo.optimize(.01*trial, OptOptions().set_stopTolerance(1e-3)); //trial=0 -> no noise!
+
+    //is feasible?
+    feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
+
+    //if not feasible -> add explicit collision pairs (from proxies presently in komo.pathConfig)
+    if(!feasible){
+      //      cout <<komo.getReport(false);
+      //komo.pathConfig.reportProxies();
+      StringA collisionPairs = komo.getCollisionPairs(.01);
+      if(collisionPairs.N){
+        komo.addObjective({}, FS_distance, collisionPairs, OT_ineq, {1e2}, {-.001});
+      }
+    }
+
+    cout <<"  seq  trial " <<trial <<(feasible?" good":" FAIL") <<" -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
+    if(feasible) break;
+  }
+
+
+  if(!feasible) return {};
+
+  arr path = komo.getPath_qOrg();
+
+  return path;
+}

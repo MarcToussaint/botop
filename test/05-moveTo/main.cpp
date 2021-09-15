@@ -1,14 +1,14 @@
 #include <Franka/controlEmulator.h>
 #include <Franka/franka.h>
-#include <Franka/help.h>
-
 #include <Algo/SplineCtrlFeed.h>
 
-#include <Kin/frame.h>
+const char *USAGE =
+    "\nTest of low-level (without bot interface) of SplineCtrlReference"
+    "\n";
 
 //===========================================================================
 
-void testMoveTo() {
+void test() {
   //-- setup a configuration
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
@@ -58,7 +58,11 @@ void testMoveTo() {
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
-  testMoveTo();
+  cout <<USAGE <<endl;
+
+  test();
+
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
 
   return 0;
 }
