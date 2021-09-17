@@ -18,7 +18,7 @@ int main(int argc, char * argv[]){
   //bot.setControllerWriteData(1);
 
   //prepare storing optitrack data ?
-  ofstream fil("z.dat");
+  ofstream fil("z.calib.dat");
   rai::Frame *optiFrameR=0, *optiFrameL = 0;
   if(bot.optitrack){
     rai::wait(1.);
@@ -28,15 +28,15 @@ int main(int argc, char * argv[]){
 
   //-- send path as spline
   for(double speed=1.;speed<=5.;speed+=.5){
-    bot.move(path, ARR(30.)/speed);
+    bot.move(path, ARR(10.)/speed);
 
     Metronome tic(.01);
     while(bot.step(C, -1.)){
       if(bot.optitrack){
         tic.waitForTic();
         arr q = bot.get_q();
-        bot.optitrack->pull(C, false);
-        fil <<rai::realTime() <<" q " <<q <<" poseL " <<optiFrameL->get_X() <<" poseR " <<optiFrameR->get_X() <<endl; // <<" poseTable " <<optiTable->get_X() <<endl;
+        bot.optitrack->pull(C);
+        fil <<rai::realTime() <<" q " <<q <<" poseL " <<optiFrameL->ensure_X() <<" poseR " <<optiFrameR->ensure_X() <<endl; // <<" poseTable " <<optiTable->get_X() <<endl;
       }
     }
     if(bot.keypressed=='q' || bot.keypressed==27) break;

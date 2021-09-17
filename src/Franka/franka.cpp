@@ -2,6 +2,7 @@
 
 #include <franka/model.h>
 #include <franka/robot.h>
+#include <franka/exception.h>
 
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
@@ -9,7 +10,6 @@ const char *frankaIpAddresses[2] = {"172.16.0.2", "172.17.0.2"};
 
 FrankaThreadNew::~FrankaThreadNew(){
   stop = true;
-  rai::wait(.1);
   threadClose();
 }
 
@@ -80,7 +80,7 @@ void FrankaThreadNew::step(){
 
     steps++;
 
-    if(stop) return franka::MotionFinished(franka::Torques( std::array<double, 7>{0., 0., 0., 0., 0., 0., 0.}));
+//    if(stop) return franka::MotionFinished(franka::Torques( std::array<double, 7>{0., 0., 0., 0., 0., 0., 0.}));
 
     //-- get current state from libfranka
     arr q_real(robot_state.q.begin(), robot_state.q.size(), false);
@@ -295,5 +295,12 @@ void FrankaThreadNew::step(){
   };
 
   // start real-time control loop
-  robot.control(torque_control_callback, true, 2000.);
+  cout <<"HERE" <<endl;
+
+  try {
+    robot.control(torque_control_callback, true, 2000.);
+  } catch (franka::Exception const& e) {
+    std::cout << e.what() << std::endl;
+  }
+  LOG(0) <<"EXIT FRANKA CONTROL LOOP";
 }

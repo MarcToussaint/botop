@@ -76,14 +76,14 @@ RobotiqGripper::RobotiqGripper(uint whichRobot) {
   serialPort->set_option(boost::asio::serial_port_base::parity(boost::asio::serial_port_base::parity::none));
 
   // send initialization command09 10 03 E8 00 03 01 30 -- NOT NECESSARY! closes gripper
-#if 0
-  serialPort->write_some(boost::asio::buffer(
-          "\x09\x10\x03\xE8\x00\x03\x06\x00\x00\x00\x00\x00\x00\x73\x30",
-                                15));
-  msg_len = serialPort->read_some(boost::asio::buffer(msg, 300));
-  //  writeHex(msg, msg_len);
-  //  response: 09 10 03 E8 00 03 01 30
-#endif
+  if(rai::getParameter<bool>("bot/initRobotiq", true)){
+     serialPort->write_some(boost::asio::buffer(
+                              "\x09\x10\x03\xE8\x00\x03\x06\x00\x00\x00\x00\x00\x00\x73\x30",
+                              15));
+     msg_len = serialPort->read_some(boost::asio::buffer(msg, 300));
+     //  writeHex(msg, msg_len);
+     //  response: 09 10 03 E8 00 03 01 30
+  }
 }
 
 RobotiqGripper::~RobotiqGripper(){

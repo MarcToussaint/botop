@@ -61,6 +61,9 @@ namespace rai{
           Q->pos.set(position(0), position(1), position(2));
           Q->rot.set(rotation.w(), rotation.vec()(0), rotation.vec()(1), rotation.vec()(2));
         }
+      }else{
+        LOG(0) <<"OCCLUDED: " <<f->name;
+        f->set_Q()->setZero();
       }
     }
   }

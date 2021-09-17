@@ -72,7 +72,7 @@ void collectData(){
     cout <<" === path feasible  === " <<endl;
 
     cout <<" === -> executing === " <<endl;
-    bot.moveAutoTimed(path);
+    bot.moveAutoTimed(path, .5);
 
     if(bot.optitrack){
       Metronome tic(.01);
@@ -80,7 +80,7 @@ void collectData(){
         tic.waitForTic();
         arr q = bot.get_q();
         bot.optitrack->pull(C);
-        fil <<rai::realTime() <<" q " <<q <<" poseL " <<optiFrameL->get_X() <<" poseR " <<optiFrameR->get_X() <<endl; // <<" poseTable " <<optiTable->get_X() <<endl;
+        fil <<rai::realTime() <<" q " <<q <<" poseL " <<optiFrameL->ensure_X() <<" poseR " <<optiFrameR->ensure_X() <<endl; // <<" poseTable " <<optiTable->ensure_X() <<endl;
       }
     }else{
       while(bot.step(C));
@@ -106,15 +106,19 @@ void computeCalibration(){
     rai::skip(fil);
     if(!fil.good()) break;
     fil >>times.append() >>PARSE("q") >>_q >>PARSE("poseL") >>_poseL >>PARSE("poseR") >>_poseR;// >>PARSE("poseTable") >>_poseTable;
-    q.append(_q);
-    poseR.append(_poseR);
-    poseL.append(_poseL);
+    if(fabs(_poseL(0))>1e-10 && fabs(_poseR(0))>1e-10){ //ignore data is pose is zero!
+      q.append(_q);
+      poseR.append(_poseR);
+      poseL.append(_poseL);
 //    poseTable.append(_poseTable);
     //C.setJointState(_q);  C.watch();  rai::wait(.01);
+    }else{
+      LOG(0) <<"skipping line " <<t;
+    }
   }
   fil.close();
 
-  int ot_delay = 1; //in steps of 10msec!
+  int ot_delay = 0; //in steps of 10msec!
   q.delRows(-ot_delay, ot_delay);
   poseL.delRows(0, ot_delay);
   poseR.delRows(0, ot_delay);
@@ -181,9 +185,9 @@ void computeCalibration(){
   cout <<"\n CALIBRATION FILE:\n\n" <<endl;
   cout <<"Include 'pandasTable.g'" <<endl;
   cout <<"optitrack_base (world) { Q:" <<komo.pathConfig["optitrack_base"]->get_Q() <<" }" <<endl;
-  cout <<"Edit r_panda_base { Q:" <<komo.pathConfig["l_panda_base"]->get_Q() <<" }" <<endl;
-  cout <<"Edit l_robotiq_optitrackMarker { Q:" <<komo.pathConfig["l_robotiq_optitrackMarker"]->get_Q() <<" }" <<endl;
-  cout <<"Edit r_robotiq_optitrackMarker { Q:" <<komo.pathConfig["r_robotiq_optitrackMarker"]->get_Q() <<" }" <<endl;
+  cout <<"Edit r_panda_base { Q:<" <<komo.pathConfig["r_panda_base"]->get_Q() <<"> }" <<endl;
+  cout <<"Edit l_robotiq_optitrackMarker { Q:<" <<komo.pathConfig["l_robotiq_optitrackMarker"]->get_Q() <<"> }" <<endl;
+  cout <<"Edit r_robotiq_optitrackMarker { Q:<" <<komo.pathConfig["r_robotiq_optitrackMarker"]->get_Q() <<"> }" <<endl;
   cout <<endl;
 
   //-- for extra plotting, and RMSE
@@ -221,9 +225,9 @@ void computeCalibration(){
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
-  collectData();
+//  collectData();
 
-//  computeCalibration();
+  computeCalibration();
 
   LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
 
