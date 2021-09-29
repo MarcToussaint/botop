@@ -63,7 +63,7 @@ void rndPoses(){
       }
 
       cout <<" === -> executing === " <<endl;
-      bot.moveAutoTimed(path, .02);
+      bot.moveAutoTimed(path);
     }else{
       cout <<" === pose infeasible === " <<endl;
     }

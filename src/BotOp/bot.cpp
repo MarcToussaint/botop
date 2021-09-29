@@ -38,6 +38,10 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     }else{
       HALT("you need a botUseArm configuration (right, left, both)");
     }
+    {// if using franka gripper, do a homing?
+      //FrankaGripper *fg = dynamic_cast<FrankaGripper*>(gripperL.get());
+      //if(fg) fg->homing();
+    }
   }else{
     robotL = make_unique<ControlEmulator>(C, cmd, state); //, StringA(), .001, 10.);
     if(useGripper) gripperL = make_unique<GripperEmulator>();

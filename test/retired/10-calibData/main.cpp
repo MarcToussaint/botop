@@ -97,7 +97,7 @@ void driveToPoses(rai::Configuration& C, const arr& X, const uint kStart=0) {
     C.setJointState(bot.get_q());
     arr path = getStartGoalPath(C, X[k], bot.qHome);
     if(!path.N) continue;
-    bot.moveAutoTimed(path, .01);
+    bot.moveAutoTimed(path);
 //    bot.moveLeap(X[k], 3.);
     while(bot.step(C));
     if(bot.keypressed=='q') break;
@@ -163,7 +163,7 @@ void rndPoses(){
         LOG(0) <<"no path found - discarding pose " <<i;
         continue;
       }
-      bot.moveAutoTimed(path, .01);
+      bot.moveAutoTimed(path);
       while(bot.step(C));
       if(bot.keypressed=='q') break;
     }

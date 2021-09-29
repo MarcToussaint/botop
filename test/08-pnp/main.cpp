@@ -12,6 +12,11 @@ void testPnp() {
       .setShape(rai::ST_ssBox, {.06,.15,.09,.01})
       .setRelativePosition(arr{-.3,-.2,.095});
 
+  C.addFrame("plate", "table")
+      ->setJoint(rai::JT_rigid)
+      .setShape(rai::ST_ssBox, {.4,.4,.1,.01})
+      .setRelativePosition(arr{-.4,.2,.0});
+
   arr qHome = C.getJointState();
 
   //-- start a robot thread
@@ -21,7 +26,7 @@ void testPnp() {
   const char* gripperName="l_gripper";
   const char* palmName="l_palm";
   const char* boxName="target";
-  const char* tableName="table";
+  const char* tableName="plate";
   const char* arm1Name="l_panda_coll7";
   const char* arm2Name="l_panda_coll6";
 
@@ -77,8 +82,7 @@ void testPnp() {
       }
 
       //send komo as spline:
-      //bot.move(path, {2.5});
-      bot.moveAutoTimed(path, .003);
+      bot.moveAutoTimed(path);
 
       while(bot.step(C));
       if(bot.keypressed=='q' || bot.keypressed==27) return;
