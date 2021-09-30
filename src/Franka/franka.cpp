@@ -281,6 +281,8 @@ void FrankaThreadNew::step(){
           torques_real.writeRaw(dataFile); //7
           G_org.writeRaw(dataFile); //7-vector gravity
           C_org.writeRaw(dataFile); //7-vector coriolis
+      }
+      if(writeData>2){
           M_org.write(dataFile, " ", " ", "  "); //7x7 inertia matrix
 //      qDDot_ref.writeRaw(dataFile);
       }
