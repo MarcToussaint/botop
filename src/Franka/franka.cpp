@@ -277,6 +277,7 @@ void FrankaThreadNew::step(){
       q_ref.writeRaw(dataFile); //7
       if(writeData>1){
           qDot_real.writeRaw(dataFile); //7
+          qDot_ref.writeRaw(dataFile); //7
           u.writeRaw(dataFile); //7
           torques_real.writeRaw(dataFile); //7
           G_org.writeRaw(dataFile); //7-vector gravity
