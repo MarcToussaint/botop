@@ -20,13 +20,15 @@ void collectJointData(){
   double q0 = qHome(jointID);
   double lo = qLimits(jointID, 0)+.1;
   double up = qLimits(jointID, 1)-.1;
+  if(jointID==1) up -= 1.2;
 
-  uint k=10;
+  uint k=30;
   arr path = ~qHome;
   arr times = ARR(0.);
   double q = lo;
   double v = 0.;
   double t = 10.;
+  double vstep = .005;
 
   for(uint s=0;;s++){
     for(uint j=0;j<k;j++){
@@ -37,7 +39,7 @@ void collectJointData(){
       times.append(t);
     }
     if(q>up) break;
-    v += .01;
+    v += vstep;
   }
   q = up;
   v = 0.;
@@ -50,7 +52,7 @@ void collectJointData(){
       times.append(t);
     }
     if(q<lo) break;
-    v -= .01;
+    v -= vstep;
   }
 
 #if 0

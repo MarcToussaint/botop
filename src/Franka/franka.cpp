@@ -27,6 +27,11 @@ void FrankaThreadNew::init(uint whichRobot, const uintA& _qIndices) {
   friction = rai::getParameter<arr>("Franka/friction", zeros(7));
   LOG(0) << "FRANKA: Kp_freq:" << Kp_freq << " Kd_ratio:" << Kd_ratio <<" friction:" <<friction;
 
+  /* hand tuning result of friction calib:
+     Franka/friction: [0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4]
+     Franka/Kd_ratio: [0.6, 0.6, 0.3, 0.3, 0.3, 0.3, 0.4]
+  */
+
   //-- choose robot/ipAddress
   CHECK_LE(whichRobot, 1, "");
   ipAddress = frankaIpAddresses[whichRobot];
@@ -224,8 +229,8 @@ void FrankaThreadNew::step(){
       //-- add friction term
       if(friction.N==7 && qDot_ref.N==7){
         for(uint i=0;i<7;i++){
-          if(qDot_ref.elem(i)>0.) u.elem(i) += friction.elem(i);
-          if(qDot_ref.elem(i)<0.) u.elem(i) -= friction.elem(i);
+          if(qDot_ref.elem(i)>1e-4) u.elem(i) += friction.elem(i);
+          if(qDot_ref.elem(i)<-1e-4) u.elem(i) -= friction.elem(i);
         }
       }
 
