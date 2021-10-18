@@ -12,8 +12,11 @@ struct FrankaThreadNew : rai::RobotAbstraction, Thread{
   ~FrankaThreadNew();
 
 private:
-  bool stop=false, requiresInitialization=true; //stop -> send end to libfranka; requiresInitialization -> waits in constructor until first contact/initialization
+  bool stop=false; //send end to libfranka
+  bool requiresInitialization=true;  //waits in constructor until first contact/initialization
   arr Kp_freq, Kd_ratio; //read from rai.cfg
+  arr friction;
+
   const char* ipAddress;
 
   uintA qIndices;

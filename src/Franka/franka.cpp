@@ -24,7 +24,8 @@ void FrankaThreadNew::init(uint whichRobot, const uintA& _qIndices) {
   //-- basic Kp Kd settings for reference control mode
   Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", ARR(20., 20., 20., 20., 10., 15., 10.)); //18., 18., 18., 13., 8., 8., 6.));
   Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", ARR(.6, .6, .4, .4, .1, .5, .1)); //.8, .8, .7, .7, .1, .1, .1));
-  LOG(0) << "FRANKA: Kp_freq=" << Kp_freq << " Kd_ratio=" << Kd_ratio;
+  friction = rai::getParameter<arr>("Franka/friction", zeros(7));
+  LOG(0) << "FRANKA: Kp_freq:" << Kp_freq << " Kd_ratio:" << Kd_ratio <<" friction:" <<friction;
 
   //-- choose robot/ipAddress
   CHECK_LE(whichRobot, 1, "");
@@ -50,7 +51,7 @@ void FrankaThreadNew::step(){
                              {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
                              {{100.0, 100.0, 100.0, 100.0, 100.0, 100.0}});
 
-  // initialize state and ctrl with first state
+  //-- initialize state and ctrl with first state
   {
     franka::RobotState initial_state = robot.readOnce();
     arr q_real, qDot_real;
@@ -60,23 +61,23 @@ void FrankaThreadNew::step(){
     auto stateSet = state.set();
     auto cmdSet = cmd.set();
 
-    // TODO really modify the complete state?
+    //ensure state variables have sufficient size
     while(stateSet->q.N<=qIndices_max) stateSet->q.append(0.);
     while(stateSet->qDot.N<=qIndices_max) stateSet->qDot.append(0.);
     while(stateSet->tauExternal.N<=qIndices_max) stateSet->tauExternal.append(0.);
 
-    for(uint i=0; i < 7; i++){
-      stateSet->q(qIndices(i)) = q_real(i);
-      stateSet->qDot(qIndices(i)) = qDot_real(i);
-      stateSet->tauExternal(qIndices(i)) = 0.;
+    for(uint i=0; i<7; i++){
+      stateSet->q.elem(qIndices(i)) = q_real(i);
+      stateSet->qDot.elem(qIndices(i)) = qDot_real(i);
+      stateSet->tauExternal.elem(qIndices(i)) = 0.;
     }
   }
 
 
-  // define callback for the torque control loop
+  //-- define the callback for the torque control loop
   std::function<franka::Torques(const franka::RobotState&, franka::Duration)>
       torque_control_callback = [&](const franka::RobotState& robot_state,
-                                   franka::Duration /*duration*/) -> franka::Torques {
+                                    franka::Duration /*duration*/) -> franka::Torques {
 
     steps++;
 
@@ -86,7 +87,7 @@ void FrankaThreadNew::step(){
     arr q_real(robot_state.q.begin(), robot_state.q.size(), false);
     arr qDot_real(robot_state.dq.begin(), robot_state.dq.size(), false);
     arr torquesExternal_real(robot_state.tau_ext_hat_filtered.begin(), robot_state.tau_ext_hat_filtered.size(), false);
-    arr torques_real(robot_state.tau_J.begin(), 7, false);
+    arr torques_real(robot_state.tau_J.begin(), robot_state.tau_J.size(), false);
 
     //-- get real time
     ctrlTime += .001; //HARD CODED: 1kHz
@@ -98,24 +99,23 @@ void FrankaThreadNew::step(){
       auto stateSet = state.set();
       stateSet->time = ctrlTime;
       for(uint i=0;i<7;i++){
-        stateSet->q(qIndices(i)) = q_real(i);
-        stateSet->qDot(qIndices(i)) = qDot_real(i);
-        stateSet->tauExternal(qIndices(i)) = torquesExternal_real(i);
+        stateSet->q.elem(qIndices(i)) = q_real.elem(i);
+        stateSet->qDot.elem(qIndices(i)) = qDot_real.elem(i);
+        stateSet->tauExternal.elem(qIndices(i)) = torquesExternal_real.elem(i);
       }
       state_q_real = stateSet->q;
       state_qDot_real = stateSet->qDot;
     }
 
     //-- get current ctrl command
-    arr q_ref, qDot_ref, qDDot_ref, KpRef, KdRef, P_compliance; // TODO Kp, Kd and also read out the correct indices
+    arr q_ref, qDot_ref, qDDot_ref, Kp_ref, Kd_ref, P_compliance; // TODO Kp, Kd and also read out the correct indices
     rai::ControlType controlType;
     {
       auto cmdGet = cmd.get();
 
       controlType = cmdGet->controlType;
 
-      //get the reference from the callback (e.g., sampling a spline reference)
-
+      //get commanded reference from the reference callback (e.g., sampling a spline reference)
       arr cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref;
       if(cmdGet->ref){
         cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, state_q_real, state_qDot_real, ctrlTime);
@@ -124,23 +124,25 @@ void FrankaThreadNew::step(){
         CHECK(cmd_qDDot_ref.N > qIndices_max, "");
       }
 
-      if(cmd_q_ref.N) q_ref.resize(7).setZero();
-      if(cmd_qDot_ref.N) qDot_ref.resize(7).setZero();
-      if(cmd_qDDot_ref.N) qDDot_ref.resize(7).setZero();
-
-      for(uint i=0; i<7; i++) {
-        if(cmd_q_ref.N) q_ref(i) = cmd_q_ref(qIndices(i));
-        if(cmd_qDot_ref.N) qDot_ref(i) = cmd_qDot_ref(qIndices(i));
-        if(cmd_qDDot_ref.N) qDDot_ref(i) = cmd_qDDot_ref(qIndices(i));
+      //pick qIndices for this particular robot
+      if(cmd_q_ref.N){
+        q_ref.resize(7);
+        for(uint i=0; i<7; i++) q_ref.elem(i) = cmd_q_ref.elem(qIndices(i));
       }
-
+      if(cmd_qDot_ref.N){
+        qDot_ref.resize(7);
+        for(uint i=0; i<7; i++) qDot_ref.elem(i) = cmd_qDot_ref.elem(qIndices(i));
+      }
+      if(cmd_qDDot_ref.N){
+        qDDot_ref.resize(7);
+        for(uint i=0; i<7; i++) qDDot_ref.elem(i) = cmd_qDDot_ref.elem(qIndices(i));
+      }
       if(cmdGet->Kp.d0 >= 7 && cmdGet->Kp.d1 >=7 && cmdGet->Kp.d0 == cmdGet->Kp.d1){
-        KpRef.resize(7, 7);
-        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) KpRef(i, j) = cmdGet->Kp(qIndices(i), qIndices(j));
+        Kp_ref.resize(7, 7);
+        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) Kp_ref(i, j) = cmdGet->Kp(qIndices(i), qIndices(j));
       }
-
       if(cmdGet->Kd.d0 >= 7 && cmdGet->Kd.d1 >=7 && cmdGet->Kd.d0 == cmdGet->Kd.d1){
-        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) KdRef(i, j) = cmdGet->Kd(qIndices(i), qIndices(j));
+        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) Kd_ref(i, j) = cmdGet->Kd(qIndices(i), qIndices(j));
       }
 
       if(cmdGet->P_compliance.N) {
@@ -154,14 +156,12 @@ void FrankaThreadNew::step(){
 
     //-- cap the reference difference
     if(q_ref.N==7){
-        double err = length(q_ref - q_real);
-        if(err>.05){ //if(err>.02){ //stall!
-            ctrlTime -= .001; //no progress in reference time!
-            cout <<"STALLING - step:" <<steps <<endl;
-        }
+      double err = length(q_ref - q_real);
+      if(err>.05){ //if(err>.02){ //stall!
+        ctrlTime -= .001; //no progress in reference time!
+        cout <<"STALLING - step:" <<steps <<endl;
+      }
     }
-
-    arr u = zeros(7); // torques send to the robot
 
     //-- grab dynamics
     arr M_org(model.mass(robot_state).begin(), 49, false);
@@ -169,8 +169,10 @@ void FrankaThreadNew::step(){
     arr C_org(model.coriolis(robot_state).begin(), 7, false);
     arr G_org(model.gravity(robot_state).begin(), 7, false);
 
-    //-- construct torques from control message depending on the control type
-    if(controlType == rai::ControlType::configRefs) { // plain qRef, qDotRef references
+    //-- compute torques from control message depending on the control type
+    arr u;
+
+    if(controlType == rai::ControlType::configRefs) { //default: PD for given references
       //check for correct ctrl otherwise do something...
       if(q_ref.N!=7){
         if(!(steps%10)){
@@ -188,14 +190,12 @@ void FrankaThreadNew::step(){
 
       //-- compute desired torques
       arr Kp(7), Kd(7);
-      CHECK_EQ(Kp.N, 7,"");
-      CHECK_EQ(Kd.N, 7,"");
       CHECK_EQ(Kp_freq.N, 7,"");
       CHECK_EQ(Kd_ratio.N, 7,"");
       for(uint i=0;i<7;i++){
-        double freq = Kp_freq(i);
-        Kp(i) = freq*freq;
-        Kd(i) = 2.*Kd_ratio(i)*freq;
+        double freq = Kp_freq.elem(i);
+        Kp.elem(i) = freq*freq;
+        Kd.elem(i) = 2.*Kd_ratio.elem(i)*freq;
       }
 
       if(P_compliance.N){
@@ -204,28 +204,41 @@ void FrankaThreadNew::step(){
         Kp = diag(Kp);
       }
 
-      //-- feedback term
+      //-- initialize zero torques
       u.resize(7).setZero();
+
+      //-- add feedback term
       if(q_ref.N==7){
         u += Kp * (q_ref - q_real);
+      }
+      if(qDot_ref.N==7){
         u += Kd % (qDot_ref - qDot_real);
       }
 
-      //-- feedforward term
-      if(absMax(qDDot_ref)>0.){
+      //-- add feedforward term
+      if(qDDot_ref.N==7 && absMax(qDDot_ref)>0.){
         arr M = M_org; // + diag(ARR(0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2));
         u += M*qDDot_ref;
       }
 
+      //-- add friction term
+      if(friction.N==7 && qDot_ref.N==7){
+        for(uint i=0;i<7;i++){
+          if(qDot_ref.elem(i)>0.) u.elem(i) += friction.elem(i);
+          if(qDot_ref.elem(i)<0.) u.elem(i) -= friction.elem(i);
+        }
+      }
+
+      //-- project with compliance
       if(P_compliance.N) u = P_compliance * u;
 
     } else if(controlType == rai::ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
-      CHECK_EQ(KpRef.nd, 2, "")
-      CHECK_EQ(KpRef.d0, 7, "")
-      CHECK_EQ(KpRef.d1, 7, "")
-      CHECK_EQ(KdRef.nd, 2, "")
-      CHECK_EQ(KdRef.d0, 7, "")
-      CHECK_EQ(KdRef.d1, 7, "")
+      CHECK_EQ(Kp_ref.nd, 2, "")
+      CHECK_EQ(Kp_ref.d0, 7, "")
+      CHECK_EQ(Kp_ref.d1, 7, "")
+      CHECK_EQ(Kd_ref.nd, 2, "")
+      CHECK_EQ(Kd_ref.d0, 7, "")
+      CHECK_EQ(Kd_ref.d1, 7, "")
       CHECK_EQ(qDDot_ref.N, 7, "")
 
       arr M;
@@ -249,11 +262,11 @@ void FrankaThreadNew::step(){
       M = M + MDiag;
 #endif
 
-      KpRef = M*KpRef;
-      KdRef = M*KdRef;
+      Kp_ref = M*Kp_ref;
+      Kd_ref = M*Kd_ref;
       qDDot_ref = M*qDDot_ref;
 
-      u = qDDot_ref - KpRef*q_real - KdRef*qDot_real;
+      u = qDDot_ref - Kp_ref*q_real - Kd_ref*qDot_real;
 
       //u(5) *= 2.0;
 
@@ -276,29 +289,29 @@ void FrankaThreadNew::step(){
       q_real.writeRaw(dataFile); //7
       q_ref.writeRaw(dataFile); //7
       if(writeData>1){
-          qDot_real.writeRaw(dataFile); //7
-          qDot_ref.writeRaw(dataFile); //7
-          u.writeRaw(dataFile); //7
-          torques_real.writeRaw(dataFile); //7
-          G_org.writeRaw(dataFile); //7-vector gravity
-          C_org.writeRaw(dataFile); //7-vector coriolis
+        qDot_real.writeRaw(dataFile); //7
+        qDot_ref.writeRaw(dataFile); //7
+        u.writeRaw(dataFile); //7
+        torques_real.writeRaw(dataFile); //7
+        G_org.writeRaw(dataFile); //7-vector gravity
+        C_org.writeRaw(dataFile); //7-vector coriolis
       }
       if(writeData>2){
-          M_org.write(dataFile, " ", " ", "  "); //7x7 inertia matrix
-//      qDDot_ref.writeRaw(dataFile);
+        M_org.write(dataFile, " ", " ", "  "); //7x7 inertia matrix
+        qDDot_ref.writeRaw(dataFile);
       }
       dataFile <<endl;
     }
 
+    //-- send torques
     std::array<double, 7> u_array = {0., 0., 0., 0., 0., 0., 0.};
     std::copy(u.begin(), u.end(), u_array.begin());
-
     if(stop) return franka::MotionFinished(franka::Torques(u_array));
-    return u_array;
+    return franka::Torques(u_array);
   };
 
   // start real-time control loop
-  cout <<"HERE" <<endl;
+  //cout <<"HERE" <<endl;
 
   try {
     robot.control(torque_control_callback, true, 2000.);
