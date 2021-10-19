@@ -1,5 +1,6 @@
 #include <BotOp/bot.h>
 #include <BotOp/motionHelpers.h>
+#include <KOMO/pathTools.h>
 
 //===========================================================================
 
@@ -97,7 +98,7 @@ int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
 //  rnd.clockSeed();
-  rnd.seed(0);
+  rnd.seed(1);
 
   testPnp();
 

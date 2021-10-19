@@ -210,8 +210,8 @@ void ZeroReference::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, cons
     arr vel = velocity_ref.get()();
     if(vel.N==1 && vel.scalar()==0.) qDot_ref.resize(qDot_real.N).setZero(); //[0] -> zero vel reference -> damping
     else if(vel.N) qDot_ref = vel;
-    else qDot_ref = qDot_real;  //[] -> no damping at all!
+    else qDot_ref.clear();  //[] -> no damping at all!
   }
-  qDDot_ref.resize(q_ref.N).setZero();
+  qDDot_ref.clear(); //[] -> no acc at all
 }
 

@@ -125,8 +125,8 @@ void FrankaThreadNew::step(){
       if(cmdGet->ref){
         cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, state_q_real, state_qDot_real, ctrlTime);
         CHECK(cmd_q_ref.N > qIndices_max, "");
-        CHECK(cmd_qDot_ref.N > qIndices_max, "");
-        CHECK(cmd_qDDot_ref.N > qIndices_max, "");
+        CHECK(!cmd_qDot_ref.N || cmd_qDot_ref.N > qIndices_max, "");
+        CHECK(!cmd_qDDot_ref.N || cmd_qDDot_ref.N > qIndices_max, "");
       }
 
       //pick qIndices for this particular robot

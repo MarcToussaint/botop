@@ -1,6 +1,7 @@
 #include <Kin/kin.h>
 #include <Kin/frame.h>
 #include <KOMO/komo.h>
+#include <KOMO/pathTools.h>
 
 #include <BotOp/bot.h>
 #include <BotOp/motionHelpers.h>
@@ -42,8 +43,15 @@ void collectData(){
       komo.addObjective({}, FS_qItself, {}, OT_sos, {.1}, bot.qHome);
       komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e1});
 
-      komo.addObjective({}, FS_positionDiff, {"l_gripper", "table_base"}, OT_eq, {1e2}, points(l,0,{}));
-      komo.addObjective({}, FS_positionDiff, {"r_gripper", "table_base"}, OT_eq, {1e2}, points(l,1,{}));
+      arr pt = points(l,0,{});
+      komo.addObjective({}, FS_positionDiff, {"r_gripper", "table_base"}, OT_eq, {1e2}, pt);
+      pt(0) *= -1.;
+      komo.addObjective({}, FS_positionDiff, {"l_gripper", "table_base"}, OT_eq, {1e2}, pt);
+
+      arr dir = points(l,1,{});
+      komo.addObjective({}, FS_vectorY, {"r_gripper"}, OT_eq, {1e2}, dir);
+      dir(0) *= -1.;
+      komo.addObjective({}, FS_vectorY, {"l_gripper"}, OT_eq, {1e2}, dir);
 
       komo.optimize();
 
@@ -72,7 +80,7 @@ void collectData(){
     cout <<" === path feasible  === " <<endl;
 
     cout <<" === -> executing === " <<endl;
-    bot.moveAutoTimed(path, .5);
+    bot.moveAutoTimed(path, .5, .5);
 
     if(bot.optitrack){
       Metronome tic(.01);
@@ -100,18 +108,17 @@ void computeCalibration(){
 
   //-- load data from
   ifstream fil("z.calib.dat");
-  arr _q, _poseL, _poseR, _poseTable;
-  arr q(0,14), poseL(0,7), poseR(0,7), poseTable(0,7), times;
+  arr _q, _poseL, _poseR;
+  arr q(0,14), poseL(0,7), poseR(0,7), times;
   for(uint t=0;;t++){
     rai::skip(fil);
     if(!fil.good()) break;
-    fil >>times.append() >>PARSE("q") >>_q >>PARSE("poseL") >>_poseL >>PARSE("poseR") >>_poseR;// >>PARSE("poseTable") >>_poseTable;
+    fil >>times.append() >>PARSE("q") >>_q >>PARSE("poseL") >>_poseL >>PARSE("poseR") >>_poseR;
     if(fabs(_poseL(0))>1e-10 && fabs(_poseR(0))>1e-10){ //ignore data is pose is zero!
       q.append(_q);
       poseR.append(_poseR);
       poseL.append(_poseL);
-//    poseTable.append(_poseTable);
-    //C.setJointState(_q);  C.watch();  rai::wait(.01);
+//      C.setJointState(_q);  C.watch();  rai::wait(.01);
     }else{
       LOG(0) <<"skipping line " <<t;
     }
@@ -222,12 +229,84 @@ void computeCalibration(){
 
 //===========================================================================
 
+void demoCalibration(){
+  //-- setup a configuration
+  rai::Configuration C;
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable-calibrated.g"));
+
+  arr points=rai::getParameter<arr>("demoPoints");
+  points.reshape(-1,3);
+
+  //-- start a robot thread
+  BotOp bot(C, rai::checkParameter<bool>("real"));
+  bot.home(C);
+
+  arr q_last=bot.get_q();
+  uint L = points.d0;
+  for(uint l=0;l<=L;l++){
+    arr q_target;
+
+    //compute pose
+    if(l<L){
+      KOMO komo;
+      komo.setModel(C, true);
+      komo.setTiming(1, 1, 3., 1);
+      komo.add_qControlObjective({}, 1, 1e-1);
+      komo.addObjective({}, FS_qItself, {}, OT_sos, {.1}, bot.qHome);
+//      komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e1});
+
+      arr pt = points[l];
+      komo.addObjective({}, FS_positionDiff, {"r_gripper", "table_base"}, OT_eq, {1e2}, pt);
+      komo.addObjective({}, FS_positionDiff, {"r_gripper", "l_gripper"}, OT_eq, {1e2}, {-.04, 0., 0.});
+
+      komo.addObjective({}, FS_scalarProductXX, {"r_gripper", "l_gripper"}, OT_eq, {1e2});
+      komo.addObjective({}, FS_vectorZ, {"r_gripper"}, OT_eq, {1e2}, {1.,0.,0.});
+      komo.addObjective({}, FS_vectorZ, {"l_gripper"}, OT_eq, {1e2}, {-1.,0.,0.});
+
+      komo.optimize();
+
+      //is feasible?
+      bool feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
+
+      if(!feasible){
+        cout <<" === pose infeasible ===\n" <<points[l] <<endl;
+        continue;
+      }
+
+      q_target = komo.x;
+      cout <<" === pose feasible  === " <<endl;
+    }else{
+      q_target = bot.qHome;
+    }
+
+    //compute path
+    C.setJointState(q_last);
+    arr path = getStartGoalPath(C, q_target, bot.qHome);
+    if(!path.N){
+      cout <<" === path infeasible === " <<endl;
+      continue;
+    }
+    q_last = q_target;
+    cout <<" === path feasible  === " <<endl;
+
+    cout <<" === -> executing === " <<endl;
+    bot.moveAutoTimed(path, .5, .5);
+
+    while(bot.step(C));
+    if(bot.keypressed=='q' || bot.keypressed==27) break;
+  }
+}
+
+//===========================================================================
+
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
 //  collectData();
 
-  computeCalibration();
+//  computeCalibration();
+
+  demoCalibration();
 
   LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
 

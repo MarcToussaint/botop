@@ -6,3 +6,9 @@ plot 'z.dat' us 1:2 t 'ot_l_x', '' us 1:5 t 'bot_l_x',\
 '' us 1:9 t 'ot_r_y', '' us 1:12 t 'bot_r_y',\
 '' us 1:10 t 'ot_r_z', '' us 1:13 t 'bot_r_z'
 
+plot 'z.calib.dat' us 1:21 t 'ot_l_x',\
+'' us 1:22 t 'ot_l_y', \
+'' us 1:23 t 'ot_l_z',\
+'' us 1:31 t 'ot_r_z',\
+'' us 1:32 t 'ot_r_y', \
+'' us 1:33 t 'ot_r_z'
