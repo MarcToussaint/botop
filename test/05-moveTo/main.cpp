@@ -19,7 +19,7 @@ void test() {
   C.ensure_indexedJoints();
   std::shared_ptr<rai::RobotAbstraction> robot;
   if(rai::getParameter<bool>("real", false)){
-    robot = make_shared<FrankaThreadNew>(0, franka_getJointIndices(C,'l'));
+    robot = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'));
   }else{
     robot = make_shared<ControlEmulator>(C);
   }

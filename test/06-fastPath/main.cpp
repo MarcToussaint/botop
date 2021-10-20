@@ -15,7 +15,7 @@ int main(int argc, char * argv[]){
   //-- start a robot thread
   BotOp bot(C, rai::checkParameter<bool>("real"));
   bot.home(C);
-  //bot.setControllerWriteData(1);
+  bot.setControllerWriteData(1);
 
   //prepare storing optitrack data ?
   ofstream fil("z.calib.dat");

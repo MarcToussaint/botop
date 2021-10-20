@@ -75,8 +75,8 @@ void LGPop::runRobotControllers(OpMode _ctrlOpMode){
     ptr<Thread> G_emul = make_shared<GripperEmulator>();
     processes.append({F_emul, G_emul});
   }else{
-    ptr<Thread> F_right = make_shared<FrankaThreadNew>(ctrl_ref, ctrl_state, 0, franka_getJointIndices(rawModel,'R'));
-    ptr<Thread> F_left =  make_shared<FrankaThreadNew>(ctrl_ref, ctrl_state, 1, franka_getJointIndices(rawModel,'L'));
+    ptr<Thread> F_right = make_shared<FrankaThread>(ctrl_ref, ctrl_state, 0, franka_getJointIndices(rawModel,'R'));
+    ptr<Thread> F_left =  make_shared<FrankaThread>(ctrl_ref, ctrl_state, 1, franka_getJointIndices(rawModel,'L'));
     self->G_right = make_shared<FrankaGripper>(0);
     self->G_right->name = "gripperRight";
     self->G_left =  make_shared<FrankaGripper>(1);

@@ -6,14 +6,15 @@
 #include <Control/CtrlMsgs.h>
 
 
-struct FrankaThreadNew : rai::RobotAbstraction, Thread{
-  FrankaThreadNew(uint whichRobot=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6}) : Thread("FrankaThread"){ init(whichRobot, _qIndices); }
-  FrankaThreadNew(uint whichRobot, const uintA& _qIndices, const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state) : RobotAbstraction(_cmd, _state), Thread("FrankaThread"){ init(whichRobot, _qIndices); }
-  ~FrankaThreadNew();
+struct FrankaThread : rai::RobotAbstraction, Thread{
+  FrankaThread(uint robotID=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6}) : Thread("FrankaThread"){ init(robotID, _qIndices); }
+  FrankaThread(uint robotID, const uintA& _qIndices, const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state) : RobotAbstraction(_cmd, _state), Thread("FrankaThread"){ init(robotID, _qIndices); }
+  ~FrankaThread();
 
 private:
   bool stop=false; //send end to libfranka
   bool requiresInitialization=true;  //waits in constructor until first contact/initialization
+  int robotID=0;
   arr Kp_freq, Kd_ratio; //read from rai.cfg
   arr friction;
 
@@ -26,6 +27,6 @@ private:
   ofstream dataFile;
   double ctrlTime=0.;
 
-  void init(uint whichRobot, const uintA& _qIndices);
+  void init(uint _robotID, const uintA& _qIndices);
   void step();
 };
