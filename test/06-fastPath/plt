@@ -2,14 +2,16 @@ set style data lines
 
 #plot 'z.dat' 0:1 t 'time'
 
-# plot 'z.panda0.dat' \
-#      us 0:($2-$9) t 'err1', \
-#   '' us 0:($3-$10) t 'err2', \
-#   '' us 0:($4-$11) t 'err3', \
-#   '' us 0:($5-$12) t 'err4', \
-#   '' us 0:($6-$13) t 'err5', \
-#   '' us 0:($7-$14) t 'err6', \
-#   '' us 0:($8-$15) t 'err7'
+plot 'z.panda0.dat' \
+      us 0:($2-$9) t 'err1', \
+   '' us 0:($3-$10) t 'err2', \
+   '' us 0:($4-$11) t 'err3', \
+   '' us 0:($5-$12) t 'err4', \
+   '' us 0:($6-$13) t 'err5', \
+   '' us 0:($7-$14) t 'err6', \
+   '' us 0:($8-$15) t 'err7'
+
+exit
 
 plot 'z.panda0.dat' us 1:($2) t 'real1', '' us 1:($9) t 'ref1',\
   '' us 1:($3) t 'real2', '' us 1:($10) t 'ref2', \
