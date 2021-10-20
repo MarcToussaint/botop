@@ -14,6 +14,8 @@
 
 #include "bot.h"
 
+#include <KOMO/pathTools.h>
+
 template<> pybind11::array_t<double> arr2numpy(const rai::Array<double>& x){
   //default!
   if(!x.isSparse()) return pybind11::array_t<double>(x.dim(), x.p);
@@ -58,6 +60,12 @@ void init_PyBot(pybind11::module& m) {
   .def("isDone", &BotOp::isDone)
 
   ;
+
+  //===========================
+
+  m.def("getStartGoalPath", [](rai::Configuration& C, const arr& qTarget, const arr& qHome){
+      return getStartGoalPath(C, qTarget, qHome);
+  } );
 
 }
 
