@@ -49,8 +49,8 @@ void testLeapCtrl() {
     }
 
     //solve the leap problem
-    leap.reinit(C);
-    leap.reinit(q, qDot); //zeros(q.N));
+    leap.reinit(C); //adopt all frames in C as prefix (also positions of objects)
+    leap.reinit(q, qDot);
     leap.solve();
     rai::Graph R = leap.komo.getReport();
 

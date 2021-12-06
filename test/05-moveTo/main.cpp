@@ -2,6 +2,7 @@
 #include <Franka/franka.h>
 #include <Franka/help.h>
 #include <Algo/SplineCtrlFeed.h>
+#include <Kin/viewer.h>
 
 const char *USAGE =
     "\nTest of low-level (without bot interface) of SplineCtrlReference"
@@ -31,15 +32,17 @@ void test() {
   qT(1) -= .5;
 
   //-- define the reference feed to be a spline
-  auto sp = make_shared<rai::SplineCtrlReference>();
+  auto sp = make_shared<rai::CubicSplineCtrlReference>();
   robot->cmd.set()->ref = sp;
 
   //1st motion:
   double ctrlTime = robot->state.get()->time;
-  sp->append(cat(qT, qT, q0).reshape(3,-1), arr{2., 2., 4.}, ctrlTime, true);
+  sp->report(ctrlTime);
+  sp->append((qT, q0).reshape(2,-1), zeros(2,q0.N), arr{2., 4.}, ctrlTime);
+  sp->report(ctrlTime);
 
   for(;;){
-    if(C.watch(false,STRING("time: "<<robot->state.get()->time))=='q') break;
+    if(C.watch(false, STRING("time: "<<robot->state.get()->time <<" - hit 'q' to append more"))=='q') break;
     C.setJointState(robot->state.get()->q);
     rai::wait(.1);
   }
@@ -48,13 +51,18 @@ void test() {
   ctrlTime = robot->state.get()->time;
   sp->moveTo(qT, 1., ctrlTime, false);
   cout <<"OVERRIDE AT t=" <<ctrlTime <<endl;
+  sp->report(ctrlTime);
   sp->moveTo(q0, 1., ctrlTime, true);
+  sp->report(ctrlTime);
 
+  rai::wait(.1);
+  C.gl()->resetPressedKey();
   for(;;){
-    if(C.watch(false,STRING("time: "<<robot->state.get()->time))=='q') break;
+    if(C.watch(false, STRING("time: "<<robot->state.get()->time))=='q') break;
     C.setJointState(robot->state.get()->q);
     rai::wait(.1);
   }
+  rai::wait();
 
 }
 

@@ -100,9 +100,9 @@ void RobotiqGripper::goTo(double force, double width, double speed){
 //  cout <<endl;
 
   //width
-  clip(force, 0., 1.);
-  clip(width, 0., 1.);
-  clip(speed, 0., 1.);
+  rai::clip(force, 0., 1.);
+  rai::clip(width, 0., 1.);
+  rai::clip(speed, 0., 1.);
   cmd[10]=(byte)(255.*(1.-width));
   cmd[11]=(byte)(255.*speed);
   cmd[12]=(byte)(255.*force);
