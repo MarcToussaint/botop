@@ -21,14 +21,14 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   state.set()->initZero(qHome.N);
   if(useRealRobot){
     if(useArm=="left"){
-      robotL = make_unique<FrankaThreadNew>(0, franka_getJointIndices(C,'l'), cmd, state);
+      robotL = make_unique<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
       if(useGripper) gripperL = make_unique<FrankaGripper>(0);
     }else if(useArm=="right"){
-      robotR = make_unique<FrankaThreadNew>(1, franka_getJointIndices(C,'r'), cmd, state);
+      robotR = make_unique<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
       if(useGripper) gripperR = make_unique<FrankaGripper>(1);
     }else if(useArm=="both"){
-      robotL = make_unique<FrankaThreadNew>(0, franka_getJointIndices(C,'l'), cmd, state);
-      robotR = make_unique<FrankaThreadNew>(1, franka_getJointIndices(C,'r'), cmd, state);
+      robotL = make_unique<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
+      robotR = make_unique<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
       if(useGripper){
         if(robotiq){
           gripperL = make_unique<RobotiqGripper>(0);
@@ -204,13 +204,17 @@ void ZeroReference::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, cons
   {
     arr pos = position_ref.get()();
     if(pos.N) q_ref = pos;
-    else q_ref = q_real;  //->no position gains at all
+    else q_ref.clear(); // = q_real;  //->no position gains at all
   }
   {
     arr vel = velocity_ref.get()();
-    if(vel.N==1 && vel.scalar()==0.) qDot_ref.resize(qDot_real.N).setZero(); //[0] -> zero vel reference -> damping
+    if(vel.N==1){
+      double a = vel.scalar();
+      CHECK(a>=0. && a<=1., "");
+      qDot_ref = a * qDot_real; //[0] -> zero vel reference -> damping
+    }
     else if(vel.N) qDot_ref = vel;
-    else qDot_ref.clear();  //[] -> no damping at all!
+    else qDot_ref.clear(); //.clear();  //[] -> no damping at all! (and also no friction compensation based on reference qDot)
   }
   qDDot_ref.clear(); //[] -> no acc at all
 }

@@ -15,10 +15,10 @@ _ureal = 2+joint+5*J
 _ug = 2+joint+6*J
 _uc = 2+joint+7*J
 
-#plot 'z.panda.dat' us 1:_qreal t 'real', '' us 1:_qref t 'ref'
+#plot 'z.panda0.dat' us 1:_qreal t 'real', '' us 1:_qref t 'ref'
 #exit
 
-plot 'z.panda.dat' us 1:_vreal t 'vreal',\
+plot 'z.panda0.dat' us 1:_vreal t 'vreal',\
 '' us 1:_vref t 'vref',\
 '' us 1:_ucmd t 'ucmd',\
 '' us 1:(100*(column(_qreal)-column(_qref))) t 'qreal-qref'

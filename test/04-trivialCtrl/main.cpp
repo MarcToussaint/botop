@@ -41,7 +41,7 @@ void test() {
 
   //-- start the franka thread
   C.ensure_indexedJoints();
-  FrankaThreadNew robot(0, franka_getJointIndices(C,'l'));
+  FrankaThread robot(0, franka_getJointIndices(C,'l'));
 
   //comment the next line to only get gravity compensation instead of 'zero reference following' (which includes damping)
   auto ref = make_shared<ZeroReference>();

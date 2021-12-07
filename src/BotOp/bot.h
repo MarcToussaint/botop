@@ -42,8 +42,14 @@ struct BotOp{
   void setControllerWriteData(int _writeData){ if(robotL) robotL->writeData=_writeData;  if(robotR) robotR->writeData=_writeData;  }
 
   //-- gripper commands - directly calling the gripper abstraction
-  void gripperOpen(double width=.075, double speed=.2){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->open(width, speed); }
-  void gripperClose(double force=10, double width=.05, double speed=.1){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->close(force, width, speed); }
+  void gripperOpen(rai::ArgWord leftRight, double width=.075, double speed=.2){
+    if(leftRight==rai::_left) if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->open(width, speed);
+    if(leftRight==rai::_right) if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->open(width, speed);
+  }
+  void gripperClose(rai::ArgWord leftRight, double force=10, double width=.05, double speed=.1){
+    if(leftRight==rai::_left) if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->close(force, width, speed);
+    if(leftRight==rai::_right) if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->close(force, width, speed);
+  }
   double gripperPos(){ if(!gripperL){ LOG(-1) <<"gripper disabled"; return 0.; } else return gripperL->pos(); }
   bool isDone() {if(!gripperL){ LOG(-1) <<"gripper disabled"; return false; } else return gripperL->isDone(); }
 

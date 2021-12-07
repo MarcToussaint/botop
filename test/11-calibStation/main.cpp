@@ -177,8 +177,8 @@ void computeCalibration(){
 
   //-- add objectives: just square errors in marker positions
   komo.addSquaredQuaternionNorms();
-  komo.addObjective({}, FS_positionDiff, {"otL", "l_robotiq_optitrackMarker"}, OT_sos);
-  komo.addObjective({}, FS_positionDiff, {"otR", "r_robotiq_optitrackMarker"}, OT_sos);
+  komo.addObjective({}, FS_positionDiff, {"otL", "l_robotiq_optitrackMarker"}, OT_sos, {1e1});
+  komo.addObjective({}, FS_positionDiff, {"otR", "r_robotiq_optitrackMarker"}, OT_sos, {1e1});
   //komo.addObjective({}, FS_qItself, {"l_panda_base"}, OT_eq, {1e1}, {-.4, -.3,0.5*RAI_PI});
 
   //-- optimize
@@ -192,6 +192,7 @@ void computeCalibration(){
   cout <<"\n CALIBRATION FILE:\n\n" <<endl;
   cout <<"Include 'pandasTable.g'" <<endl;
   cout <<"optitrack_base (world) { Q:" <<komo.pathConfig["optitrack_base"]->get_Q() <<" }" <<endl;
+  cout <<"Edit l_panda_base { Q:<" <<komo.pathConfig["l_panda_base"]->get_Q() <<"> }" <<endl;
   cout <<"Edit r_panda_base { Q:<" <<komo.pathConfig["r_panda_base"]->get_Q() <<"> }" <<endl;
   cout <<"Edit l_robotiq_optitrackMarker { Q:<" <<komo.pathConfig["l_robotiq_optitrackMarker"]->get_Q() <<"> }" <<endl;
   cout <<"Edit r_robotiq_optitrackMarker { Q:<" <<komo.pathConfig["r_robotiq_optitrackMarker"]->get_Q() <<"> }" <<endl;
@@ -257,9 +258,9 @@ void demoCalibration(){
 
       arr pt = points[l];
       komo.addObjective({}, FS_positionDiff, {"r_gripper", "table_base"}, OT_eq, {1e2}, pt);
-      komo.addObjective({}, FS_positionDiff, {"r_gripper", "l_gripper"}, OT_eq, {1e2}, {-.04, 0., 0.});
+      komo.addObjective({}, FS_positionDiff, {"r_gripper", "l_gripper"}, OT_eq, {1e2}, {.015, 0., 0.});
 
-      komo.addObjective({}, FS_scalarProductXX, {"r_gripper", "l_gripper"}, OT_eq, {1e2});
+      komo.addObjective({}, FS_scalarProductXY, {"r_gripper", "l_gripper"}, OT_eq, {1e2});
       komo.addObjective({}, FS_vectorZ, {"r_gripper"}, OT_eq, {1e2}, {1.,0.,0.});
       komo.addObjective({}, FS_vectorZ, {"l_gripper"}, OT_eq, {1e2}, {-1.,0.,0.});
 
@@ -294,6 +295,8 @@ void demoCalibration(){
 
     while(bot.step(C));
     if(bot.keypressed=='q' || bot.keypressed==27) break;
+
+    rai::wait();
   }
 }
 

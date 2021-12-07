@@ -8,14 +8,15 @@ void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio)
 
 const char *frankaIpAddresses[2] = {"172.16.0.2", "172.17.0.2"};
 
-FrankaThreadNew::~FrankaThreadNew(){
+FrankaThread::~FrankaThread(){
   stop = true;
   threadClose();
 }
 
 long c = 0;
 
-void FrankaThreadNew::init(uint whichRobot, const uintA& _qIndices) {
+void FrankaThread::init(uint _robotID, const uintA& _qIndices) {
+  robotID=_robotID;
   qIndices=_qIndices;
 
   CHECK_EQ(qIndices.N, 7, "");
@@ -33,15 +34,15 @@ void FrankaThreadNew::init(uint whichRobot, const uintA& _qIndices) {
   */
 
   //-- choose robot/ipAddress
-  CHECK_LE(whichRobot, 1, "");
-  ipAddress = frankaIpAddresses[whichRobot];
+  CHECK_LE(robotID, 1, "");
+  ipAddress = frankaIpAddresses[robotID];
 
   //-- start thread and wait for first state signal
   threadStep();  //this is not looping! The step method passes a callback to robot.control, which is blocking! (that's why we use a thread) until stop becomes true
   while(requiresInitialization) rai::wait(.01);
 }
 
-void FrankaThreadNew::step(){
+void FrankaThread::step(){
   // connect to robot
   franka::Robot robot(ipAddress);
 
@@ -49,6 +50,8 @@ void FrankaThreadNew::step(){
   franka::Model model = robot.loadModel();
 
   arr lastTorque = zeros(7);
+  arr qDotFilter = zeros(7);
+  double qDotFilterAlpha = .95;
 
   // set collision behavior
   robot.setCollisionBehavior({{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
@@ -94,6 +97,9 @@ void FrankaThreadNew::step(){
     arr torquesExternal_real(robot_state.tau_ext_hat_filtered.begin(), robot_state.tau_ext_hat_filtered.size(), false);
     arr torques_real(robot_state.tau_J.begin(), robot_state.tau_J.size(), false);
 
+    qDotFilter = qDotFilterAlpha * qDotFilter + (1.-qDotFilterAlpha) * qDot_real;
+    qDot_real = qDotFilter;
+
     //-- get real time
     ctrlTime += .001; //HARD CODED: 1kHz
     //ctrlTime = rai::realTime();
@@ -124,7 +130,7 @@ void FrankaThreadNew::step(){
       arr cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref;
       if(cmdGet->ref){
         cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, state_q_real, state_qDot_real, ctrlTime);
-        CHECK(cmd_q_ref.N > qIndices_max, "");
+        CHECK(!cmd_q_ref.N || cmd_q_ref.N > qIndices_max, "");
         CHECK(!cmd_qDot_ref.N || cmd_qDot_ref.N > qIndices_max, "");
         CHECK(!cmd_qDDot_ref.N || cmd_qDDot_ref.N > qIndices_max, "");
       }
@@ -180,10 +186,10 @@ void FrankaThreadNew::step(){
     if(controlType == rai::ControlType::configRefs) { //default: PD for given references
       //check for correct ctrl otherwise do something...
       if(q_ref.N!=7){
-        if(!(steps%10)){
-          cerr <<"FRANKA: inconsistent ctrl q_ref message - step: " <<steps <<endl;
-        }
-        return std::array<double, 7>({0., 0., 0., 0., 0., 0., 0.});
+//        if(!(steps%10)){
+//          cerr <<"FRANKA: inconsistent ctrl q_ref message - step: " <<steps <<endl;
+//        }
+//        return std::array<double, 7>({0., 0., 0., 0., 0., 0., 0.});
       }
       //check for correct compliance objective
       if(P_compliance.N){
@@ -282,14 +288,14 @@ void FrankaThreadNew::step(){
 
     //-- filter torques
     if(u.N==lastTorque.N){
-      double alpha=.5;
-      u = alpha*u + (1.-alpha)*lastTorque;
+//      double alpha=.5;
+//      u = alpha*u + (1.-alpha)*lastTorque;
       lastTorque = u;
     }
 
     //-- data log?
     if(writeData>0 && !(steps%1)){
-      if(!dataFile.is_open()) dataFile.open("z.panda.dat");
+      if(!dataFile.is_open()) dataFile.open(STRING("z.panda"<<robotID <<".dat"));
       dataFile <<ctrlTime <<' '; //single number
       q_real.writeRaw(dataFile); //7
       q_ref.writeRaw(dataFile); //7
