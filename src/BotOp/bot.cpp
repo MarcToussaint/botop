@@ -5,6 +5,8 @@
 #include <Kin/viewer.h>
 #include <KOMO/pathTools.h>
 #include <Robotiq/RobotiqGripper.h>
+#include <Control/timingOpt.h>
+#include <Optim/MP_Solver.h>
 
 //===========================================================================
 
@@ -103,49 +105,54 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   return true;
 }
 
-std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
-  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+std::shared_ptr<rai::CubicSplineCtrlReference> BotOp::getSplineRef(){
+  auto sp = std::dynamic_pointer_cast<rai::CubicSplineCtrlReference>(ref);
   if(!sp){
-    setReference<rai::SplineCtrlReference>();
-    sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+    setReference<rai::CubicSplineCtrlReference>();
+    sp = std::dynamic_pointer_cast<rai::CubicSplineCtrlReference>(ref);
     CHECK(sp, "this is not a spline reference!")
   }
   return sp;
 }
 
-void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
-  double T = path.d0;
-  CHECK_GE(T, 16, "this only works for smooth paths!");
-#if 0
-  double accSOS = sumOfSqr(getAccelerations_centralDifference(path, 1.));
-  double tau = sqrt( accSOS / (timeCost * T));
-#else
-  double tau = getMinDuration(path, maxVel, maxAcc)/T;
-#endif
-  arr times(T);
-  for(uint t=0;t<T;t++) times(t) = tau*(t+1);
-  double ctrlTime = state.get()->time;
-  getSplineRef()->append(path, times, ctrlTime, true);
-}
-
-void BotOp::move(const arr& path, const arr& times){
-  arr _times;
-  if(path.d0==times.N){
-    _times = times;  // all is good, nothing to do
-  }else{
-    CHECK_EQ(times.N,1, "");
-    CHECK_GE(path.d0, 2, "");
-    double duration = times.scalar();
-    _times = range(0., duration, path.d0-1);
+void BotOp::move(const arr& path, const arr& times, bool override){
+  arr _times=times;
+  if(_times.N==1 && path.d0>1){
+    _times = range(0., times.scalar(), path.d0-1);
     _times += _times(1);
   }
+  CHECK_EQ(_times.N, path.d0, "");
+  arr vels;
+  if(path.d0==1){
+    vels = zeros(1, path.d1);
+  }else{ //use timing opt to decide on vels and, optionally, on timing
+    arr q, qDot;
+    getSplineRef()->eval(q, qDot, NoArr, getSplineRef()->getEndTime());
+    bool optTau = false; //(times.N==0);
+    TimingProblem timingProblem(path, {}, q, qDot, 1e1, {}, differencing(_times), optTau);
+    MP_Solver()
+        .setProblem(timingProblem.ptr())
+        .setSolver(MPS_newton)
+        //          .setVerbose(rai::getParameter<int>("opt/erbose"))
+        .solve();
+    timingProblem.getVels(vels);
+    if(!_times.N) _times = integral(timingProblem.tau);
+  }
+
   double ctrlTime = state.get()->time;
-  getSplineRef()->append(path, _times, ctrlTime, true);
+  if(override){
+    getSplineRef()->overrideSmooth(path, vels, _times, ctrlTime);
+  }else{
+    getSplineRef()->append(path, vels, _times, ctrlTime);
+  }
 }
 
-void BotOp::moveOverride(const arr& path, const arr& times){
-  double ctrlTime = state.get()->time;
-  getSplineRef()->overrideSmooth(path, times, ctrlTime);
+void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
+  CHECK_GE(path.d0, 16, "this only works for smooth paths!");
+  double D = getMinDuration(path, maxVel, maxAcc);
+  arr times = range(0., D, path.d0-1);
+  times += times(1);
+  move(path, times);
 }
 
 double BotOp::moveLeap(const arr& q_target, double timeCost){
@@ -154,15 +161,8 @@ double BotOp::moveLeap(const arr& q_target, double timeCost){
   double dist = length(q-q_target);
   double vel = scalarProduct(qDot, q_target-q)/dist;
   double T = (sqrt(6.*timeCost*dist+vel*vel) - vel)/timeCost;
-//  move(~q_target, T);
-
   if(dist<1e-4 || T<.2) T=.2;
-  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
-  if(sp){
-    double ctrlTime = state.get()->time;
-    sp->overrideSmooth(~q_target, {T}, ctrlTime);
-  }
-  else move(~q_target, {T});
+  move(~q_target, {T});
   return T;
 }
 

@@ -36,9 +36,8 @@ struct BotOp{
   double getTimeToEnd(); //negative, if motion spline is done
 
   //-- motion commands
-  void move(const arr& path, const arr& times);
+  void move(const arr& path, const arr& times, bool override=false);
   void moveAutoTimed(const arr& path, double maxVel=1., double maxAcc=1.); //double timeCost);
-  void moveOverride(const arr& path, const arr& times);
   double moveLeap(const arr& q_target, double timeCost=1.);
   void setControllerWriteData(int _writeData){ if(robotL) robotL->writeData=_writeData;  if(robotR) robotR->writeData=_writeData;  }
 
@@ -57,7 +56,7 @@ struct BotOp{
 
 private:
   template<class T> BotOp& setReference();
-  std::shared_ptr<rai::SplineCtrlReference> getSplineRef();
+  std::shared_ptr<rai::CubicSplineCtrlReference> getSplineRef();
 };
 
 //===========================================================================
