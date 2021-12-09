@@ -191,7 +191,7 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, 
     else komo.initWithConstant(q0);
 
     //optimize
-    komo.optimize(.01*trial, OptOptions().set_stopTolerance(1e-3)); //trial=0 -> no noise!
+    komo.optimize(.01*trial, rai::OptOptions().set_stopTolerance(1e-3)); //trial=0 -> no noise!
 
     //is feasible?
     feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
