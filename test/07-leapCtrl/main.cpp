@@ -29,7 +29,7 @@ void testLeapCtrl() {
     rai::wait(.1);
 
     //-- switch target randomly every second
-    if(!(t%10)){
+    if(!(t%7)){
       switch(rnd(4)){
         case 0: target.setPosition(center + arr{+.3,.0,+.2}); break;
         case 1: target.setPosition(center + arr{-.3,.0,+.2}); break;
@@ -39,11 +39,9 @@ void testLeapCtrl() {
     }
 
     //get time,q,qDot - as batch from the same mutex lock
-    double ctrlTime;
     arr q,qDot;
     {
       auto stateGet = bot.robotL->state.get();
-      ctrlTime = stateGet->time;
       q = stateGet->q;
       qDot = stateGet->qDot;
     }
@@ -56,7 +54,9 @@ void testLeapCtrl() {
 
     //send leap target
     double T = bot.moveLeap(leap.xT);
-    leap.komo.view(false, STRING("LEAP proposal T:"<<T <<"\n" <<R));
+    double ctrlTime = bot.get_t();
+    leap.komo.view(false, STRING("LEAP proposal ETA:"<<T <<"\n" <<R));
+    cout <<"LEAP proposal ETA:" <<T <<" \tT:"<<T-ctrlTime <<endl;
 
     //update C
     bot.step(C);

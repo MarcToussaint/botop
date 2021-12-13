@@ -115,7 +115,22 @@ std::shared_ptr<rai::CubicSplineCtrlReference> BotOp::getSplineRef(){
   return sp;
 }
 
-void BotOp::move(const arr& path, const arr& times, bool override){
+double BotOp::move(const arr& path, const arr& vels, const arr& times, bool override){
+  CHECK_EQ(times.N, path.d0, "");
+  CHECK_EQ(times.N, vels.d0, "");
+
+  double ctrlTime = state.get()->time;
+  if(override){
+    //LOG(1) <<"override: " <<ctrlTime <<" - " <<_times;
+    getSplineRef()->overrideSmooth(path, vels, times, ctrlTime);
+  }else{
+    //LOG(1) <<"append: " <<ctrlTime <<" - " <<_times;
+    getSplineRef()->append(path, vels, times, ctrlTime);
+  }
+  return ctrlTime+times.last();
+}
+
+double BotOp::move(const arr& path, const arr& times, bool override){
   arr _times=times;
   if(_times.N==1 && path.d0>1){
     _times = range(0., times.scalar(), path.d0-1);
@@ -130,10 +145,11 @@ void BotOp::move(const arr& path, const arr& times, bool override){
   }else{ //use timing opt to decide on vels and, optionally, on timing
     arr q, qDot;
     getSplineRef()->eval(q, qDot, NoArr, getSplineRef()->getEndTime());
-    arr tangents = getVelocities_centralDifference(path, .1);
-    tangents.delRows(-1);
     q = path[0];
     qDot = zeros(q.N);
+
+    arr tangents = getVelocities_centralDifference(path, .1);
+    tangents.delRows(-1);
     bool optTau = (times.N==0);
     TimingProblem timingProblem(path, tangents, q, qDot, 1e1, {}, differencing(_times), optTau);
     MP_Solver solver;
@@ -141,24 +157,16 @@ void BotOp::move(const arr& path, const arr& times, bool override){
         .setProblem(timingProblem.ptr())
         .setSolver(MPS_newton);
     solver.opt
-        .set_verbose(4)
-        .set_stopTolerance(1e-5)
+        .set_stopTolerance(1e-4)
         .set_maxStep(1e0)
         .set_damping(1e-2);
     auto ret = solver.solve();
-    LOG(1) <<"timing f: " <<ret->f;
+    //LOG(1) <<"timing f: " <<ret->f;
     timingProblem.getVels(vels);
     if(!_times.N) _times = integral(timingProblem.tau);
   }
 
-  double ctrlTime = state.get()->time;
-  if(override){
-    LOG(1) <<"override: " <<ctrlTime <<" - " <<_times;
-    getSplineRef()->overrideSmooth(path, vels, _times, ctrlTime);
-  }else{
-    LOG(1) <<"append: " <<ctrlTime <<" - " <<_times;
-    getSplineRef()->append(path, vels, _times, ctrlTime);
-  }
+  return move(path, vels, _times, override);
 }
 
 void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
@@ -175,9 +183,8 @@ double BotOp::moveLeap(const arr& q_target, double timeCost){
   double dist = length(q-q_target);
   double vel = scalarProduct(qDot, q_target-q)/dist;
   double T = (sqrt(6.*timeCost*dist+vel*vel) - vel)/timeCost;
-  if(dist<1e-4 || T<.2) T=.2;
-  move(~q_target, {T}, true);
-  return T;
+  if(dist<1e-4 || T<.1) T=.1;
+  return move(~q_target, {T}, true);
 }
 
 void BotOp::home(rai::Configuration& C){

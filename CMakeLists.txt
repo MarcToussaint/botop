@@ -129,6 +129,7 @@ if(USE_PYBIND)
   pybind11_add_module(libry SHARED
     ${SRC_ry}
   )
+
   target_link_libraries(libry PRIVATE
     rai
   )
