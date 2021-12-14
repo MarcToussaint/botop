@@ -119,7 +119,7 @@ double BotOp::move(const arr& path, const arr& vels, const arr& times, bool over
   CHECK_EQ(times.N, path.d0, "");
   CHECK_EQ(times.N, vels.d0, "");
 
-  double ctrlTime = state.get()->time;
+  double ctrlTime = get_t();
   if(override){
     //LOG(1) <<"override: " <<ctrlTime <<" - " <<_times;
     getSplineRef()->overrideSmooth(path, vels, times, ctrlTime);

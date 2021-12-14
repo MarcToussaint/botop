@@ -3,6 +3,7 @@
 #include <KOMO/pathTools.h>
 #include <Optim/MP_Solver.h>
 #include <Control/flagHunter.h>
+#include <Core/thread.h>
 
 //===========================================================================
 
@@ -182,7 +183,7 @@ void ChainMPC::reinit(const arr& x, const arr& v){
 
 void ChainMPC::reinit(const rai::Configuration& C){
   //shifts only prefix, not the whole trajectory! (would not make sense for x(H) \gets x(T) )
-  komo.updateAndShiftPrefix(C);
+  komo.updateRootObjects(C);
 }
 
 void ChainMPC::solve(){
@@ -243,93 +244,6 @@ rai::Frame& setupWorld(rai::Configuration& C){
   return target;
 }
 
-//void testPnp() {
-//  rai::Configuration C;
-//  rai::Frame& target = setupWorld(C);
-//  arr center = C["l_gripper"]->getPosition();
-//  arr qHome = C.getJointState();
-
-//  //-- start a robot thread
-//  BotOp bot(C, rai::checkParameter<bool>("real"));
-//  bot.home(C);
-
-//  //-- MPC stuff
-//  arr flags, tangents, vels;
-//  arr tau;
-//  ChainMPC pathProblem;
-//  pathProblem.oldSetup(C, 1., qHome);
-
-
-//  //-- iterate (with wait(.1))
-//  for(uint t=0;;t++){
-//    rai::wait(.1);
-
-//    //-- switch target randomly every second
-//    if(t==10){ // && !(t%10)){
-//      switch(rnd(4)){
-//        case 0: target.setPosition(center + arr{+.3,.0,+.2}); break;
-//        case 1: target.setPosition(center + arr{-.3,.0,+.2}); break;
-//        case 2: target.setPosition(center + arr{+.3,.0,-.2}); break;
-//        case 3: target.setPosition(center + arr{-.3,.0,-.2}); break;
-//      }
-//    }
-
-//    //get time,q,qDot - as batch from the same mutex lock
-//    double ctrlTime;
-//    arr q,qDot;
-//    {
-//      auto stateGet = bot.robotL->state.get();
-//      ctrlTime = stateGet->time;
-//      q = stateGet->q;
-//      qDot = stateGet->qDot;
-//    }
-
-//    cout <<"CYCLE ctrlTime:" <<ctrlTime <<' ' <<q <<flush;
-
-//    //solve the pathProblem
-//    {
-//      pathProblem.reinit(C); //adopt all frames in C as prefix (also positions of objects)
-//      pathProblem.reinit(q, qDot);
-//      pathProblem.solve();
-//      flags = pathProblem.path;
-//      tangents.resizeAs(flags).setZero();
-//      tangents[-2] = flags[-1] - flags[-2];
-//      op_normalize(tangents[-2]());
-//    }
-
-//    cout <<" (path)" <<flush;
-
-//    //solve the timing problem
-//    {
-//      FlagOpt timingProblem(flags, tangents, q, qDot, 1e1, vels, tau);
-//      MP_Solver()
-//        .setProblem(timingProblem.ptr())
-//          .setSolver(MPS_newton)
-//          //          .setVerbose(rai::getParameter<int>("opt/erbose"))
-//          .solve();
-
-//      tau = timingProblem.tau;
-//      vels = timingProblem.v;
-//    }
-
-//    cout <<" (timing) " <<ctrlTime + tau <<' ' <<vels <<endl;
-
-////    rai::Graph R = mpc.komo.getReport();
-
-//    //send leap target
-//    if(pathProblem.feasible){
-////      bot.moveOverride(mpc.path, integral(mpc.tau) + .2);
-//      if(t==15) bot.move(flags, integral(tau));
-//    }
-////    bot.moveAutoTimed(mpc.path);
-
-//    //update C
-//    bot.step(C);
-//    if(bot.keypressed==13){ t=9; continue; }
-//    if(bot.keypressed=='q' || bot.keypressed==27) return;
-//  }
-//}
-
 //===========================================================================
 
 void testPnp2() {
@@ -377,27 +291,26 @@ void testPnp2() {
   pathProblem.buildKOMO(C, phiflag, phirun, qHome);
   pathProblem.solve();
 
-  FlagHuntingControl F(pathProblem.path, 1e1);
-
-
-  //-- f
+  FlagHuntingControl F(pathProblem.path, 1e-1);
 
   //pathProblem.solve();  rai::wait();  return;
 
   //-- start a robot thread
   BotOp bot(C, rai::checkParameter<bool>("real"));
   bot.home(C);
-  double ctrlTime0 = bot.get_t();
+  double ctrlTime = 0., ctrlTimeLast;
 
-  //-- iterate (with wait(.1))
-  for(uint t=0;;t++){
+  //-- iterate
+  Metronome tic(.1);
+  for(uint t=0;t<200;t++){
 //    rai::wait(.1);
+    tic.waitForTic();
 
     //-- switch target randomly every second
     if(!(t%10)){
       F.phase=0;
       F.tau = 10.;
-      ctrlTime0 = bot.get_t();
+      ctrlTimeLast = bot.get_t();
 
       switch(rnd(4)){
         case 0: target.setPosition(center + arr{+.3,.0,+.2}); break;
@@ -408,7 +321,7 @@ void testPnp2() {
     }
 
     //get time,q,qDot - as batch from the same mutex lock
-    double ctrlTime;
+    ctrlTimeLast = ctrlTime;
     arr q,qDot;
     {
       auto stateGet = bot.robotL->state.get();
@@ -418,7 +331,7 @@ void testPnp2() {
     }
 
     rai::String msg;
-    msg <<"CYCLE ctrlTime:" <<ctrlTime <<' ' <<ctrlTime0; //<<' ' <<q;
+    msg <<"CYCLE ctrlTime:" <<ctrlTime; //<<' ' <<q;
 
     //solve the pathProblem
     {
@@ -426,23 +339,37 @@ void testPnp2() {
 //      pathProblem.reinit(q, qDot);
       pathProblem.solve();
 
-      msg <<" (path) #=" <<pathProblem.komo.pathConfig.setJointStateCount;
+      msg <<" (path) #:" <<pathProblem.komo.pathConfig.setJointStateCount <<" T:" <<pathProblem.komo.timeTotal <<" f:" <<pathProblem.komo.sos <<" eq:" <<pathProblem.komo.eq <<" iq:" <<pathProblem.komo.ineq;
     }
 
     //solve the timing problem
-    {
-      arr times = F.getTimes();
-      if(F.phase+1<times.N && ctrlTime>ctrlTime0+times(F.phase)) F.phase++;
-      F.flags = pathProblem.path;
-      auto ret = F.solve(q, qDot);
-      msg <<" (timing) #=" <<ret->evals;
+    if(!F.done()){
+      //update phase and taus
+      double gap = ctrlTime - ctrlTimeLast;
+      if(gap < F.tau(F.phase)){ //time still within phase
+        F.tau(F.phase) -= gap; //change initialization of timeOpt
+      }else{ //time beyond current phase
+        if(F.phase+1<F.tau.N){ //if there exists another phase
+          F.tau(F.phase+1) -= gap-F.tau(F.phase); //change initialization of timeOpt
+          F.tau(F.phase) = 0.; //change initialization of timeOpt
+        }else{
+          F.tau = 0.;
+        }
+        F.phase++; //increase phase
+      }
+      if(!F.done()){
+        //update flags
+        F.flags = pathProblem.path;
+        auto ret = F.solve(q, qDot, 0);
+        msg <<" (timing) ph:" <<F.phase <<" #:" <<ret->evals <<" T:" <<ret->time <<" f:" <<ret->f;
+      }
     }
 
-    msg <<" tau: " <<ctrlTime + F.tau <<' ' <<F.vels <<endl;
+    msg <<" tau: " <<F.tau << ctrlTime + F.getTimes(); // <<' ' <<F.vels;
     cout <<msg <<endl;
 
-    isFeasible(phiflag(0), C, 1e-2, 0);
-    isFeasible(phiflag(1), C, 1e-2, 0);
+//    isFeasible(phiflag(0), C, 1e-2, 0);
+//    isFeasible(phiflag(1), C, 1e-2, 0);
 
 //    rai::Graph R = mpc.komo.getReport();
 
@@ -451,13 +378,17 @@ void testPnp2() {
 //      bot.moveOverride(mpc.path, integral(mpc.tau) + .2);
 //      if(t==15) bot.move(flags, integral(tau));
 
-      ctrlTime0 = bot.move(F.getFlags(), F.getVels(), F.getTimes(), true);
-      ctrlTime0 -= F.getTimes().last();
+      if(!F.done()){
+        arr times = F.getTimes();
+        double gap = bot.get_t() - ctrlTime;
+        times -= gap;
+        bot.move(F.getFlags(), F.getVels(), F.getTimes(), true);
+      }
     }
 //    bot.moveAutoTimed(mpc.path);
 
     //update C
-    bot.step(C);
+    bot.step(C, .0);
     if(bot.keypressed==13){ t=9; continue; }
     if(bot.keypressed=='q' || bot.keypressed==27) return;
   }
