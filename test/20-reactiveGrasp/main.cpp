@@ -7,27 +7,39 @@
 
 //===========================================================================
 
-typedef rai::Array<shared_ptr<Objective>> ObjectiveL;
+struct ObjectiveL : rai::Array<shared_ptr<Objective>>{
+  ptr<struct Objective> add(const ptr<Feature>& f, ObjectiveType type) {
+    append(make_shared<Objective>(f, type, "joey", arr{}, intA{}) );
+    return last();
+  }
 
-bool isFeasible(const ObjectiveL& obs, const rai::Configuration& C, double eqPrecision=1e-4, int verbose=1) {
-  bool isFeasible=true;
-  for(const auto& o: obs) {
-    if(o->type==OT_ineq || o->type==OT_eq) {
-      arr y = o->feat->eval(o->feat->getFrames(C));
-      for(double& yi : y){
-        if(o->type==OT_ineq && yi>eqPrecision) isFeasible=false;
-        if(o->type==OT_eq  && fabs(yi)>eqPrecision) isFeasible=false;
-        if(!isFeasible) break;
-      }
-      if(verbose>0){
-        if(isFeasible) LOG(0) <<"FEASIBLE: " <<o->name <<' ' <<o->feat->shortTag(C);
-        else LOG(0) <<"INFEASIBLE: " <<o->name <<' ' <<o->feat->shortTag(C) <<y.noJ();
+  ptr<struct Objective> add(const FeatureSymbol& feat,  const rai::Configuration& C, const StringA& frames,
+                  ObjectiveType type, const arr& scale=NoArr, const arr& target=NoArr, int order=-1) {
+    return add(make_feature(feat, frames, C, scale, target, order), type);
+  }
+
+  double maxError(const rai::Configuration& C, int verbose=1) const {
+    double maxError = 0.;
+    for(const auto& o: *this) {
+      if(o->type==OT_ineq || o->type==OT_eq) {
+        arr y = o->feat->eval(o->feat->getFrames(C));
+        double m=0.;
+        for(double& yi : y){
+          if(o->type==OT_ineq && yi>m) m=yi;
+          if(o->type==OT_eq  && fabs(yi)>m) m=fabs(yi);
+        }
+        if(verbose>0){
+          LOG(0) <<"err: " <<m <<' ' <<o->name <<' ' <<o->feat->shortTag(C);
+        }
+        if(m>maxError) maxError=m;
       }
     }
-    if(!isFeasible) break;
+    return maxError;
   }
-  return isFeasible;
-}
+};
+
+//===========================================================================
+
 
 struct ChainMPC{
   KOMO komo;
@@ -72,6 +84,26 @@ void ChainMPC::buildKOMO(rai::Configuration& C, rai::Array<ObjectiveL> phiflag, 
   this->tau = komo.getPath_tau();
 }
 
+void getGraspLinePlane(arr& xLine, arr& yzPlane, FeatureSymbol& xyScalarProduct, FeatureSymbol& xzScalarProduct,
+                       const rai::ArgWord& dir){
+  if(dir==rai::_xAxis){
+      xLine = {{1,3},{1,0,0}};
+      yzPlane = {{2,3},{0,1,0,0,0,1}};
+      xyScalarProduct = FS_scalarProductXY;
+      xzScalarProduct = FS_scalarProductXZ;
+  } else if(dir==rai::_yAxis){
+      xLine = {{1,3},{0,1,0}};
+      yzPlane = {{2,3},{1,0,0,0,0,1}};
+      xyScalarProduct = FS_scalarProductXX;
+      xzScalarProduct = FS_scalarProductXZ;
+  } else if(dir==rai::_zAxis){
+      xLine = {{1,3},{0,0,1}};
+      yzPlane = {{2,3},{1,0,0,0,1,0}};
+      xyScalarProduct = FS_scalarProductXX;
+      xzScalarProduct = FS_scalarProductXY;
+  }
+}
+
 void ChainMPC::oldSetup(rai::Configuration& C, double timingScale, const arr& qHome){
   const char* gripperName="l_gripper";
   const char* palmName="l_palm";
@@ -107,27 +139,10 @@ void ChainMPC::oldSetup(rai::Configuration& C, double timingScale, const arr& qH
 //  komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e1});
 
   arr boxSize={.06,.15,.09};
-
+  rai::ArgWord dir = rai::_xAxis;
   arr xLine, yzPlane;
   FeatureSymbol xyScalarProduct=FS_none, xzScalarProduct=FS_none;
-
-  rai::ArgWord dir = rai::_xAxis;
-  if(dir==rai::_xAxis){
-      xLine = {{1,3},{1,0,0}};
-      yzPlane = {{2,3},{0,1,0,0,0,1}};
-      xyScalarProduct = FS_scalarProductXY;
-      xzScalarProduct = FS_scalarProductXZ;
-  } else if(dir==rai::_yAxis){
-      xLine = {{1,3},{0,1,0}};
-      yzPlane = {{2,3},{1,0,0,0,0,1}};
-      xyScalarProduct = FS_scalarProductXX;
-      xzScalarProduct = FS_scalarProductXZ;
-  } else if(dir==rai::_zAxis){
-      xLine = {{1,3},{0,0,1}};
-      yzPlane = {{2,3},{1,0,0,0,1,0}};
-      xyScalarProduct = FS_scalarProductXX;
-      xzScalarProduct = FS_scalarProductXY;
-  }
+  getGraspLinePlane(xLine, yzPlane, xyScalarProduct, xzScalarProduct, dir);
 
   //position: center in inner target plane; X-specific
   komo.addObjective({1.,2.}, FS_positionRel, {gripperName, boxName}, OT_eq, xLine*1e2, {});
@@ -265,25 +280,34 @@ void testPnp2() {
   rai::Array<ObjectiveL> phiflag(K);
   rai::Array<ObjectiveL> phirun(K);
 
-  phiflag(0).append(make_shared<Objective>(
-                      make_feature(FS_distance, {gripperName, boxName}, C, {1e1}, {-.1}),
-                      OT_eq,
-                      "first", arr{}, intA{}) );
 
-  phiflag(1).append(make_shared<Objective>(
-                      make_feature(FS_positionDiff, {gripperName, boxName}, C, {1e2}, {}),
-                      OT_eq,
-                      "second", arr{}, intA{}) );
 
-  phirun(0).append(make_shared<Objective>(
-                      make_feature(FS_distance, {palmName, boxName}, C, {1e1}, {}),
-                      OT_ineq,
-                      "nocoll", arr{}, intA{}) );
+  arr boxSize={.06,.15,.09};
+  rai::ArgWord dir = rai::_xAxis;
+  arr xLine, yzPlane;
+  FeatureSymbol xyScalarProduct=FS_none, xzScalarProduct=FS_none;
+  getGraspLinePlane(xLine, yzPlane, xyScalarProduct, xzScalarProduct, dir);
 
-//  phirun(1).append(make_shared<Objective>(
-//                      make_feature(FS_distance, {palmName, boxName}, C, {1e1}, {}),
-//                      OT_ineq,
-//                      "nocoll", arr{}, intA{}) );
+  //fixed pre-grasp distance
+  phiflag(0).add(FS_distance, C, {gripperName, boxName}, OT_eq, {1e1}, {-.1});
+
+  //plane centered
+  phirun(1).add(FS_positionRel, C, {gripperName, boxName}, OT_eq, xLine*1e2, arr{});
+
+  //orientation: grasp axis orthoginal to target plane; X-specific
+  phirun(1).add(xyScalarProduct, C, {gripperName, boxName}, OT_eq, {1e2}, {});
+  phirun(1).add(xzScalarProduct, C, {gripperName, boxName}, OT_eq, {1e2}, {});
+
+  //within box
+//  phiflag(1), FS_positionDiff, C, {gripperName, boxName}, OT_eq, {1e2}, {});
+  phiflag(1).add(FS_positionRel, C, {gripperName, boxName}, OT_ineq, yzPlane*1e2, (boxSize/2.-.02));
+  phiflag(1).add(FS_positionRel, C, {gripperName, boxName}, OT_ineq, yzPlane*(-1e2), -(boxSize/2.-.02));
+
+
+  phirun(0).add(FS_distance, C, {palmName, boxName}, OT_ineq, {1e1}, {});
+
+  //no collision with palm
+//  phirun(1).add(FS_distance, C, {palmName, boxName}, OT_ineq, {1e1}, {-.001});
 
 
   //-- MPC stuff
@@ -292,6 +316,9 @@ void testPnp2() {
   pathProblem.solve();
 
   FlagHuntingControl F(pathProblem.path, 1e-1);
+  F.tangents = zeros(K-1, qHome.N);
+  F.tangents[-1] = pathProblem.path[-1] - pathProblem.path[-0];
+  op_normalize(F.tangents[-1]());
 
   //pathProblem.solve();  rai::wait();  return;
 
@@ -307,7 +334,7 @@ void testPnp2() {
     tic.waitForTic();
 
     //-- switch target randomly every second
-    if(!(t%10)){
+    if(!(t%100)){
       F.phase=0;
       F.tau = 10.;
       ctrlTimeLast = bot.get_t();
@@ -360,12 +387,20 @@ void testPnp2() {
       if(!F.done()){
         //update flags
         F.flags = pathProblem.path;
+        F.tangents[-1] = F.flags[-1] - F.flags[-0];
+        op_normalize(F.tangents[-1]());
+
         auto ret = F.solve(q, qDot, 0);
         msg <<" (timing) ph:" <<F.phase <<" #:" <<ret->evals <<" T:" <<ret->time <<" f:" <<ret->f;
       }
     }
 
     msg <<" tau: " <<F.tau << ctrlTime + F.getTimes(); // <<' ' <<F.vels;
+    msg <<" (fea) "
+       <<phirun.elem(0).maxError(C, 0) <<' '
+       <<phiflag.elem(0).maxError(C, 0) <<' '
+      <<phirun.elem(1).maxError(C, 0) <<' '
+     <<phiflag.elem(1).maxError(C, 0);
     cout <<msg <<endl;
 
 //    isFeasible(phiflag(0), C, 1e-2, 0);
