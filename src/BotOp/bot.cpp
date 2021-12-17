@@ -68,6 +68,13 @@ double BotOp::get_t(){
   return state.get()->time;
 }
 
+void BotOp::getState(arr& q, arr& qDot, double& time){
+  auto stateGet = state.get();
+  q = stateGet->q;
+  qDot = stateGet->qDot;
+  time = stateGet->time;
+}
+
 arr BotOp::get_q() {
   return state.get()->q;
 }

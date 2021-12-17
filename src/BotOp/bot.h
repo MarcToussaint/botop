@@ -32,6 +32,7 @@ struct BotOp{
   arr get_q();
   arr get_qDot();
   double get_t();
+  void getState(arr& q, arr& qDot, double& time);
   const arr& get_qHome(){ return qHome; }
   double getTimeToEnd(); //negative, if motion spline is done
 

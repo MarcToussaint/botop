@@ -18,7 +18,7 @@ struct ObjectiveL : rai::Array<shared_ptr<Objective>>{
     return add(make_feature(feat, frames, C, scale, target, order), type);
   }
 
-  double maxError(const rai::Configuration& C, int verbose=1) const {
+  double maxError(const rai::Configuration& C, int verbose=0) const {
     double maxError = 0.;
     for(const auto& o: *this) {
       if(o->type==OT_ineq || o->type==OT_eq) {
@@ -333,10 +333,10 @@ void testPnp2() {
 //    rai::wait(.1);
     tic.waitForTic();
 
-    //-- switch target randomly every second
-    if(!(t%100)){
-      F.phase=0;
-      F.tau = 10.;
+    //-- switch target randomly at some times
+    if(!(t%30)){
+//      F.phase=0;
+//      F.tau = 10.;
       ctrlTimeLast = bot.get_t();
 
       switch(rnd(4)){
@@ -345,54 +345,46 @@ void testPnp2() {
         case 2: target.setPosition(center + arr{+.3,.0,-.2}); break;
         case 3: target.setPosition(center + arr{-.3,.0,-.2}); break;
       }
+      LOG(0) <<"new target";
     }
 
-    //get time,q,qDot - as batch from the same mutex lock
+    //-- get current state (time,q,qDot)
     ctrlTimeLast = ctrlTime;
     arr q,qDot;
-    {
-      auto stateGet = bot.robotL->state.get();
-      ctrlTime = stateGet->time;
-      q = stateGet->q;
-      qDot = stateGet->qDot;
-    }
+    bot.getState(q, qDot, ctrlTime);
 
     rai::String msg;
     msg <<"CYCLE ctrlTime:" <<ctrlTime; //<<' ' <<q;
 
-    //solve the pathProblem
+    //-- solve the pathProblem
     {
       pathProblem.reinit(C); //adopt all frames in C as prefix (also positions of objects)
 //      pathProblem.reinit(q, qDot);
       pathProblem.solve();
 
-      msg <<" (path) #:" <<pathProblem.komo.pathConfig.setJointStateCount <<" T:" <<pathProblem.komo.timeTotal <<" f:" <<pathProblem.komo.sos <<" eq:" <<pathProblem.komo.eq <<" iq:" <<pathProblem.komo.ineq;
+      msg <<" (path) #:" <<pathProblem.komo.pathConfig.setJointStateCount;
+//      msg <<" T:" <<pathProblem.komo.timeTotal <<" f:" <<pathProblem.komo.sos <<" eq:" <<pathProblem.komo.eq <<" iq:" <<pathProblem.komo.ineq;
     }
 
-    //solve the timing problem
-    if(!F.done()){
-      //update phase and taus
-      double gap = ctrlTime - ctrlTimeLast;
-      if(gap < F.tau(F.phase)){ //time still within phase
-        F.tau(F.phase) -= gap; //change initialization of timeOpt
-      }else{ //time beyond current phase
-        if(F.phase+1<F.tau.N){ //if there exists another phase
-          F.tau(F.phase+1) -= gap-F.tau(F.phase); //change initialization of timeOpt
-          F.tau(F.phase) = 0.; //change initialization of timeOpt
-        }else{
-          F.tau = 0.;
-        }
-        F.phase++; //increase phase
-      }
-      if(!F.done()){
-        //update flags
-        F.flags = pathProblem.path;
-        F.tangents[-1] = F.flags[-1] - F.flags[-0];
-        op_normalize(F.tangents[-1]());
+    //-- flag hunting update: update path
+    F.update_flags(pathProblem.path);
 
-        auto ret = F.solve(q, qDot, 0);
-        msg <<" (timing) ph:" <<F.phase <<" #:" <<ret->evals <<" T:" <<ret->time <<" f:" <<ret->f;
-      }
+    //-- flag hunting update: progress time (potentially phase) of
+    if(!F.done()) F.update_progressTime(ctrlTime - ctrlTimeLast);
+
+    //-- flag hunting update: phase backtracking
+    if(F.done()){
+      if(phiflag.elem(-1).maxError(C) > 1e-2) F.update_backtrack();
+    }
+    if(!F.done()){
+      while(phirun.elem(F.phase).maxError(C) > 1.) F.update_backtrack();
+    }
+
+    //-- solve the timing problem
+    if(!F.done()){
+      auto ret = F.solve(q, qDot, 0);
+      msg <<" (timing) ph:" <<F.phase <<" #:" <<ret->evals;
+//      msg <<" T:" <<ret->time <<" f:" <<ret->f;
     }
 
     msg <<" tau: " <<F.tau << ctrlTime + F.getTimes(); // <<' ' <<F.vels;
