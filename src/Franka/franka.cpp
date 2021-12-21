@@ -51,7 +51,7 @@ void FrankaThread::step(){
 
   arr lastTorque = zeros(7);
   arr qDotFilter = zeros(7);
-  double qDotFilterAlpha = .95;
+  double qDotFilterAlpha = .7;
 
   // set collision behavior
   robot.setCollisionBehavior({{100.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0}},
@@ -311,10 +311,10 @@ void FrankaThread::step(){
         torques_real.writeRaw(dataFile); //7
         G_org.writeRaw(dataFile); //7-vector gravity
         C_org.writeRaw(dataFile); //7-vector coriolis
+        qDDot_ref.writeRaw(dataFile);
       }
       if(writeData>2){
         M_org.write(dataFile, " ", " ", "  "); //7x7 inertia matrix
-        qDDot_ref.writeRaw(dataFile);
       }
       dataFile <<endl;
     }

@@ -6,7 +6,8 @@
 void testLeapCtrl() {
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+//  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
 
   //add a target in position space
   arr center = C["l_gripper"]->getPosition();

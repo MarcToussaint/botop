@@ -1,44 +1,5 @@
 set style data lines
 
-joint = 1
-
-J = 7
-
-_qreal = 2+joint+0*J
-_qref = 2+joint+1*J
-
-_vreal = 2+joint+2*J
-_vref = 2+joint+3*J
-
-_ucmd = 2+joint+4*J
-_ureal = 2+joint+5*J
-_ug = 2+joint+6*J
-_uc = 2+joint+7*J
-
-_aref = 2+joint+8*J
-
-#plot 'z.panda0.dat' us 1:_qreal t 'qreal', '' us 1:_qref t 'qref'
-#exit
-
-plot 'z.panda0.dat' us 1:_vreal t 'vreal',\
-'' us 1:_vref t 'vref',\
-'' us 1:_aref t 'aref',\
-'' us 1:_qreal t 'qreal',\
-'' us 1:_qref t 'qref'
-exit
-
-plot 'z.panda0.dat' us 1:_vreal t 'vreal',\
-'' us 1:_vref t 'vref',\
-'' us 1:_ucmd t 'ucmd',\
-'' us 1:(100*(column(_qreal)-column(_qref))) t 'qreal-qref'
-
-#'' us 1:_uc t 'uc',\
-#'' us 1:_ureal t 'ureal',\
-#'' us 1:_ug t 'ug',\
-#'' us 1:(column(_ucmd)-column(_ureal)) t 'ucmd-ureal',\
-
-exit
-
 #plot 'z.dat' 0:1 t 'time'
 
 plot 'z.panda0.dat' us 1:($2) t 'real1', '' us 1:($9) t 'ref1',\
@@ -50,7 +11,6 @@ plot 'z.panda0.dat' us 1:($2) t 'real1', '' us 1:($9) t 'ref1',\
   '' us 1:($8) t 'real7', '' us 1:($15) t 'ref7', \
 
 exit
-
 
 plot 'z.panda0.dat' \
       us 0:($2-$9) t 'err1', \

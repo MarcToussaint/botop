@@ -315,7 +315,7 @@ void testPnp2() {
   pathProblem.buildKOMO(C, phiflag, phirun, qHome);
   pathProblem.solve();
 
-  FlagHuntingControl F(pathProblem.path, 1e-1);
+  FlagHuntingControl F(pathProblem.path, 1e0);
   F.tangents = zeros(K-1, qHome.N);
   F.tangents[-1] = pathProblem.path[-1] - pathProblem.path[-0];
   op_normalize(F.tangents[-1]());
@@ -326,17 +326,18 @@ void testPnp2() {
   BotOp bot(C, rai::checkParameter<bool>("real"));
   bot.home(C);
   double ctrlTime = 0., ctrlTimeLast;
+  bot.setControllerWriteData(2);
 
   //-- iterate
-  Metronome tic(.1);
-  for(uint t=0;t<200;t++){
+  Metronome tic(1.);
+  for(uint t=0;t<100;t++){
 //    rai::wait(.1);
     tic.waitForTic();
 
     //-- switch target randomly at some times
-    if(!(t%30)){
-//      F.phase=0;
-//      F.tau = 10.;
+    if(!(t%100)){
+      F.phase=0;
+      F.tau = 10.;
       ctrlTimeLast = bot.get_t();
 
       switch(rnd(4)){
@@ -373,12 +374,12 @@ void testPnp2() {
     if(!F.done()) F.update_progressTime(ctrlTime - ctrlTimeLast);
 
     //-- flag hunting update: phase backtracking
-    if(F.done()){
-      if(phiflag.elem(-1).maxError(C) > 1e-2) F.update_backtrack();
-    }
-    if(!F.done()){
-      while(phirun.elem(F.phase).maxError(C) > 1.) F.update_backtrack();
-    }
+//    if(F.done()){
+//      if(phiflag.elem(-1).maxError(C) > 1e-2) F.update_backtrack();
+//    }
+//    if(!F.done()){
+//      while(phirun.elem(F.phase).maxError(C) > 1.) F.update_backtrack();
+//    }
 
     //-- solve the timing problem
     if(!F.done()){

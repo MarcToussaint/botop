@@ -24,7 +24,7 @@ void test() {
   }else{
     robot = make_shared<ControlEmulator>(C);
   }
-  robot->writeData = true;
+  robot->writeData = 2;
 
   //-- create 2 simple reference configurations
   arr q0 = robot->state.get()->q;
@@ -33,12 +33,14 @@ void test() {
 
   //-- define the reference feed to be a spline
   auto sp = make_shared<rai::CubicSplineCtrlReference>();
+//  auto sp = make_shared<rai::SplineCtrlReference>();
   robot->cmd.set()->ref = sp;
 
   //1st motion:
   double ctrlTime = robot->state.get()->time;
   sp->report(ctrlTime);
   sp->append((qT, q0).reshape(2,-1), zeros(2,q0.N), arr{2., 4.}, ctrlTime);
+//  sp->append((qT, q0).reshape(2,-1), arr{2., 4.}, ctrlTime, true);
   sp->report(ctrlTime);
 
   for(;;){
@@ -62,8 +64,7 @@ void test() {
     C.setJointState(robot->state.get()->q);
     rai::wait(.1);
   }
-  rai::wait();
-
+  //rai::wait();
 }
 
 //===========================================================================

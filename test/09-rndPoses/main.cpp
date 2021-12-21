@@ -18,6 +18,7 @@ void rndPoses(){
     C.addFrame("l_gripper_target") ->setShape(rai::ST_marker, {.2});
   }
 
+  double maxVel = rai::getParameter<double>("maxVel", 1.);
   arr qHome = C.getJointState();
   arr limits = C.getLimits();
   FrameL collisionPairs = C.getCollisionAllPairs();
@@ -63,7 +64,7 @@ void rndPoses(){
       }
 
       cout <<" === -> executing === " <<endl;
-      bot.moveAutoTimed(path);
+      bot.moveAutoTimed(path, maxVel);
     }else{
       cout <<" === pose infeasible === " <<endl;
     }

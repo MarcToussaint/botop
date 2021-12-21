@@ -21,6 +21,8 @@ plot 'z.panda0.dat' us 1:($2) t 'real1', '' us 1:($9) t 'ref1',\
   '' us 1:($7) t 'real6', '' us 1:($14) t 'ref6', \
   '' us 1:($8) t 'real7', '' us 1:($15) t 'ref7', \
 
+exit
+
 
 #plot 'z.panda0.dat' us 1:($26) t 'u_cmd', \
 #'' us 1:($33) t 'u_measured', \
