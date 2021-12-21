@@ -234,9 +234,14 @@ void FrankaThread::step(){
 
       //-- add friction term
       if(friction.N==7 && qDot_ref.N==7){
+        double velThresh=1e-3;
         for(uint i=0;i<7;i++){
-          if(qDot_ref.elem(i)>1e-4) u.elem(i) += friction.elem(i);
-          if(qDot_ref.elem(i)<-1e-4) u.elem(i) -= friction.elem(i);
+          double coeff = qDot_ref.elem(i)/velThresh;
+          if(coeff>1.) coeff=1.;
+          if(coeff<-1.) coeff=-1.;
+          u.elem(i) += coeff*friction.elem(i);
+//          if(qDot_ref.elem(i)>1e-4) u.elem(i) += friction.elem(i);
+//          if(qDot_ref.elem(i)<-1e-4) u.elem(i) -= friction.elem(i);
         }
       }
 

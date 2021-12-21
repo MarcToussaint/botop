@@ -215,9 +215,9 @@ void BotOp::hold(bool floating, bool damping){
   if(floating){
     zref->setPositionReference({});
     if(damping){
-      zref->setVelocityReference({0.});
+      zref->setVelocityReference({0.}); //{0.}: have a Kd with zero vel ref;
     }else{
-      zref->setVelocityReference({});
+      zref->setVelocityReference({}); //{}: have no Kd term at all; {1.} have a Kd term with velRef=velTrue (and friction compensation!)
     }
   }else{
     arr q = get_q();
