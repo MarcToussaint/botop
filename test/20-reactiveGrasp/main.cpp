@@ -281,7 +281,6 @@ void testPnp2() {
   rai::Array<ObjectiveL> phirun(K);
 
 
-
   arr boxSize={.06,.15,.09};
   rai::ArgWord dir = rai::_xAxis;
   arr xLine, yzPlane;
@@ -329,13 +328,13 @@ void testPnp2() {
   bot.setControllerWriteData(2);
 
   //-- iterate
-  Metronome tic(1.);
-  for(uint t=0;t<100;t++){
+  Metronome tic(.1);
+  for(uint t=0;t<2000;t++){
 //    rai::wait(.1);
     tic.waitForTic();
 
     //-- switch target randomly at some times
-    if(!(t%100)){
+    if(!(t%20)){
       F.phase=0;
       F.tau = 10.;
       ctrlTimeLast = bot.get_t();
@@ -383,9 +382,13 @@ void testPnp2() {
 
     //-- solve the timing problem
     if(!F.done()){
-      auto ret = F.solve(q, qDot, 0);
-      msg <<" (timing) ph:" <<F.phase <<" #:" <<ret->evals;
-//      msg <<" T:" <<ret->time <<" f:" <<ret->f;
+      if(F.tau(F.phase)>.3){
+        auto ret = F.solve(q, qDot, 0);
+        msg <<" (timing) ph:" <<F.phase <<" #:" <<ret->evals;
+        //      msg <<" T:" <<ret->time <<" f:" <<ret->f;
+      }else{
+        LOG(0) <<"skipping timing opt, as too close ahead: " <<F.tau;
+      }
     }
 
     msg <<" tau: " <<F.tau << ctrlTime + F.getTimes(); // <<' ' <<F.vels;
