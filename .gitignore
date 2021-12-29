@@ -1,3 +1,5 @@
+local.cfg
+
 %% compile temporaries
 /build
 *.o

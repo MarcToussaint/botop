@@ -16,6 +16,8 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
+  noise_th = rai::getParameter<double>("botemu/noise_th");
+
   {
     q_real = C.getJointState();
     qDot_real.resize(q_real.N).setZero();
@@ -86,6 +88,7 @@ void ControlEmulator::step(){
     if(!cmdGet->ref){
       cmd_q_ref = q_real;
       cmd_qDot_ref.resize(q_real.N).setZero();
+      cmd_qDDot_ref.resize(q_real.N).setZero();
     }else{
       //get the reference from the callback (e.g., sampling a spline reference)
       cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, q_real, qDot_real, ctrlTime);
@@ -105,14 +108,21 @@ void ControlEmulator::step(){
     if(cmd_q_ref.N == 0) return;
 
     double k_p, k_d;
-    naturalGains(k_p, k_d, .02, 1.);
+    naturalGains(k_p, k_d, .05, 1.);
     qDDot_des = k_p * (cmd_q_ref - q_real) + k_d * (cmd_qDot_ref - qDot_real);
+    qDDot_des += cmd_qDDot_ref;
 //    q = q_ref;
 //    qdot = qdot_ref;
 
   } else if(controlType == rai::ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
     qDDot_des = cmd_qDDot_ref - KpRef*q_real - KdRef*qDot_real;
   }
+
+  //-- add noise (to controls, vel, pos?)
+  if(!noise.N) noise = zeros(q_real.N);
+  rndGauss(noise, noise_sig, true);
+  noise *= noise_th;
+  qDot_real += noise;
 
   //-- directly integrate
   q_real += .5 * tau * qDot_real;
@@ -140,10 +150,17 @@ void ControlEmulator::step(){
   //-- data log?
   if(writeData>0 && !(step_count%10)){
     if(!dataFile.is_open()) dataFile.open("z.panda.dat");
-    dataFile <<ctrlTime <<' ';
-    q_real.writeRaw(dataFile);
-    cmd_q_ref.writeRaw(dataFile);
-    qDot_real.writeRaw(dataFile);
+    dataFile <<ctrlTime <<' '; //single number
+    q_real.writeRaw(dataFile); //7
+    cmd_q_ref.writeRaw(dataFile); //7
+    if(writeData>1){
+      qDot_real.writeRaw(dataFile); //7
+      cmd_qDot_ref.writeRaw(dataFile); //7
+      qDDot_des.writeRaw(dataFile); //7
+      cmd_qDDot_ref.writeRaw(dataFile);
+    }
+    if(writeData>2){
+    }
     dataFile <<endl;
   }
 }

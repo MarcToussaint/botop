@@ -56,9 +56,7 @@ arr getLoopPath(rai::Configuration& C){
 
 //===========================================================================
 
-void addBoxPickObjectives_botop(KOMO& komo, double time, rai::ArgWord dir, const char* boxName, const arr& boxSize, const char* gripperName, const char* palmName, const char* tableName) {
-  arr xLine, yzPlane;
-  FeatureSymbol xyScalarProduct=FS_none, xzScalarProduct=FS_none;
+void getGraspLinePlane(arr& xLine, arr& yzPlane, FeatureSymbol& xyScalarProduct, FeatureSymbol& xzScalarProduct, const rai::ArgWord& dir){
   if(dir==rai::_xAxis){
     xLine = {{1,3},{1,0,0}};
     yzPlane = {{2,3},{0,1,0,0,0,1}};
@@ -75,6 +73,33 @@ void addBoxPickObjectives_botop(KOMO& komo, double time, rai::ArgWord dir, const
     xyScalarProduct = FS_scalarProductXX;
     xzScalarProduct = FS_scalarProductXY;
   }
+}
+
+//===========================================================================
+
+void addBoxPickObjectives_botop(KOMO& komo, double time, rai::ArgWord dir, const char* boxName, const arr& boxSize, const char* gripperName, const char* palmName, const char* tableName) {
+  arr xLine, yzPlane;
+  FeatureSymbol xyScalarProduct=FS_none, xzScalarProduct=FS_none;
+#if 1
+  getGraspLinePlane(xLine, yzPlane, xyScalarProduct, xzScalarProduct, dir);
+#else
+  if(dir==rai::_xAxis){
+    xLine = {{1,3},{1,0,0}};
+    yzPlane = {{2,3},{0,1,0,0,0,1}};
+    xyScalarProduct = FS_scalarProductXY;
+    xzScalarProduct = FS_scalarProductXZ;
+  } else if(dir==rai::_yAxis){
+    xLine = {{1,3},{0,1,0}};
+    yzPlane = {{2,3},{1,0,0,0,0,1}};
+    xyScalarProduct = FS_scalarProductXX;
+    xzScalarProduct = FS_scalarProductXZ;
+  } else if(dir==rai::_zAxis){
+    xLine = {{1,3},{0,0,1}};
+    yzPlane = {{2,3},{1,0,0,0,1,0}};
+    xyScalarProduct = FS_scalarProductXX;
+    xzScalarProduct = FS_scalarProductXY;
+  }
+#endif
 
   //position: center in inner target plane; X-specific
   komo.addObjective({time}, FS_positionRel, {gripperName, boxName}, OT_eq, xLine*1e2, {});
@@ -217,3 +242,4 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, 
 
   return path;
 }
+

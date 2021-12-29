@@ -35,6 +35,9 @@ private:
   rai::Configuration emuConfig;
   FrameL collisionPairs;
 
+  arr noise;
+  double noise_th=.99, noise_sig=.001;
+
   void step();
 };
 

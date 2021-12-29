@@ -5,9 +5,6 @@
 
 //===========================================================================
 
-
-//===========================================================================
-
 arr getLoopPath(rai::Configuration& C);
 void addBoxPickObjectives_botop(KOMO& komo, double time, rai::ArgWord dir, const char* boxName, const arr& boxSize, const char* gripperName, const char* palmName, const char* tableName);
 void addBoxPlaceObjectives_botop(KOMO& komo, double time, rai::ArgWord dir, const char* boxName, const arr& boxSize, const char* gripperName, const char* palmName);
@@ -18,5 +15,5 @@ arr getBoxPnpKeyframes(const rai::Configuration& C,
 
 //===========================================================================
 
-arr getLoopPath(rai::Configuration& C);
-
+void getGraspLinePlane(arr& xLine, arr& yzPlane, FeatureSymbol& xyScalarProduct, FeatureSymbol& xzScalarProduct,
+                       const rai::ArgWord& dir);
