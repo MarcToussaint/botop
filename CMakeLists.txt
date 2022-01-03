@@ -8,6 +8,7 @@ option(USE_PYBIND "build python bindings" ON)
 option(USE_BULLET "link to bullet" OFF)
 option(USE_OPENCV "link to opencv" OFF)
 option(USE_REALSENSE "link to realsense2 driver library" OFF)
+option(USE_LIBFRANKA "link to libfranka" ON)
 
 add_compile_options(
   -O3 -g -Wall -fPIC -std=c++14 -Wno-terminate -Wno-pragmas -lboost_system
@@ -21,7 +22,6 @@ add_definitions(
   -DRAI_GL
   -DRAI_GLFW -DRAI_ANN -DRAI_QHULL -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
   -DRAI_SWIFT -DRAI_GJK -DRAI_FCL -DRAI_CCD
-  -DRAI_FRANKA
   -BOOST_ERROR_CODE_HEADER_ONLY
   )
 
@@ -92,7 +92,6 @@ target_link_libraries(rai
   jsoncpp lapack blas pthread rt X11
   assimp fcl ann glfw GLEW glut GLU GL png qhull
   boost_system
-  franka
   )
 
 ################################################################################
@@ -113,6 +112,11 @@ endif()
 if(USE_REALSENSE)
   add_definitions(-DRAI_REALSENSE)
   target_link_libraries(rai realsense2)
+endif()
+
+if(USE_LIBFRANKA)
+  add_definitions(-DRAI_FRANKA)
+  target_link_libraries(rai franka)
 endif()
 
 ################################################################################

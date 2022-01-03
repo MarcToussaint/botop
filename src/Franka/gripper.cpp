@@ -1,5 +1,8 @@
-#include <franka/gripper.h>
 #include "gripper.h"
+
+#ifdef RAI_FRANKA
+
+#include <franka/gripper.h>
 
 const char *gripperIpAddresses[2] = {"172.16.0.2", "172.17.0.2"};
 
@@ -92,3 +95,17 @@ void FrankaGripper::step() {
 
   msg.cmd = msg._done;
 }
+
+#else //RAI_FRANKA
+
+FrankaGripper::FrankaGripper(uint whichRobot)
+  : Thread(STRING("FrankaGripper_"<<whichRobot))
+  , cmd(this, false){ NICO }
+void FrankaGripper::homing(){ NICO }
+void FrankaGripper::open(double width, double speed){ NICO }
+void FrankaGripper::close(double force, double width, double speed){ NICO }
+double FrankaGripper::pos(){ NICO }
+bool FrankaGripper::isGrasped(){ NICO }
+void FrankaGripper::step() { NICO }
+
+#endif

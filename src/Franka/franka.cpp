@@ -1,5 +1,7 @@
 #include "franka.h"
 
+#ifdef RAI_FRANKA
+
 #include <franka/model.h>
 #include <franka/robot.h>
 #include <franka/exception.h>
@@ -336,3 +338,11 @@ void FrankaThread::step(){
   }
   LOG(0) <<"EXIT FRANKA CONTROL LOOP";
 }
+
+#else //RAI_FRANKA
+
+FrankaThread::~FrankaThread(){ NICO }
+void FrankaThread::init(uint _robotID, const uintA& _qIndices) { NICO }
+void FrankaThread::step(){ NICO }
+
+#endif

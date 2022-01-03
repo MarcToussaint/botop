@@ -16,7 +16,7 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
-  noise_th = rai::getParameter<double>("botemu/noise_th");
+  noise_th = rai::getParameter<double>("botemu/noise_th", .99);
 
   {
     q_real = C.getJointState();
