@@ -2,7 +2,7 @@
 #include <BotOp/motionHelpers.h>
 #include <KOMO/pathTools.h>
 #include <Optim/MP_Solver.h>
-#include <Control/flagHunter.h>
+#include <Control/timingMPC.h>
 #include <Core/thread.h>
 
 #include "tosca.h"
@@ -14,11 +14,12 @@ rai::Frame& setupWorld(rai::Configuration& C){
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
 
   rai::Frame& target =
-      C.addFrame("target")
-      ->setShape(rai::ST_ssBox, {.06,.15,.09,.01})
-      .setPosition(arr{-.3,-.2,.695});
+  C.addFrame("box", "table")
+      ->setJoint(rai::JT_rigid)
+      .setShape(rai::ST_ssBox, {.06,.15,.09,.01})
+      .setRelativePosition(arr{-.0,-.0,.095});
 
-  C.addFrame("plate", "table")
+  C.addFrame("target", "table")
       ->setJoint(rai::JT_rigid)
       .setShape(rai::ST_ssBox, {.4,.4,.1,.01})
       .setRelativePosition(arr{-.4,.2,.0});
@@ -31,19 +32,16 @@ rai::Frame& setupWorld(rai::Configuration& C){
 void testPnp2() {
   rai::Configuration C;
   rai::Frame& target = setupWorld(C);
-  arr center = C["l_gripper"]->getPosition();
   arr qHome = C.getJointState();
 
   //-- define constraints
-  uint K=2;
 
   const char* gripperName="l_gripper";
   const char* palmName="l_palm";
-  const char* boxName="target";
-  const char* tableName="plate";
-  const char* arm1Name="l_panda_coll7";
-  const char* arm2Name="l_panda_coll6";
+  const char* boxName="box";
+  const char* tableName="target";
 
+  uint K=4;
   rai::Array<ObjectiveL> phiflag(K);
   rai::Array<ObjectiveL> phirun(K);
 
@@ -87,20 +85,6 @@ void testPnp2() {
   for(uint t=0;t<2000;t++){
     tic.waitForTic();
 
-    //-- switch target randomly at some times
-    if(!(t%20)){
-      tosca.timingMPC.phase=0;
-      tosca.timingMPC.tau = 10.;
-
-      switch(rnd(4)){
-        case 0: target.setPosition(center + arr{+.3,.0,+.2}); break;
-        case 1: target.setPosition(center + arr{-.3,.0,+.2}); break;
-        case 2: target.setPosition(center + arr{+.3,.0,-.2}); break;
-        case 3: target.setPosition(center + arr{-.3,.0,-.2}); break;
-      }
-      LOG(0) <<"new target";
-    }
-
     //-- get current state (time,q,qDot)
     arr q,qDot;
     bot.getState(q, qDot, ctrlTime);
@@ -118,7 +102,6 @@ void testPnp2() {
 
     //update C
     bot.step(C, .0);
-    if(bot.keypressed==13){ t=9; continue; }
     if(bot.keypressed=='q' || bot.keypressed==27) return;
   }
 }

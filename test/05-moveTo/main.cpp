@@ -4,13 +4,42 @@
 #include <Algo/SplineCtrlFeed.h>
 #include <Kin/viewer.h>
 
+#include <BotOp/bot.h>
+
 const char *USAGE =
     "\nTest of low-level (without bot interface) of SplineCtrlReference"
     "\n";
 
 //===========================================================================
 
-void test() {
+void test_bot() {
+  //-- setup a configuration
+  rai::Configuration C;
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+  C.watch(false);
+
+  //-- start a robot thread
+  BotOp bot(C, rai::checkParameter<bool>("real"));
+
+  //-- create 2 simple reference configurations
+  arr q0 = bot.get_qHome();
+  arr qT = q0;
+  qT(1) -= .5;
+
+  bot.move(~qT, {2.}); //in 2 sec strict
+
+  while(bot.step(C)){} //just syncs the model config C and updates display until done
+
+  bot.moveLeap(q0, 1.); //using timing cost=1
+
+  while(bot.step(C)){}
+
+  rai::wait();
+}
+
+//===========================================================================
+
+void test_withoutBotWrapper() {
   //-- setup a configuration
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
@@ -74,7 +103,8 @@ int main(int argc, char * argv[]){
 
   cout <<USAGE <<endl;
 
-  test();
+  test_bot();
+  //test_withoutBotWrapper();
 
   LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
 

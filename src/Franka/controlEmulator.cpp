@@ -2,6 +2,7 @@
 #include <Kin/kin.h>
 #include <Kin/frame.h>
 #include <Kin/F_collisions.h>
+#include <Kin/viewer.h>
 
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
@@ -16,7 +17,7 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
-  noise_th = rai::getParameter<double>("botemu/noise_th", .99);
+  noise_th = rai::getParameter<double>("botemu/noise_th", -1.);
 
   {
     q_real = C.getJointState();
@@ -42,6 +43,8 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
   }
   state.set()->q = q_real;
   state.set()->qDot = qDot_real;
+  emuConfig.watch(false, STRING("EMULATION - initialization"));
+  emuConfig.gl()->update(0, true);
   threadLoop();
   state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
 }
@@ -119,10 +122,12 @@ void ControlEmulator::step(){
   }
 
   //-- add noise (to controls, vel, pos?)
-  if(!noise.N) noise = zeros(q_real.N);
-  rndGauss(noise, noise_sig, true);
-  noise *= noise_th;
-  qDot_real += noise;
+  if(noise_th>0.){
+    if(!noise.N) noise = zeros(q_real.N);
+    rndGauss(noise, noise_sig, true);
+    noise *= noise_th;
+    qDot_real += noise;
+  }
 
   //-- directly integrate
   q_real += .5 * tau * qDot_real;
