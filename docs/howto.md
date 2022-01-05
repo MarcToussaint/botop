@@ -1,20 +1,20 @@
 # How to use BotOp
 
-##  examples
+##  Examples
 
 * The tests 01, 03, and 04 are *not* examples for using BotOp
-  (instead, they helped developing and testing underlying things)
+  (instead, they helped developing and testing underlying things). Ignore them.
 
 * bin/bot/main.cpp is the prime example of minimalistic BotOp usage
 
-* 05-moveTo:test_bot() is the simplest template for generating a
-  move-to-endpose (with the `move(path, duration)` command, and with
-  the `moveLeap(endpose, timingCost)` command)
+* 05-moveTo:test_bot() is the simplest example for generating a
+  move-to-endpose with the `move(path, duration)` command, or with
+  the `moveLeap(endpose, timingCost)` command.
 
 * 06-fastPath is a standard example for sending a KOMO-computed path
-  to the robot, then the duration is known/fixed (with the `move(path,
+  to the robot when the duration is known/fixed (with the `move(path,
   duration)` command). The whole optitrack code could be removed. The
-  example executed the same path multiple times, with increasing
+  example executes the same path multiple times, with increasing
   speed.
 
 * 09-rndPoses is very similar to 06-fastPath: uses KOMO to compute a
@@ -23,9 +23,22 @@
 
 * 08-pnp also uses `moveAutoTimed` to send KOMO-computed paths. It is
   also an example (but not good code) to iterate through a sequence of
-  phases, where depending on the phase, and open/close gripper command
+  phases, where depending on the phase  an open/close gripper command
   is send to the robot after executing the path, and an attach is done
   in the model configuration `C`.
+
+
+## Initial testing
+
+* When setting up your working environment and using the robot first time, do some testing:
+
+* The executable (in the build path) `bot -up`  `bot -home`  `bot -open`  `bot -close`. Note that this executable relies on the `local.cfg` to decide on which robot/gripper/optitrack to use (see below)
+
+* Also try `bot -hold` with optitrack enabled, and see if objects appear and move
+
+* Try the tests 05, 06, 08
+
+* Try calibrating the station with test/11... (read below first)
 
 
 ## Commanding motion
@@ -76,7 +89,10 @@
 
 * The `getTimeToEnd` method returns the remaining time of the motion buffer (spline), and negative if done
 
-* It is fully optional whether/when you want to keep your model configuration `C` in sync with the real robot during motion. For open loop execution that's not necessary. But just for display it is useful to keep `C` in sync and update its display. The `step(C)` method does that (bad naming, it should be called `syncModelAndUpdateDisplay). For convenience, `step(C)` also returns false when the user enters ESC/ENTER/q in the display or the motion is done.
+* It is fully optional whether/when you want to keep your model configuration `C` in sync with the real robot during motion. For open loop execution that's not necessary. But just for display it is useful to keep `C` in sync and update its display. The `step(C)` method does that (bad naming, it should be called `syncModelAndUpdateDisplay`). For convenience, `step(C)` also returns false when the user enters ESC/ENTER/q in the display or the motion is done.
+
+* If optitrack is enabled, the `step(C)` also pulls from (syncs with) optitrack, creating new objects in `C` as needed. Since the `step` method is not strictly timed, a real application might instead want to have a strictly timed pull from optitrack (e.g., as in the 11-calibrate data collection method).
+
 
 ## Executing longer sequences
 
@@ -113,10 +129,10 @@ Edit l_robotiq_optitrackMarker { Q:<[0.000345134, 0.047121, 0.00455253, 1, 0, 0,
 Edit r_robotiq_optitrackMarker { Q:<[-0.00329198, 0.0481341, 0.00473349, 1, 0, 0, 0]> }
 ```
 
-* As a consequence, the l_panda_base will always be the reference with position `[-.4, -.3, 0]`. Everything else is calibrated relative to this.
+* As a consequence, the l_panda_base will be the reference with position `[-.4, -.3, 0]`. Everything else is calibrated relative to this.
 
 
-## cfg parameters
+## cfg Parameters
 
 * There should be a `git/botop/local.cfg` on your robot machine! That one is read *before* any local rai.cfg file. Depending on the robot station, it should have different parameters for useRobotiq and useArm and useOptitrack
 
