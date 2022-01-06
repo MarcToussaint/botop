@@ -32,9 +32,10 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       if(useGripper){
         if(robotiq){
           gripperL = make_unique<RobotiqGripper>(0);
+          gripperR = make_unique<RobotiqGripper>(1);
         }else{
           gripperL = make_unique<FrankaGripper>(0);
-//          gripperR = make_unique<FrankaGripper>(1);
+          gripperR = make_unique<FrankaGripper>(1);
         }
       }
     }else{

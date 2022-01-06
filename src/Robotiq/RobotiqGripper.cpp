@@ -17,6 +17,8 @@ const double MAX_SPEED = 0.15; // in  mm/s
 static int msg_len=0;
 static uint8_t msg[301];
 
+const char *robotiqSerialPorts[2] = {"/dev/ttyUSB0", "/dev/ttyUSB1"};
+
 void writeHex(uint8_t *msg, int len){
   cout <<"\nSERIAL MSG: ";
   for(int i=0;i<len;i++) printf("x%02hhx", msg[i]);
@@ -68,7 +70,9 @@ RobotiqGripper::RobotiqGripper(uint whichRobot) {
   boost::asio::io_service io;
   serialPort = std::make_shared<boost::asio::serial_port>(io);
 
-  serialPort->open("/dev/ttyUSB0");
+
+
+  serialPort->open(robotiqSerialPorts[whichRobot]);
 
   serialPort->set_option(boost::asio::serial_port_base::baud_rate(115200));
   serialPort->set_option(boost::asio::serial_port_base::stop_bits(boost::asio::serial_port_base::stop_bits::one));

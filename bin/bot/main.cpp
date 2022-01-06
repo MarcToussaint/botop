@@ -37,6 +37,7 @@ int main(int argc, char * argv[]){
   if(rai::checkParameter<bool>("up")){
     arr q=bot.qHome;
     q(1) -= .5;
+    if(q.N>7) q(8) -=.5;
     bot.moveLeap(q, 1.);
     while(bot.step(C));
   }
@@ -53,14 +54,18 @@ int main(int argc, char * argv[]){
     while(bot.step(C));
   }
 
-  if(rai::checkParameter<bool>("close")){
-    bot.gripperL->close();
-    while(!bot.gripperL->isDone()) rai::wait(.1);
+  if(rai::checkParameter<bool>("open")){
+    if(bot.gripperL) bot.gripperL->open();
+    if(bot.gripperR) bot.gripperR->open();
+    if(bot.gripperL) while(!bot.gripperL->isDone()) rai::wait(.1);
+    if(bot.gripperR) while(!bot.gripperR->isDone()) rai::wait(.1);
   }
 
-  if(rai::checkParameter<bool>("open")){
-    bot.gripperL->open();
-    while(!bot.gripperL->isDone()) rai::wait(.1);
+  if(rai::checkParameter<bool>("close")){
+    if(bot.gripperL) bot.gripperL->close();
+    if(bot.gripperR) bot.gripperR->close();
+    if(bot.gripperL) while(!bot.gripperL->isDone()) rai::wait(.1);
+    if(bot.gripperR) while(!bot.gripperR->isDone()) rai::wait(.1);
   }
 
   cout <<"bye bye" <<endl;

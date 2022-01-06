@@ -49,9 +49,12 @@ void collectData(){
       komo.addObjective({}, FS_positionDiff, {"l_gripper", "table_base"}, OT_eq, {1e2}, pt);
 
       arr dir = points(l,1,{});
-      komo.addObjective({}, FS_vectorY, {"r_gripper"}, OT_eq, {1e2}, dir);
-      dir(0) *= -1.;
-      komo.addObjective({}, FS_vectorY, {"l_gripper"}, OT_eq, {1e2}, dir);
+      if(length(dir)>.5){
+        dir /= length(dir);
+        komo.addObjective({}, FS_vectorY, {"r_gripper"}, OT_eq, {1e2}, dir);
+        dir(0) *= -1.;
+        komo.addObjective({}, FS_vectorY, {"l_gripper"}, OT_eq, {1e2}, dir);
+      }
 
       komo.optimize();
 
@@ -69,6 +72,8 @@ void collectData(){
       q_target = bot.qHome;
     }
 
+    //C.setJointState(q_target);  C.watch(true, "pose");
+
     //compute path
     C.setJointState(q_last);
     arr path = getStartGoalPath(C, q_target, bot.qHome);
@@ -84,6 +89,7 @@ void collectData(){
 
     if(bot.optitrack){
       Metronome tic(.01);
+      bot.step(C, -1.);
       while(bot.step(C, -1.)){
         tic.waitForTic();
         arr q = bot.get_q();
@@ -104,6 +110,7 @@ void collectData(){
 void computeCalibration(){
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+  C.addFrame("optitrack_base", "world");
   C.watch();
 
   //-- load data from
@@ -134,7 +141,7 @@ void computeCalibration(){
   //-- get/create relevant frame for markers and ot signals
   rai::Frame *calL = C["l_robotiq_optitrackMarker"];
   rai::Frame *calR = C["r_robotiq_optitrackMarker"];
-  rai::Frame *ot = & C.addFrame("optitrack_base", "world")->setShape(rai::ST_marker, {.1});
+  //rai::Frame *ot = & C.addFrame("optitrack_base", "world")->setShape(rai::ST_marker, {.1});
   rai::Frame *otL = & C.addFrame("otL", "optitrack_base")->setShape(rai::ST_marker, {.1});
   rai::Frame *otR = & C.addFrame("otR", "optitrack_base")->setShape(rai::ST_marker, {.1});
 
@@ -182,7 +189,7 @@ void computeCalibration(){
   //komo.addObjective({}, FS_qItself, {"l_panda_base"}, OT_eq, {1e1}, {-.4, -.3,0.5*RAI_PI});
 
   //-- optimize
-  komo.optimize(0., OptOptions()
+  komo.optimize(0., rai::OptOptions()
                 .set_verbose(6)
                 .set_damping(1e-6)
                 .set_stopTolerance(1e-6) );
@@ -258,7 +265,7 @@ void demoCalibration(){
 
       arr pt = points[l];
       komo.addObjective({}, FS_positionDiff, {"r_gripper", "table_base"}, OT_eq, {1e2}, pt);
-      komo.addObjective({}, FS_positionDiff, {"r_gripper", "l_gripper"}, OT_eq, {1e2}, {.015, 0., 0.});
+      komo.addObjective({}, FS_positionDiff, {"r_gripper", "l_gripper"}, OT_eq, {1e2}, {.04, 0., 0.});
 
       komo.addObjective({}, FS_scalarProductXY, {"r_gripper", "l_gripper"}, OT_eq, {1e2});
       komo.addObjective({}, FS_vectorZ, {"r_gripper"}, OT_eq, {1e2}, {1.,0.,0.});
