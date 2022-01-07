@@ -15,7 +15,7 @@ const char *USAGE =
 void test_bot() {
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
   C.watch(false);
 
   //-- start a robot thread

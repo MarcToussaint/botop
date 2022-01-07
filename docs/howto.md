@@ -32,9 +32,9 @@
 
 * When setting up your working environment and using the robot first time, do some testing:
 
-* The executable (in the build path) `bot -up`  `bot -home`  `bot -open`  `bot -close`. Note that this executable relies on the `local.cfg` to decide on which robot/gripper/optitrack to use (see below)
+* The executable (in the build path) `bot -up`  `bot -home`  `bot -open`  `bot -close` `bot -open -bot/initRobotiq false` `bot -close -bot/initRobotiq false`. Note that this executable relies on the `local.cfg` to decide on which robot/gripper/optitrack to use (see below)
 
-* Also try `bot -hold` with optitrack enabled, and see if objects appear and move
+* To test optitrack, start the MotiveTracke on windows and try `bot -hold -bot/useOptitrack true`, and see if objects appear and move
 
 * Try the tests 05, 06, 08
 
@@ -151,6 +151,8 @@ Edit r_robotiq_optitrackMarker { Q:<[-0.00329198, 0.0481341, 0.00473349, 1, 0, 0
   friction = rai::getParameter<arr>("Franka/friction", zeros(7));
 
   noise_th = rai::getParameter<double>("botemu/noise_th", -1.);
+
+  if(rai::getParameter<bool>("bot/initRobotiq", true)){
 ```
 
 ## Calibrating joint frictions, debugging tracking error, gains
