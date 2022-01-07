@@ -108,9 +108,10 @@ SequenceController::SequenceController(rai::Configuration& C, rai::Array<Objecti
   uint K = _phiflag.N;
 
   timingMPC.tangents = zeros(K-1, qHome.N);
-  timingMPC.tangents[-1] = pathMPC.path[-1] - pathMPC.path[-0];
-  op_normalize(timingMPC.tangents[-1]());
-
+  for(uint k=1; k<K; k++){
+    timingMPC.tangents[k-1] = pathMPC.path[k] - pathMPC.path[k-1];
+    op_normalize(timingMPC.tangents[k-1]());
+  }
 }
 
 SequenceController::SequenceController(rai::Configuration& C, ObjectiveL phi, const arr& qHome)
@@ -120,8 +121,10 @@ SequenceController::SequenceController(rai::Configuration& C, ObjectiveL phi, co
   uint K = pathMPC.komo.T;
 
   timingMPC.tangents = zeros(K-1, qHome.N);
-  timingMPC.tangents[-1] = pathMPC.path[-1] - pathMPC.path[-0];
-  op_normalize(timingMPC.tangents[-1]());
+  for(uint k=1; k<K; k++){
+    timingMPC.tangents[k-1] = pathMPC.path[k] - pathMPC.path[k-1];
+    op_normalize(timingMPC.tangents[k-1]());
+  }
 }
 
 void SequenceController::updateWaypoints(const rai::Configuration& C){
