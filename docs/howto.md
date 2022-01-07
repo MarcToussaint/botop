@@ -134,7 +134,7 @@ Edit r_robotiq_optitrackMarker { Q:<[-0.00329198, 0.0481341, 0.00473349, 1, 0, 0
 
 ## cfg Parameters
 
-* There should be a `git/botop/local.cfg` on your robot machine! That one is read *before* any local rai.cfg file. Depending on the robot station, it should have different parameters for useRobotiq and useArm and useOptitrack
+* There should be a `git/botop/local.cfg` on your robot machine! That one is read *after* any local rai.cfg file. Depending on the robot station, it should have different parameters for useRobotiq and useArm and useOptitrack
 
 * all `getParameter` from the code:
 ```

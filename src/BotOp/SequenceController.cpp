@@ -1,4 +1,4 @@
-#include "tosca.h"
+#include "SequenceController.h"
 
 #include <Optim/MP_Solver.h>
 
@@ -20,6 +20,33 @@ WaypointMPC::WaypointMPC(rai::Configuration& C, rai::Array<ObjectiveL> phiflag, 
     for(auto& o: phiflag(k))  komo.addObjective({1.+double(k)}, o->feat, {}, o->type);
     for(auto& o: phirun(k))  komo.addObjective({double(k), 1.+double(k)}, o->feat, {}, o->type);
   }
+
+  komo.reset();
+  komo.initWithConstant(qHome);
+  path = komo.getPath_qOrg();
+  this->tau = komo.getPath_tau();
+}
+
+WaypointMPC::WaypointMPC(rai::Configuration& C, ObjectiveL phi, const arr& qHome){
+  komo.clearObjectives();
+
+  double maxPhase=0.;
+  for(auto& o:phi) {
+    if(o->times.N) maxPhase = rai::MAX(maxPhase, o->times.max());
+  }
+
+  uint K=maxPhase;
+
+  uint subSamples=0; //#subframes
+
+  komo.setModel(C, false);
+  komo.setTiming(K, subSamples+1, 2., 1);
+  komo.setupPathConfig();
+
+  komo.add_qControlObjective({}, komo.k_order, 1e0);
+  if(qHome.N) komo.addObjective({}, FS_qItself, {}, OT_sos, {.1}, qHome);
+
+  for(auto& o:phi) komo.addObjective(o->times, o->feat, {}, o->type);
 
   komo.reset();
   komo.initWithConstant(qHome);
@@ -73,7 +100,7 @@ void WaypointMPC::solve(){
 
 //===========================================================================
 
-TOSCA::TOSCA(rai::Configuration& C, rai::Array<ObjectiveL> _phiflag, rai::Array<ObjectiveL> _phirun, const arr& qHome)
+SequenceController::SequenceController(rai::Configuration& C, rai::Array<ObjectiveL> _phiflag, rai::Array<ObjectiveL> _phirun, const arr& qHome)
   : pathMPC(C, _phiflag, _phirun, qHome),
     timingMPC(pathMPC.path, 1e0) {
   pathMPC.solve();
@@ -86,7 +113,18 @@ TOSCA::TOSCA(rai::Configuration& C, rai::Array<ObjectiveL> _phiflag, rai::Array<
 
 }
 
-void TOSCA::updateWaypoints(const rai::Configuration& C){
+SequenceController::SequenceController(rai::Configuration& C, ObjectiveL phi, const arr& qHome)
+  : pathMPC(C, phi, qHome),
+    timingMPC(pathMPC.path, 1e0) {
+
+  uint K = pathMPC.komo.T;
+
+  timingMPC.tangents = zeros(K-1, qHome.N);
+  timingMPC.tangents[-1] = pathMPC.path[-1] - pathMPC.path[-0];
+  op_normalize(timingMPC.tangents[-1]());
+}
+
+void SequenceController::updateWaypoints(const rai::Configuration& C){
   pathMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
   //      pathProblem.reinit(q, qDot);
   pathMPC.solve();
@@ -95,15 +133,15 @@ void TOSCA::updateWaypoints(const rai::Configuration& C){
   //      msg <<" T:" <<pathProblem.komo.timeTotal <<" f:" <<pathProblem.komo.sos <<" eq:" <<pathProblem.komo.eq <<" iq:" <<pathProblem.komo.ineq;
 }
 
-void TOSCA::updateTiming(double ctrlTime, const arr& q_real, const arr& qDot_real){
-  //-- flag hunting update: update path
+void SequenceController::updateTiming(double ctrlTime, const arr& q_real, const arr& qDot_real){
+  //-- adopt the new path
   timingMPC.update_flags(pathMPC.path);
 
-  //-- flag hunting update: progress time (potentially phase) of
+  //-- progress time (potentially phase)
   if(!timingMPC.done() && ctrlTimeLast>0.) timingMPC.update_progressTime(ctrlTime - ctrlTimeLast);
   ctrlTimeLast = ctrlTime;
 
-  //-- flag hunting update: phase backtracking
+  //-- phase backtracking
   //    if(F.done()){
   //      if(phiflag.elem(-1).maxError(C) > 1e-2) F.update_backtrack();
   //    }
@@ -125,7 +163,7 @@ void TOSCA::updateTiming(double ctrlTime, const arr& q_real, const arr& qDot_rea
   msg <<" tau: " <<timingMPC.tau << ctrlTime + timingMPC.getTimes(); // <<' ' <<F.vels;
 }
 
-void TOSCA::cycle(const rai::Configuration& C, const arr& q_real, const arr& qDot_real, double ctrlTime){
+void SequenceController::cycle(const rai::Configuration& C, const arr& q_real, const arr& qDot_real, double ctrlTime){
   msg.clear();
   msg <<"CYCLE ctrlTime:" <<ctrlTime; //<<' ' <<q;
 
@@ -133,11 +171,25 @@ void TOSCA::cycle(const rai::Configuration& C, const arr& q_real, const arr& qDo
   updateTiming(ctrlTime, q_real, qDot_real);
 }
 
-void TOSCA::report(const rai::Configuration& C, const rai::Array<ObjectiveL>& phiflag, const rai::Array<ObjectiveL>& phirun){
+rai::CubicSplineCtor SequenceController::getSpline(double realtime){
+  if(timingMPC.done() || !pathMPC.feasible) return {arr{}, arr{}, arr{}};
+  arr pts = timingMPC.getFlags();
+  arr vels = timingMPC.getVels();
+  arr times = timingMPC.getTimes();
+  times -= realtime - ctrlTimeLast;
+  return {pts, vels, times};
+}
+
+void SequenceController::report(const rai::Configuration& C, const rai::Array<ObjectiveL>& phiflag, const rai::Array<ObjectiveL>& phirun){
   msg <<" (fea) "
      <<phirun.elem(0).maxError(C, 0) <<' '
     <<phiflag.elem(0).maxError(C, 0) <<' '
    <<phirun.elem(1).maxError(C, 0) <<' '
   <<phiflag.elem(1).maxError(C, 0);
+  cout <<msg <<endl;
+}
+
+void SequenceController::report(const rai::Configuration& C, const ObjectiveL& phi) {
+  msg <<" (fea) " <<phi.maxError(C, 0);
   cout <<msg <<endl;
 }
