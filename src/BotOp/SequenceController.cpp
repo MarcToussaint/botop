@@ -136,7 +136,7 @@ void SequenceController::updateWaypoints(const rai::Configuration& C){
   //      msg <<" T:" <<pathProblem.komo.timeTotal <<" f:" <<pathProblem.komo.sos <<" eq:" <<pathProblem.komo.eq <<" iq:" <<pathProblem.komo.ineq;
 }
 
-void SequenceController::updateTiming(double ctrlTime, const arr& q_real, const arr& qDot_real){
+void SequenceController::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, double ctrlTime, const arr& q_real, const arr& qDot_real){
   //-- adopt the new path
   timingMPC.update_flags(pathMPC.path);
 
@@ -145,12 +145,17 @@ void SequenceController::updateTiming(double ctrlTime, const arr& q_real, const 
   ctrlTimeLast = ctrlTime;
 
   //-- phase backtracking
-  //    if(F.done()){
-  //      if(phiflag.elem(-1).maxError(C) > 1e-2) F.update_backtrack();
-  //    }
-  //    if(!F.done()){
-  //      while(phirun.elem(F.phase).maxError(C) > 1.) F.update_backtrack();
-  //    }
+  if(timingMPC.done()){
+    if(phi.maxError(C, timingMPC.phase) > 0.1){
+      timingMPC.update_backtrack();
+    }
+  }
+  if(!timingMPC.done()){
+    while(phi.maxError(C, 0.5+timingMPC.phase) > 0.1){
+      phi.maxError(C, 0.5+timingMPC.phase, 1); //verbose
+      timingMPC.update_backtrack();
+    }
+  }
 
   //-- solve the timing problem
   if(!timingMPC.done()){
@@ -166,12 +171,12 @@ void SequenceController::updateTiming(double ctrlTime, const arr& q_real, const 
   msg <<" tau: " <<timingMPC.tau << ctrlTime + timingMPC.getTimes(); // <<' ' <<F.vels;
 }
 
-void SequenceController::cycle(const rai::Configuration& C, const arr& q_real, const arr& qDot_real, double ctrlTime){
+void SequenceController::cycle(const rai::Configuration& C, const ObjectiveL& phi, const arr& q_real, const arr& qDot_real, double ctrlTime){
   msg.clear();
   msg <<"CYCLE ctrlTime:" <<ctrlTime; //<<' ' <<q;
 
   updateWaypoints(C);
-  updateTiming(ctrlTime, q_real, qDot_real);
+  updateTiming(C, phi, ctrlTime, q_real, qDot_real);
 }
 
 rai::CubicSplineCtor SequenceController::getSpline(double realtime){
@@ -193,6 +198,9 @@ void SequenceController::report(const rai::Configuration& C, const rai::Array<Ob
 }
 
 void SequenceController::report(const rai::Configuration& C, const ObjectiveL& phi) {
-  msg <<" (fea) " <<phi.maxError(C, 0);
+  msg <<" (fea) " <<phi.maxError(C, 0.5+timingMPC.phase)
+     <<' ' <<phi.maxError(C, 1.+timingMPC.phase)
+    <<' ' <<phi.maxError(C, 1.5+timingMPC.phase)
+   <<' ' <<phi.maxError(C, 2.+timingMPC.phase);
   cout <<msg <<endl;
 }

@@ -33,8 +33,8 @@ struct SequenceController{
   SequenceController(rai::Configuration& C, ObjectiveL phi, const arr& qHome={});
 
   void updateWaypoints(const rai::Configuration& C);
-  void updateTiming(double ctrlTime, const arr& q_real, const arr& qDot_real);
-  void cycle(const rai::Configuration& C, const arr& q_real, const arr& qDot_real, double ctrlTime);
+  void updateTiming(const rai::Configuration& C, const ObjectiveL& phi, double ctrlTime, const arr& q_real, const arr& qDot_real);
+  void cycle(const rai::Configuration& C, const ObjectiveL& phi, const arr& q_real, const arr& qDot_real, double ctrlTime);
   rai::CubicSplineCtor getSpline(double realtime);
   void report(const rai::Configuration& C, const rai::Array<ObjectiveL>& phiflag, const rai::Array<ObjectiveL>& phirun);
   void report(const rai::Configuration& C, const ObjectiveL& phi);
