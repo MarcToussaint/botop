@@ -13,7 +13,8 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
   : RobotAbstraction(_cmd, _state),
     Thread("FrankaThread_Emulated", _tau/hyperSpeed),
     tau(_tau),
-    emuConfig(C){
+    emuConfig(C),
+    noise_sig(.001){
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
@@ -64,7 +65,7 @@ void ControlEmulator::step(){
     arr tauExternal;
     tauExternal = zeros(q_real.N);
     auto stateSet = state.set();
-    stateSet->time=ctrlTime;
+    stateSet->ctrlTime=ctrlTime;
     stateSet->q.resize(q_real.N).setZero();
     stateSet->qDot.resize(qDot_real.N).setZero();
     stateSet->tauExternal.resize(q_real.N).setZero();

@@ -66,20 +66,20 @@ void test_withoutBotWrapper() {
   robot->cmd.set()->ref = sp;
 
   //1st motion:
-  double ctrlTime = robot->state.get()->time;
+  double ctrlTime = robot->state.get()->ctrlTime;
   sp->report(ctrlTime);
   sp->append((qT, q0).reshape(2,-1), zeros(2,q0.N), arr{2., 4.}, ctrlTime);
 //  sp->append((qT, q0).reshape(2,-1), arr{2., 4.}, ctrlTime, true);
   sp->report(ctrlTime);
 
   for(;;){
-    if(C.watch(false, STRING("time: "<<robot->state.get()->time <<" - hit 'q' to append more"))=='q') break;
+    if(C.watch(false, STRING("time: "<<robot->state.get()->ctrlTime <<" - hit 'q' to append more"))=='q') break;
     C.setJointState(robot->state.get()->q);
     rai::wait(.1);
   }
 
   //2nd motion:
-  ctrlTime = robot->state.get()->time;
+  ctrlTime = robot->state.get()->ctrlTime;
   sp->moveTo(qT, 1., ctrlTime, false);
   cout <<"OVERRIDE AT t=" <<ctrlTime <<endl;
   sp->report(ctrlTime);
@@ -89,7 +89,7 @@ void test_withoutBotWrapper() {
   rai::wait(.1);
   C.gl()->resetPressedKey();
   for(;;){
-    if(C.watch(false, STRING("time: "<<robot->state.get()->time))=='q') break;
+    if(C.watch(false, STRING("time: "<<robot->state.get()->ctrlTime))=='q') break;
     C.setJointState(robot->state.get()->q);
     rai::wait(.1);
   }

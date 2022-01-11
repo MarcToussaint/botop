@@ -66,14 +66,14 @@ BotOp::~BotOp(){
 }
 
 double BotOp::get_t(){
-  return state.get()->time;
+  return state.get()->ctrlTime;
 }
 
 void BotOp::getState(arr& q, arr& qDot, double& time){
   auto stateGet = state.get();
   q = stateGet->q;
   qDot = stateGet->qDot;
-  time = stateGet->time;
+  time = stateGet->ctrlTime;
 }
 
 arr BotOp::get_q() {
@@ -102,7 +102,7 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   if(optitrack) optitrack->pull(C);
 
 //  C.gl()->raiseWindow();
-  double ctrlTime = state.get()->time;
+  double ctrlTime = get_t();
   keypressed = C.watch(false, STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
   if(keypressed) C.gl()->resetPressedKey();
   if(keypressed==13) return false;

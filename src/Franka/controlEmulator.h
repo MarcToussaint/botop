@@ -36,7 +36,7 @@ private:
   FrameL collisionPairs;
 
   arr noise;
-  double noise_th, noise_sig=.001;
+  double noise_th, noise_sig;
 
   void step();
 };

@@ -28,9 +28,9 @@ struct SequenceControllerExperiment{
     if(!bot){
       bot = make_unique<BotOp>(C, rai::checkParameter<bool>("real"));
       bot->home(C);
+      bot->setControllerWriteData(1);
       rai::wait(.2);
     }
-    //bot->setControllerWriteData(2);
 
     //-- iterate
     tic.waitForTic();

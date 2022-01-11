@@ -103,14 +103,20 @@ void FrankaThread::step(){
     qDot_real = qDotFilter;
 
     //-- get real time
-    ctrlTime += .001; //HARD CODED: 1kHz
+    //ctrlTime += .001; //HARD CODED: 1kHz
     //ctrlTime = rai::realTime();
 
-    //-- publish state
+    //-- publish state & INCREMENT CTRL TIME
     arr state_q_real, state_qDot_real;
     {
       auto stateSet = state.set();
-      stateSet->time = ctrlTime;
+      //1) increment ctrlTime if no stall and lead thread:   robotID==0
+      if(robotID==0){
+        if(!stateSet->stall) stateSet->ctrlTime += .001; //HARD CODED: 1kHz
+        else stateSet->stall--;
+      }
+      //2) adopt ctrlTime!
+      ctrlTime = stateSet->ctrlTime;
       for(uint i=0;i<7;i++){
         stateSet->q.elem(qIndices(i)) = q_real.elem(i);
         stateSet->qDot.elem(qIndices(i)) = qDot_real.elem(i);
@@ -171,7 +177,7 @@ void FrankaThread::step(){
     if(q_ref.N==7){
       double err = length(q_ref - q_real);
       if(err>.05){ //if(err>.02){ //stall!
-        ctrlTime -= .001; //no progress in reference time!
+        state.set()->stall = 2; //no progress in reference time! for at least 2 iterations (to ensure continuous stall with multiple threads)
         cout <<"STALLING - step:" <<steps <<endl;
       }
     }
