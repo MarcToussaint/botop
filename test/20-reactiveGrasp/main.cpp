@@ -13,16 +13,12 @@ struct SequenceControllerExperiment{
   uint stepCount = 0;
 
   SequenceControllerExperiment() : tic(.1){
-    C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+    C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable-calibrated.g"));
     qHome = C.getJointState();
   }
 
   bool step(ObjectiveL& phi){
     stepCount++;
-
-    //-- Sequence of Constraints MPC
-    if(!ctrl)
-      ctrl = make_unique<SequenceController>(C, phi, qHome);
 
     //-- start a robot thread
     if(!bot){
@@ -31,6 +27,10 @@ struct SequenceControllerExperiment{
       bot->setControllerWriteData(1);
       rai::wait(.2);
     }
+
+    //-- Sequence of Constraints MPC
+    if(!ctrl)
+      ctrl = make_unique<SequenceController>(C, phi, qHome);
 
     //-- iterate
     tic.waitForTic();
@@ -73,18 +73,24 @@ void testBallFollowing() {
   phi.add({1., 2.}, FS_positionRel, ex.C, {"ball", "l_gripper"}, OT_eq, {{2,3},{1e1,0,0,0,1e1,0}});
   phi.add({2.}, FS_positionDiff, ex.C, {"l_gripper", "ball"}, OT_eq, {1e1});
 
+  bool useSimulatedBall=!rai::getParameter<bool>("bot/useOptitrack", false);
   arr ballVel = {.0, .0, .0};
   arr ballCen = ex.C["ball"]->getPosition();
+
   while(ex.step(phi)){
-    if(!(ex.stepCount%20)){
-      ballVel(0) = .01 * rnd.gauss();
-      ballVel(2) = .01 * rnd.gauss();
+    if(useSimulatedBall){
+      if(!(ex.stepCount%20)){
+        ballVel(0) = .01 * rnd.gauss();
+        ballVel(2) = .01 * rnd.gauss();
+      }
+      if(!(ex.stepCount%40)) ballVel=0.;
+      arr pos = ex.C["ball"]->getPosition();
+      pos += ballVel;
+      pos = ballCen + .95 * (pos - ballCen);
+      ex.C["ball"]->setPosition(pos);
+    }else{
+      ex.C["ball"]->setPosition(ex.C["HandStick"]->getPosition());
     }
-    if(!(ex.stepCount%40)) ballVel=0.;
-    arr pos = ex.C["ball"]->getPosition();
-    pos += ballVel;
-    pos = ballCen + .95 * (pos - ballCen);
-    ex.C["ball"]->setPosition(pos);
   }
 }
 

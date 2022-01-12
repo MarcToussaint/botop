@@ -39,7 +39,6 @@ arr getLoopPath(rai::Configuration& C){
   komo.addObjective({5.}, make_shared<F_qItself>(C.getCtrlFramesAndScale()), {}, OT_eq, {1e2}, {}, 1);
 
   komo.optimize();
-  komo.view(true);
   arr q = komo.getPath_qOrg();
   if(C["l_gripper"]){
     CHECK_EQ(q.d1, 14, "");
@@ -49,8 +48,8 @@ arr getLoopPath(rai::Configuration& C){
     q.reshape(q.d0,14);
     komo.x = q;
     komo.set_x(q);
-    komo.view(true);
   }
+  komo.view(true);
   return q;
 }
 

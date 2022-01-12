@@ -159,7 +159,7 @@ void SequenceController::updateTiming(const rai::Configuration& C, const Objecti
 
   //-- solve the timing problem
   if(!timingMPC.done()){
-    if(timingMPC.tau(timingMPC.phase)>-.3){
+    if(timingMPC.tau(timingMPC.phase)>.2){
       auto ret = timingMPC.solve(q_real, qDot_real, 0);
       msg <<" (timing) ph:" <<timingMPC.phase <<" #:" <<ret->evals;
       //      msg <<" T:" <<ret->time <<" f:" <<ret->f;
