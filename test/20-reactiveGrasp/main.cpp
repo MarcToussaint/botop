@@ -12,7 +12,7 @@ struct SequenceControllerExperiment{
   Metronome tic;
   uint stepCount = 0;
 
-  SequenceControllerExperiment() : tic(.1){
+  SequenceControllerExperiment(double cycleTime=.1) : tic(cycleTime){
     C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable-calibrated.g"));
     qHome = C.getJointState();
   }
@@ -35,13 +35,17 @@ struct SequenceControllerExperiment{
     //-- iterate
     tic.waitForTic();
 
+    //-- get optitrack
+    if(bot->optitrack) bot->optitrack->pull(C);
+
     //-- get current state (time,q,qDot)
-    arr q,qDot;
+    arr q,qDot, q_ref, qDot_ref;
     double ctrlTime = 0.;
     bot->getState(q, qDot, ctrlTime);
+    bot->getReference(q_ref, qDot_ref, NoArr, q, qDot, ctrlTime);
 
     //-- iterate MPC
-    ctrl->cycle(C, phi, q, qDot, ctrlTime);
+    ctrl->cycle(C, phi, q_ref, qDot_ref, q, qDot, ctrlTime);
     ctrl->report(C, phi);
 
     //-- send leap target
@@ -60,7 +64,7 @@ struct SequenceControllerExperiment{
 //===========================================================================
 
 void testBallFollowing() {
-  SequenceControllerExperiment ex;
+  SequenceControllerExperiment ex(.1);
 
   ex.C.addFrame("ball", "table")
       ->setShape(rai::ST_sphere, {.03})

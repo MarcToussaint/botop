@@ -154,7 +154,7 @@ void ControlEmulator::step(){
 #endif
 
   //-- data log?
-  if(writeData>0 && !(step_count%10)){
+  if(writeData>0 && !(step_count%1)){
     if(!dataFile.is_open()) dataFile.open("z.panda.dat");
     dataFile <<ctrlTime <<' '; //single number
     q_real.writeRaw(dataFile); //7

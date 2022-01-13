@@ -136,7 +136,7 @@ void SequenceController::updateWaypoints(const rai::Configuration& C){
   //      msg <<" T:" <<pathProblem.komo.timeTotal <<" f:" <<pathProblem.komo.sos <<" eq:" <<pathProblem.komo.eq <<" iq:" <<pathProblem.komo.ineq;
 }
 
-void SequenceController::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, double ctrlTime, const arr& q_real, const arr& qDot_real){
+void SequenceController::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, double ctrlTime, const arr& q_real, const arr& qDot_real, const arr& q_ref, const arr& qDot_ref){
   //-- adopt the new path
   timingMPC.update_flags(pathMPC.path);
 
@@ -159,8 +159,9 @@ void SequenceController::updateTiming(const rai::Configuration& C, const Objecti
 
   //-- solve the timing problem
   if(!timingMPC.done()){
-    if(timingMPC.tau(timingMPC.phase)>.2){
-      auto ret = timingMPC.solve(q_real, qDot_real, 0);
+    if(timingMPC.tau(timingMPC.phase)>-.2){
+      //auto ret = timingMPC.solve(q_real, qDot_real, 0);
+      auto ret = timingMPC.solve(q_ref, qDot_ref, 0);
       msg <<" (timing) ph:" <<timingMPC.phase <<" #:" <<ret->evals;
       //      msg <<" T:" <<ret->time <<" f:" <<ret->f;
     }else{
@@ -171,12 +172,12 @@ void SequenceController::updateTiming(const rai::Configuration& C, const Objecti
   msg <<" tau: " <<timingMPC.tau << ctrlTime + timingMPC.getTimes(); // <<' ' <<F.vels;
 }
 
-void SequenceController::cycle(const rai::Configuration& C, const ObjectiveL& phi, const arr& q_real, const arr& qDot_real, double ctrlTime){
+void SequenceController::cycle(const rai::Configuration& C, const ObjectiveL& phi, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
   msg.clear();
   msg <<"CYCLE ctrlTime:" <<ctrlTime; //<<' ' <<q;
 
   updateWaypoints(C);
-  updateTiming(C, phi, ctrlTime, q_real, qDot_real);
+  updateTiming(C, phi, ctrlTime, q_real, qDot_real, q_ref, qDot_ref);
 }
 
 rai::CubicSplineCtor SequenceController::getSpline(double realtime){

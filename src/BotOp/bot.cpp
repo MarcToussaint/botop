@@ -69,11 +69,15 @@ double BotOp::get_t(){
   return state.get()->ctrlTime;
 }
 
-void BotOp::getState(arr& q, arr& qDot, double& time){
+void BotOp::getState(arr& q_real, arr& qDot_real, double& ctrlTime){
   auto stateGet = state.get();
-  q = stateGet->q;
-  qDot = stateGet->qDot;
-  time = stateGet->ctrlTime;
+  q_real = stateGet->q;
+  qDot_real = stateGet->qDot;
+  ctrlTime = stateGet->ctrlTime;
+}
+
+void BotOp::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, arr& q_real, arr& qDot_real, double ctrlTime){
+  cmd.get()->ref->getReference(q_ref, qDot_ref, qDDot_ref, q_real, qDot_real, ctrlTime);
 }
 
 arr BotOp::get_q() {
