@@ -13,6 +13,22 @@ int main(int argc, char * argv[]){
 
   BotOp bot(C, !rai::checkParameter<bool>("sim"));
 
+  if(rai::checkParameter<bool>("open")){
+    bot.hold(false, true);
+    if(bot.gripperL) bot.gripperL->open();
+    if(bot.gripperR) bot.gripperR->open();
+    if(bot.gripperL) while(!bot.gripperL->isDone()) rai::wait(.1);
+    if(bot.gripperR) while(!bot.gripperR->isDone()) rai::wait(.1);
+  }
+
+  if(rai::checkParameter<bool>("close")){
+    bot.hold(false, true);
+    if(bot.gripperL) bot.gripperL->close();
+    if(bot.gripperR) bot.gripperR->close();
+    if(bot.gripperL) while(!bot.gripperL->isDone()) rai::wait(.1);
+    if(bot.gripperR) while(!bot.gripperR->isDone()) rai::wait(.1);
+  }
+
   if(rai::checkParameter<bool>("float")){
     bot.hold(true, false);
     while(bot.step(C));
@@ -52,20 +68,6 @@ int main(int argc, char * argv[]){
     bot.move(path, {5.});
 
     while(bot.step(C));
-  }
-
-  if(rai::checkParameter<bool>("open")){
-    if(bot.gripperL) bot.gripperL->open();
-    if(bot.gripperR) bot.gripperR->open();
-    if(bot.gripperL) while(!bot.gripperL->isDone()) rai::wait(.1);
-    if(bot.gripperR) while(!bot.gripperR->isDone()) rai::wait(.1);
-  }
-
-  if(rai::checkParameter<bool>("close")){
-    if(bot.gripperL) bot.gripperL->close();
-    if(bot.gripperR) bot.gripperR->close();
-    if(bot.gripperL) while(!bot.gripperL->isDone()) rai::wait(.1);
-    if(bot.gripperR) while(!bot.gripperR->isDone()) rai::wait(.1);
   }
 
   cout <<"bye bye" <<endl;

@@ -105,7 +105,7 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   //update optitrack state
   if(optitrack) optitrack->pull(C);
 
-//  C.gl()->raiseWindow();
+  if(rai::getParameter("bot/raiseWindow",false)) C.gl()->raiseWindow();
   double ctrlTime = get_t();
   keypressed = C.watch(false, STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
   if(keypressed) C.gl()->resetPressedKey();
