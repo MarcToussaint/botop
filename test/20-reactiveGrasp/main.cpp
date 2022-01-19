@@ -192,10 +192,11 @@ void testPushing() {
 
   //-- define constraints
   ObjectiveL phi;
-  //phi.add({1.}, FS_distance, C, {"stickTip", "puck"}, OT_eq, {1e1});
-  phi.add({1.}, make_shared<F_PushRadiusPrior>(.09), C, {"stickTip", "puck", "target"}, OT_eq, {1e1});
-  phi.add({2.}, make_shared<F_PushRadiusPrior>(.06), C, {"stickTip", "puck", "target"}, OT_eq, {1e1});
-  phi.add({1., 2.}, make_shared<F_PushAligned>(), C, {"stickTip", "puck", "target"}, OT_eq, {1e1});
+  //phi.add({1.}, FS_positionDiff, C, {"stickTip", "puck"}, OT_eq, {1e1});
+  phi.add({1.}, make_shared<F_PushRadiusPrior>(.13), C, {"stickTip", "puck", "target"}, OT_eq, {1e1}, {0., 0., .08});
+//  phi.add({1.}, FS_positionDiff, C, {"stickTip", "puck"}, OT_eq, {{1,3},{0.,0.,1e1}, {0., 0., .1});
+  phi.add({2.}, make_shared<F_PushRadiusPrior>(.02), C, {"stickTip", "puck", "target"}, OT_eq, {1e1});
+  phi.add({1., 2.}, make_shared<F_PushAligned>(), C, {"stickTip", "puck", "target"}, OT_eq, {{1,3},{0,0,1e1}});
   //phi.add({1., 2.}, FS_positionRel, C, {"ball", "l_gripper"}, OT_eq, {{2,3},{1e1,0,0,0,1e1,0}});
   //phi.add({2.}, FS_positionDiff, C, {"l_gripper", "ball"}, OT_eq, {1e1});
 
@@ -218,10 +219,14 @@ void testPushing() {
 //    komo.addObjective({s.phase1}, FS_pose, {s.frames(1)}, OT_eq, {1e0}, {}, 1);
 //  }
 
+  bool useOptitrack=rai::getParameter<bool>("bot/useOptitrack", false);
 
-  SequenceControllerExperiment ex(C, phi);
-
-  while(ex.step(phi));
+  SequenceControllerExperiment ex(C);
+  while(ex.step(phi)){
+    if(useOptitrack){
+      C["puck"]->setPosition(C["b1"]->getPosition());
+    }
+  }
 }
 
 //===========================================================================
