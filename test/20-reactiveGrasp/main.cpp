@@ -221,7 +221,7 @@ void testPushing() {
 
   bool useOptitrack=rai::getParameter<bool>("bot/useOptitrack", false);
 
-  SequenceControllerExperiment ex(C);
+  SequenceControllerExperiment ex(C, phi);
   while(ex.step(phi)){
     if(useOptitrack){
       C["puck"]->setPosition(C["b1"]->getPosition());
@@ -272,13 +272,6 @@ void testDroneRace(){
   rai::CubicSpline S;
   F.getCubicSpline(S, x0, v0);
 
-  //display
-  rai::Mesh M;
-  M.V = S.eval(range(0., S.times.last(), 100));
-  M.makeLineStrip();
-  C.gl()->add(M);
-  C.watch(true);
-
   //analyze only to plot the max vel/acc
   arr path = S.eval(range(0., S.times.last(), 100));
   double tau = S.times.last()/100.;
@@ -295,7 +288,14 @@ void testDroneRace(){
   arr ai = min(getAcc(path,ttau),1) / maxAcc;
   arr ji = min(getJerk(path,ttau),1) / maxJer;
   catCol(LIST(~~time, ~~v, ~~a, ~~j, ~~vi, ~~ai, ~~ji)).reshape(-1,7).writeRaw( FILE("z.dat") );
-  gnuplot("plot [:][-1.1:1.1] 'z.dat' us 1:2 t 'v', '' us 1:3 t 'a', '' us 1:5 t 'vmin', '' us 1:6 t 'amin'"); //, '' us 1:4 t 'j', , '' us 1:7 t 'jmin'
+  gnuplot("plot [:][-1.1:1.1] 'z.dat' us 1:2 t 'vmax', '' us 1:3 t 'amax', '' us 1:5 t 'vmin', '' us 1:6 t 'amin'"); //, '' us 1:4 t 'j', , '' us 1:7 t 'jmin'
+
+  //display
+  rai::Mesh M;
+  M.V = S.eval(range(0., S.times.last(), 100));
+  M.makeLineStrip();
+  C.gl()->add(M);
+  C.watch(true);
 
 
   //just sample & dump the spline
