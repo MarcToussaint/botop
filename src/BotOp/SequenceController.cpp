@@ -2,8 +2,7 @@
 
 #include <Optim/MP_Solver.h>
 
-WaypointMPC::WaypointMPC(rai::Configuration& C, rai::Array<ObjectiveL> phiflag, rai::Array<ObjectiveL> phirun, const arr& qHome){
-  komo.clearObjectives();
+WaypointMPC::WaypointMPC(rai::Configuration& C, const rai::Array<ObjectiveL>& phiflag, const rai::Array<ObjectiveL>& phirun, const arr& qHome){
   CHECK_EQ(phiflag.N, phirun.N, "");
   uint K=phiflag.N;
 
@@ -27,9 +26,7 @@ WaypointMPC::WaypointMPC(rai::Configuration& C, rai::Array<ObjectiveL> phiflag, 
   this->tau = komo.getPath_tau();
 }
 
-WaypointMPC::WaypointMPC(rai::Configuration& C, ObjectiveL phi, const arr& qHome){
-  komo.clearObjectives();
-
+WaypointMPC::WaypointMPC(rai::Configuration& C, const ObjectiveL& phi, const arr& qHome){
   double maxPhase=0.;
   for(auto& o:phi) {
     if(o->times.N) maxPhase = rai::MAX(maxPhase, o->times.max());
@@ -47,6 +44,15 @@ WaypointMPC::WaypointMPC(rai::Configuration& C, ObjectiveL phi, const arr& qHome
   if(qHome.N) komo.addObjective({}, FS_qItself, {}, OT_sos, {.1}, qHome);
 
   for(auto& o:phi) komo.addObjective(o->times, o->feat, {}, o->type);
+
+  komo.reset();
+  komo.initWithConstant(qHome);
+  path = komo.getPath_qOrg();
+  this->tau = komo.getPath_tau();
+}
+
+WaypointMPC::WaypointMPC(rai::Configuration& C, const KOMO& _komo, const arr& qHome){
+  komo.clone(_komo, false);
 
   komo.reset();
   komo.initWithConstant(qHome);
@@ -100,7 +106,7 @@ void WaypointMPC::solve(){
 
 //===========================================================================
 
-SequenceController::SequenceController(rai::Configuration& C, rai::Array<ObjectiveL> _phiflag, rai::Array<ObjectiveL> _phirun, const arr& qHome)
+SequenceController::SequenceController(rai::Configuration& C, const rai::Array<ObjectiveL>& _phiflag, const rai::Array<ObjectiveL>& _phirun, const arr& qHome)
   : pathMPC(C, _phiflag, _phirun, qHome),
     timingMPC(pathMPC.path, 1e0) {
   pathMPC.solve();
@@ -114,8 +120,21 @@ SequenceController::SequenceController(rai::Configuration& C, rai::Array<Objecti
   }
 }
 
-SequenceController::SequenceController(rai::Configuration& C, ObjectiveL phi, const arr& qHome)
+SequenceController::SequenceController(rai::Configuration& C, const ObjectiveL& phi, const arr& qHome)
   : pathMPC(C, phi, qHome),
+    timingMPC(pathMPC.path, 1e0) {
+
+  uint K = pathMPC.komo.T;
+
+  timingMPC.tangents = zeros(K-1, qHome.N);
+  for(uint k=1; k<K; k++){
+    timingMPC.tangents[k-1] = pathMPC.path[k] - pathMPC.path[k-1];
+    op_normalize(timingMPC.tangents[k-1]());
+  }
+}
+
+SequenceController::SequenceController(rai::Configuration& C, const KOMO& _komo, const arr& qHome)
+  : pathMPC(C, _komo, qHome),
     timingMPC(pathMPC.path, 1e0) {
 
   uint K = pathMPC.komo.T;
