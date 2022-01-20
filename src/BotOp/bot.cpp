@@ -53,6 +53,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 
   //-- launch OptiTrack
   if(rai::getParameter<bool>("bot/useOptitrack", false)){
+    if(!useRealRobot) LOG(-1) <<"useOptitrack with real:false -- that's usually wrong!";
     optitrack = make_unique<rai::OptiTrack>();
     optitrack->pull(C);
   }

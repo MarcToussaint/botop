@@ -133,9 +133,10 @@ SequenceController::SequenceController(rai::Configuration& C, const ObjectiveL& 
   }
 }
 
-SequenceController::SequenceController(rai::Configuration& C, const KOMO& _komo, const arr& qHome)
-  : pathMPC(C, _komo, qHome),
-    timingMPC(pathMPC.path, 1e0) {
+SequenceController::SequenceController(rai::Configuration& C, const KOMO& komo, const arr& qHome,
+                                       double timeCost, double ctrlCost)
+  : pathMPC(C, komo, qHome),
+    timingMPC(pathMPC.path, timeCost, ctrlCost) {
 
   uint K = pathMPC.komo.T;
 
@@ -170,7 +171,7 @@ void SequenceController::updateTiming(const rai::Configuration& C, const Objecti
     }
   }
   if(!timingMPC.done()){
-    while(phi.maxError(C, 0.5+timingMPC.phase) > 0.1){
+    if(phi.maxError(C, 0.5+timingMPC.phase) > 0.1){ //OR while?
       phi.maxError(C, 0.5+timingMPC.phase, 1); //verbose
       timingMPC.update_backtrack();
     }
