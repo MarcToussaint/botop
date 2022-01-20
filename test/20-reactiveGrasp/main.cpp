@@ -10,21 +10,25 @@
 
 struct SequenceControllerExperiment{
   rai::Configuration& C;
-  SequenceController ctrl;
+  unique_ptr<SequenceController> ctrl;
   unique_ptr<BotOp> bot;
   Metronome tic;
   uint stepCount = 0;
 
+  KOMO *__komo=0;
+  double timeCost=1e0, ctrlCost=1e0;
+
   SequenceControllerExperiment(rai::Configuration& _C, ObjectiveL& phi, double cycleTime=.1)
     : C(_C),
-      ctrl(C, phi, C.getJointState()),
-      tic(cycleTime){
+      tic(cycleTime)
+      {
   }
 
-  SequenceControllerExperiment(rai::Configuration& _C, const KOMO& komo, double cycleTime=.1, double timeCost=1e1, double ctrlCost=1e-2)
+  SequenceControllerExperiment(rai::Configuration& _C, KOMO& komo, double cycleTime=.1, double timeCost=1e1, double ctrlCost=1e-2)
     : C(_C),
-      ctrl(C, komo, C.getJointState(), timeCost, ctrlCost),
-      tic(cycleTime){
+      tic(cycleTime),
+      __komo(&komo),
+      timeCost(timeCost), ctrlCost(ctrlCost){
   }
 
   bool step(ObjectiveL& phi){
@@ -35,7 +39,17 @@ struct SequenceControllerExperiment{
       bot = make_unique<BotOp>(C, rai::checkParameter<bool>("real"));
       bot->home(C);
       bot->setControllerWriteData(1);
+      if(bot->optitrack) bot->optitrack->pull(C);
       rai::wait(.2);
+    }
+
+    if(!ctrl){
+      //needs to be done AFTER bot initialization (optitrack..)
+      if(__komo){
+        ctrl = make_unique<SequenceController>(C, *__komo, C.getJointState(), timeCost, ctrlCost);
+      }else{
+        ctrl = make_unique<SequenceController>(C, phi, C.getJointState(), timeCost, ctrlCost);
+      }
     }
 
     //-- iterate
@@ -51,11 +65,11 @@ struct SequenceControllerExperiment{
     bot->getReference(q_ref, qDot_ref, NoArr, q, qDot, ctrlTime);
 
     //-- iterate MPC
-    ctrl.cycle(C, phi, q_ref, qDot_ref, q, qDot, ctrlTime);
-    ctrl.report(C, phi);
+    ctrl->cycle(C, phi, q_ref, qDot_ref, q, qDot, ctrlTime);
+    ctrl->report(C, phi);
 
     //-- send leap target
-    auto sp = ctrl.getSpline(bot->get_t());
+    auto sp = ctrl->getSpline(bot->get_t());
     if(sp.pts.N) bot->move(sp.pts, sp.vels, sp.times, true);
 
     //-- update C
@@ -138,7 +152,7 @@ void testBallReaching() {
   komo.addObjective({2.}, FS_positionDiff, {"l_gripper", "ball"}, OT_eq, {6e1});
 
   SequenceControllerExperiment ex(C, komo, .1, 1e0, 1e0);
-  ex.ctrl.timingMPC.backtrackingTable=uintA{0, 1};
+  ex.ctrl->timingMPC.backtrackingTable=uintA{0, 1};
 
   bool useSimulatedBall=!rai::getParameter<bool>("bot/useOptitrack", false);
   arr ballVel = {.0, .0, .0};
@@ -198,7 +212,7 @@ void testPushing() {
   phi.add({1.}, make_shared<F_PushRadiusPrior>(.13), C, {"stickTip", "puck", "target"}, OT_eq, {1e1}, {0., 0., .1});
   phi.add({2.}, make_shared<F_PushRadiusPrior>(.10), C, {"stickTip", "puck", "target"}, OT_eq, {1e1});
   phi.add({3.}, make_shared<F_PushRadiusPrior>(.02), C, {"stickTip", "puck", "target"}, OT_eq, {1e1});
-  phi.add({2., 3.}, make_shared<F_PushAligned>(), C, {"stickTip", "puck", "target"}, OT_eq, {{1,3},{0,0,1e1}});
+  phi.add({1., 3.}, make_shared<F_PushAligned>(), C, {"stickTip", "puck", "target"}, OT_eq, {{1,3},{0,0,1e1}});
   //phi.add({1., 2.}, FS_positionRel, C, {"ball", "l_gripper"}, OT_eq, {{2,3},{1e1,0,0,0,1e1,0}});
   //phi.add({2.}, FS_positionDiff, C, {"l_gripper", "ball"}, OT_eq, {1e1});
 
@@ -224,7 +238,8 @@ void testPushing() {
   bool useOptitrack=rai::getParameter<bool>("bot/useOptitrack", false);
 
   SequenceControllerExperiment ex(C, phi);
-  ex.ctrl.timingMPC.backtrackingTable=uintA{0, 0, 0};
+  ex.step(phi);
+  ex.ctrl->timingMPC.backtrackingTable=uintA{0, 0, 0, 0, 0};
 
   while(ex.step(phi)){
     if(useOptitrack){
@@ -320,9 +335,9 @@ int main(int argc, char * argv[]){
   rnd.seed(1);
 
   //testBallFollowing();
-  testBallReaching();
+  //testBallReaching();
   //testPnp();
-  //testPushing();
+  testPushing();
 //  testDroneRace();
 
 

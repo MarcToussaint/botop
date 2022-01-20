@@ -108,7 +108,7 @@ void WaypointMPC::solve(){
 
 SequenceController::SequenceController(rai::Configuration& C, const rai::Array<ObjectiveL>& _phiflag, const rai::Array<ObjectiveL>& _phirun, const arr& qHome)
   : pathMPC(C, _phiflag, _phirun, qHome),
-    timingMPC(pathMPC.path, 1e0) {
+    timingMPC(pathMPC.path, 1e0, 1e0) {
   pathMPC.solve();
 
   uint K = _phiflag.N;
@@ -120,9 +120,9 @@ SequenceController::SequenceController(rai::Configuration& C, const rai::Array<O
   }
 }
 
-SequenceController::SequenceController(rai::Configuration& C, const ObjectiveL& phi, const arr& qHome)
+SequenceController::SequenceController(rai::Configuration& C, const ObjectiveL& phi, const arr& qHome, double timeCost, double ctrlCost)
   : pathMPC(C, phi, qHome),
-    timingMPC(pathMPC.path, 1e0) {
+    timingMPC(pathMPC.path, timeCost, ctrlCost) {
 
   uint K = pathMPC.komo.T;
 
@@ -171,7 +171,7 @@ void SequenceController::updateTiming(const rai::Configuration& C, const Objecti
     }
   }
   if(!timingMPC.done()){
-    if(phi.maxError(C, 0.5+timingMPC.phase) > 0.1){ //OR while?
+    while(phi.maxError(C, 0.5+timingMPC.phase) > 0.1){ //OR while?
       phi.maxError(C, 0.5+timingMPC.phase, 1); //verbose
       timingMPC.update_backtrack();
     }

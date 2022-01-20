@@ -9,5 +9,5 @@ stick (l_gripper){
 puck (table){ Q:[.0 .4 .08]
             shape:ssCylinder size:[.06 .06 .005] color:[1 1 .6] }
 
-target (table){ Q:[-.6 .4 .08]
+target (table){ Q:[-.6 .3 .08]
             shape:ssCylinder size:[.06 .06 .005] color:[.6 1 .6] }

@@ -31,7 +31,7 @@ struct SequenceController{
   double ctrlTimeLast = -1.;
 
   SequenceController(rai::Configuration& C, const rai::Array<ObjectiveL>& _phiflag, const rai::Array<ObjectiveL>& _phirun, const arr& qHome={});
-  SequenceController(rai::Configuration& C, const ObjectiveL& phi, const arr& qHome={});
+  SequenceController(rai::Configuration& C, const ObjectiveL& phi, const arr& qHome={}, double timeCost=1e0, double ctrlCost=1e0);
   SequenceController(rai::Configuration& C, const KOMO& komo, const arr& qHome={}, double timeCost=1e0, double ctrlCost=1e0);
 
   void updateWaypoints(const rai::Configuration& C);
