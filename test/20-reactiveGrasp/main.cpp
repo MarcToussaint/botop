@@ -68,7 +68,7 @@ struct SequenceControllerExperiment{
     ctrl->cycle(C, phi, q_ref, qDot_ref, q, qDot, ctrlTime);
     ctrl->report(C, phi);
 
-    //-- send leap target
+    //-- send spline update
     auto sp = ctrl->getSpline(bot->get_t());
     if(sp.pts.N) bot->move(sp.pts, sp.vels, sp.times, true);
 
@@ -78,7 +78,6 @@ struct SequenceControllerExperiment{
 
     return true;
   }
-
 };
 
 //===========================================================================
@@ -372,8 +371,7 @@ void testDroneRace(){
 
 //===========================================================================
 
-
-int main(int argc, char * argv[]){
+int main(int argc, char *argv[]){
   rai::initCmdLine(argc, argv);
 
   //  rnd.clockSeed();

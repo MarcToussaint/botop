@@ -38,6 +38,8 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
           gripperR = make_unique<FrankaGripper>(1);
         }
       }
+    }else if(useArm=="none"){
+      LOG(0) <<"starting botop without ANY robot module";
     }else{
       HALT("you need a botUseArm configuration (right, left, both)");
     }
