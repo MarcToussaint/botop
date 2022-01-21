@@ -132,6 +132,18 @@ void testBallFollowing() {
 
 //===========================================================================
 
+void randomWalkPosition(rai::Frame* f, arr& centerPos, arr& velocity, double rate=.001){
+  arr pos = f->getPosition();
+  if(!centerPos.N) centerPos = pos;
+  if(!velocity.N) velocity = zeros(pos.N);
+  rndGauss(velocity, rate, true);
+  pos += velocity;
+  pos = centerPos + .9 * (pos - centerPos);
+  f->setPosition(pos);
+}
+
+//===========================================================================
+
 void testBallReaching() {
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable-calibrated.g"));
@@ -165,10 +177,7 @@ void testBallReaching() {
         ballVel(2) = .01 * rnd.gauss();
       }
       if(!(ex.stepCount%40)) ballVel=0.;
-      arr pos = C["ball"]->getPosition();
-      pos += ballVel;
-      pos = ballCen + .95 * (pos - ballCen);
-      C["ball"]->setPosition(pos);
+      randomWalkPosition(C["ball"], ballCen, ballVel);
     }else{
       C["ball"]->setPosition(C["HandStick"]->getPosition());
     }
@@ -291,12 +300,25 @@ void testDroneRace(){
   komo.addObjective({7.}, FS_position, {"drone"}, OT_eq, {1e1}, {0,-.5, 1.});
 
 
-  //-- not yet integrated
-  //SequenceControllerExperiment ex(C, komo);
-  //while(ex.step(komo.objectives));
+  arrA targetCen(4), targetVel(4);
 
+#if 1
+  //-- reactive control
+  SequenceControllerExperiment ex(C, komo, .1, 1e0, 1e0);
+  ex.step(komo.objectives);
+  ex.ctrl->tauCutoff = .1;
+  while(ex.step(komo.objectives)){
+    if(ex.ctrl->timingMPC.phase==5){ //hard code endless loop by phase backtracking
+      ex.ctrl->timingMPC.update_setPhase(1);
+    }
+    for(uint g=0;g<2;g++){
+      rai::Frame *target = C[STRING("target"<<g)];
+      randomWalkPosition(target, targetCen(g), targetVel(g), .003);
+    }
+  }
+
+#else
   //-- manually just optimize once and dump spline
-
   //optimize keyframes
   komo.optimize();
   komo.getReport(true);
@@ -344,6 +366,7 @@ void testDroneRace(){
     //time 3-positions 3-velocities
     cout <<t <<S.eval(t).modRaw() <<' ' <<S.eval(t,1).modRaw() <<endl;
   }
+#endif
 
 }
 
@@ -358,9 +381,9 @@ int main(int argc, char * argv[]){
 
   //testBallFollowing();
   //testBallReaching();
-  testPnp();
+  //testPnp();
   //testPushing();
-//  testDroneRace();
+  testDroneRace();
 
 
   LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';

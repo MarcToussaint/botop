@@ -8,6 +8,7 @@
 //A wrapper of KOMO to optimize waypoints for a given sequence of constraints
 struct WaypointMPC{
   KOMO komo;
+  arr qHome;
   uint steps=0;
   //result
   arr path;
@@ -28,7 +29,9 @@ struct SequenceController{
   WaypointMPC pathMPC;
   TimingMPC timingMPC;
   rai::String msg;
+  double precision = .1;
   double ctrlTimeLast = -1.;
+  double tauCutoff = -.1;
 
   SequenceController(rai::Configuration& C, const rai::Array<ObjectiveL>& _phiflag, const rai::Array<ObjectiveL>& _phirun, const arr& qHome={});
   SequenceController(rai::Configuration& C, const ObjectiveL& phi, const arr& qHome={}, double timeCost=1e0, double ctrlCost=1e0);

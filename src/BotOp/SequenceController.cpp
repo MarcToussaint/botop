@@ -51,7 +51,8 @@ WaypointMPC::WaypointMPC(rai::Configuration& C, const ObjectiveL& phi, const arr
   this->tau = komo.getPath_tau();
 }
 
-WaypointMPC::WaypointMPC(rai::Configuration& C, const KOMO& _komo, const arr& qHome){
+WaypointMPC::WaypointMPC(rai::Configuration& C, const KOMO& _komo, const arr& _qHome)
+  : qHome(_qHome){
   komo.clone(_komo, false);
 
   komo.reset();
@@ -65,6 +66,8 @@ void WaypointMPC::reinit(const rai::Configuration& C){
 }
 
 void WaypointMPC::solve(){
+  steps++;
+
   //re-run KOMO
   rai::OptOptions opt;
   opt.stopTolerance = 1e-4;
@@ -73,6 +76,7 @@ void WaypointMPC::solve(){
   komo.timeTotal=0.;
   komo.pathConfig.setJointStateCount=0;
   //komo.reportProblem();
+  komo.initWithConstant(qHome);
   komo.optimize(0., opt);
   //komo.checkGradients();
 
@@ -84,7 +88,12 @@ void WaypointMPC::solve(){
   komo.view(false, msg);
 
   path = komo.getPath_qOrg();
-  this->tau = komo.getPath_tau();
+  tau = komo.getPath_tau();
+
+  if(!feasible || komo.pathConfig.setJointStateCount>50){
+    komo.reset();
+    komo.initWithConstant(qHome);
+  }
 
   //  while(komo.view_play(true, 1.));
 
@@ -166,12 +175,12 @@ void SequenceController::updateTiming(const rai::Configuration& C, const Objecti
 
   //-- phase backtracking
   if(timingMPC.done()){
-    if(phi.maxError(C, timingMPC.phase) > 0.1){
+    if(phi.maxError(C, timingMPC.phase) > precision){
       timingMPC.update_backtrack();
     }
   }
   if(!timingMPC.done()){
-    while(phi.maxError(C, 0.5+timingMPC.phase) > 0.1){ //OR while?
+    while(phi.maxError(C, 0.5+timingMPC.phase) > precision){ //OR while?
       phi.maxError(C, 0.5+timingMPC.phase, 1); //verbose
       timingMPC.update_backtrack();
     }
@@ -179,7 +188,7 @@ void SequenceController::updateTiming(const rai::Configuration& C, const Objecti
 
   //-- solve the timing problem
   if(!timingMPC.done()){
-    if(timingMPC.tau(timingMPC.phase)>-.2){
+    if(timingMPC.tau(timingMPC.phase) > tauCutoff){
       //auto ret = timingMPC.solve(q_real, qDot_real, 0);
       auto ret = timingMPC.solve(q_ref, qDot_ref, 0);
       msg <<" (timing) ph:" <<timingMPC.phase <<" #:" <<ret->evals;
@@ -201,11 +210,12 @@ void SequenceController::cycle(const rai::Configuration& C, const ObjectiveL& ph
 }
 
 rai::CubicSplineCtor SequenceController::getSpline(double realtime){
-  if(timingMPC.done() || !pathMPC.feasible) return {arr{}, arr{}, arr{}};
+  if(timingMPC.done() || !pathMPC.feasible) return {};
   arr pts = timingMPC.getFlags();
   arr vels = timingMPC.getVels();
   arr times = timingMPC.getTimes();
   times -= realtime - ctrlTimeLast;
+  if(times.first()<tauCutoff) return {};
   return {pts, vels, times};
 }
 
