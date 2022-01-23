@@ -79,7 +79,7 @@ void BotOp::getState(arr& q_real, arr& qDot_real, double& ctrlTime){
   ctrlTime = stateGet->ctrlTime;
 }
 
-void BotOp::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, arr& q_real, arr& qDot_real, double ctrlTime){
+void BotOp::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
   cmd.get()->ref->getReference(q_ref, qDot_ref, qDDot_ref, q_real, qDot_real, ctrlTime);
 }
 

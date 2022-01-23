@@ -1,5 +1,5 @@
 #include <BotOp/bot.h>
-#include <BotOp/SequenceController.h>
+#include <BotOp/SecMPC.h>
 #include <KOMO/manipTools.h>
 #include <KOMO/pathTools.h>
 #include <Kin/viewer.h>
@@ -8,9 +8,9 @@
 
 //===========================================================================
 
-struct SequenceControllerExperiment{
+struct SecMPC_Experiments{
   rai::Configuration& C;
-  unique_ptr<SequenceController> ctrl;
+  unique_ptr<SecMPC> mpc;
   unique_ptr<BotOp> bot;
   Metronome tic;
   uint stepCount = 0;
@@ -18,13 +18,13 @@ struct SequenceControllerExperiment{
   KOMO *__komo=0;
   double timeCost=1e0, ctrlCost=1e0;
 
-  SequenceControllerExperiment(rai::Configuration& _C, ObjectiveL& phi, double cycleTime=.1)
+  SecMPC_Experiments(rai::Configuration& _C, ObjectiveL& phi, double cycleTime=.1)
     : C(_C),
       tic(cycleTime)
       {
   }
 
-  SequenceControllerExperiment(rai::Configuration& _C, KOMO& komo, double cycleTime=.1, double timeCost=1e1, double ctrlCost=1e-2)
+  SecMPC_Experiments(rai::Configuration& _C, KOMO& komo, double cycleTime=.1, double timeCost=1e1, double ctrlCost=1e-2)
     : C(_C),
       tic(cycleTime),
       __komo(&komo),
@@ -43,12 +43,12 @@ struct SequenceControllerExperiment{
       rai::wait(.2);
     }
 
-    if(!ctrl){
+    if(!mpc){
       //needs to be done AFTER bot initialization (optitrack..)
       if(__komo){
-        ctrl = make_unique<SequenceController>(C, *__komo, C.getJointState(), timeCost, ctrlCost);
+        mpc = make_unique<SecMPC>(C, *__komo, C.getJointState(), timeCost, ctrlCost);
       }else{
-        ctrl = make_unique<SequenceController>(C, phi, C.getJointState(), timeCost, ctrlCost);
+        mpc = make_unique<SecMPC>(C, phi, C.getJointState(), timeCost, ctrlCost);
       }
     }
 
@@ -65,11 +65,11 @@ struct SequenceControllerExperiment{
     bot->getReference(q_ref, qDot_ref, NoArr, q, qDot, ctrlTime);
 
     //-- iterate MPC
-    ctrl->cycle(C, phi, q_ref, qDot_ref, q, qDot, ctrlTime);
-    ctrl->report(C, phi);
+    mpc->cycle(C, phi, q_ref, qDot_ref, q, qDot, ctrlTime);
+    mpc->report(C, phi);
 
     //-- send spline update
-    auto sp = ctrl->getSpline(bot->get_t());
+    auto sp = mpc->getSpline(bot->get_t());
     if(sp.pts.N) bot->move(sp.pts, sp.vels, sp.times, true);
 
     //-- update C
@@ -79,6 +79,18 @@ struct SequenceControllerExperiment{
     return true;
   }
 };
+
+//===========================================================================
+
+void randomWalkPosition(rai::Frame* f, arr& centerPos, arr& velocity, double rate=.001){
+  arr pos = f->getPosition();
+  if(!centerPos.N) centerPos = pos;
+  if(!velocity.N) velocity = zeros(pos.N);
+  rndGauss(velocity, rate, true);
+  pos += velocity;
+  pos = centerPos + .9 * (pos - centerPos);
+  f->setPosition(pos);
+}
 
 //===========================================================================
 
@@ -106,39 +118,18 @@ void testBallFollowing() {
   while(komo.view_play(true));
 #endif
 
-  SequenceControllerExperiment ex(C, komo, .02, 1e0, 1e0);
+  SecMPC_Experiments ex(C, komo, .02, 1e0, 1e0);
 
   bool useSimulatedBall=!rai::getParameter<bool>("bot/useOptitrack", false);
-  arr ballVel = {.0, .0, .0};
-  arr ballCen = C["ball"]->getPosition();
+  arr ballVel, ballCen;
 
   while(ex.step(komo.objectives)){
     if(useSimulatedBall){
-      if(!(ex.stepCount%20)){
-        ballVel(0) = .01 * rnd.gauss();
-        ballVel(2) = .01 * rnd.gauss();
-      }
-      if(!(ex.stepCount%40)) ballVel=0.;
-      arr pos = C["ball"]->getPosition();
-      pos += ballVel;
-      pos = ballCen + .95 * (pos - ballCen);
-      C["ball"]->setPosition(pos);
+      randomWalkPosition(C["ball"], ballCen, ballVel, .001);
     }else{
       C["ball"]->setPosition(C["HandStick"]->getPosition());
     }
   }
-}
-
-//===========================================================================
-
-void randomWalkPosition(rai::Frame* f, arr& centerPos, arr& velocity, double rate=.001){
-  arr pos = f->getPosition();
-  if(!centerPos.N) centerPos = pos;
-  if(!velocity.N) velocity = zeros(pos.N);
-  rndGauss(velocity, rate, true);
-  pos += velocity;
-  pos = centerPos + .9 * (pos - centerPos);
-  f->setPosition(pos);
 }
 
 //===========================================================================
@@ -162,8 +153,9 @@ void testBallReaching() {
   komo.addObjective({1., 2.}, FS_positionRel, {"ball", "l_gripper"}, OT_eq, {{2,3},{1e1,0,0,0,1e1,0}});
   komo.addObjective({2.}, FS_positionDiff, {"l_gripper", "ball"}, OT_eq, {6e1});
 
-  SequenceControllerExperiment ex(C, komo, .1, 1e0, 1e0);
-  ex.ctrl->timingMPC.backtrackingTable=uintA{0, 1};
+  SecMPC_Experiments ex(C, komo, .1, 1e0, 1e0);
+  ex.step(komo.objectives);
+  ex.mpc->timingMPC.backtrackingTable=uintA{0, 0};
 
   bool useSimulatedBall=!rai::getParameter<bool>("bot/useOptitrack", false);
   arr ballVel = {.0, .0, .0};
@@ -226,7 +218,7 @@ void testPnp() {
   while(komo.view_play(true));
 #endif
 
-  SequenceControllerExperiment ex(C, komo, .1, 1e0, 1e0);
+  SecMPC_Experiments ex(C, komo, .1, 1e0, 1e0);
   while(ex.step(komo.objectives));
 }
 
@@ -267,9 +259,9 @@ void testPushing() {
 
   bool useOptitrack=rai::getParameter<bool>("bot/useOptitrack", false);
 
-  SequenceControllerExperiment ex(C, phi);
+  SecMPC_Experiments ex(C, phi);
   ex.step(phi);
-  ex.ctrl->timingMPC.backtrackingTable=uintA{0, 0, 0, 0, 0};
+  ex.mpc->timingMPC.backtrackingTable=uintA{0, 0, 0, 0, 0};
 
   while(ex.step(phi)){
     if(useOptitrack){
@@ -303,12 +295,15 @@ void testDroneRace(){
 
 #if 1
   //-- reactive control
-  SequenceControllerExperiment ex(C, komo, .1, 1e0, 1e0);
+  SecMPC_Experiments ex(C, komo, .1, 1e0, 1e0);
   ex.step(komo.objectives);
-  ex.ctrl->tauCutoff = .1;
+  ex.mpc->tauCutoff = .1;
+
+  //void CubicSplineCtrlReference::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
+
   while(ex.step(komo.objectives)){
-    if(ex.ctrl->timingMPC.phase==5){ //hard code endless loop by phase backtracking
-      ex.ctrl->timingMPC.update_setPhase(1);
+    if(ex.mpc->timingMPC.phase==5){ //hard code endless loop by phase backtracking
+      ex.mpc->timingMPC.update_setPhase(1);
     }
     for(uint g=0;g<2;g++){
       rai::Frame *target = C[STRING("target"<<g)];
@@ -379,9 +374,9 @@ int main(int argc, char *argv[]){
 
   //testBallFollowing();
   //testBallReaching();
-  //testPnp();
+  testPnp();
   //testPushing();
-  testDroneRace();
+  //testDroneRace();
 
 
   LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
