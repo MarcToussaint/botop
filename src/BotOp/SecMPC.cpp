@@ -7,8 +7,8 @@ WaypointMPC::WaypointMPC(KOMO& _komo, const arr& _qHome)
 
   if(!qHome.N) qHome=_komo.world.getJointState();
 
-  komo.reset();
-  komo.initWithConstant(qHome);
+//  komo.reset();
+//  komo.initWithConstant(qHome);
   path = komo.getPath_qOrg();
   this->tau = komo.getPath_tau();
 }
@@ -22,14 +22,14 @@ void WaypointMPC::solve(){
 
   //re-run KOMO
   rai::OptOptions opt;
-  opt.stopTolerance = 1e-4;
-  opt.stopGTolerance = 1e-4;
+  opt.stopTolerance = 1e-3;
+  opt.stopGTolerance = 1e-3;
   komo.opt.verbose=0;
   komo.timeTotal=0.;
   komo.pathConfig.setJointStateCount=0;
   //komo.reportProblem();
-  komo.initWithConstant(qHome);
-  komo.optimize(0., opt);
+//  komo.initWithConstant(qHome);
+  komo.optimize(.0, opt);
   //komo.checkGradients();
 
   //is feasible?
@@ -42,7 +42,7 @@ void WaypointMPC::solve(){
   path = komo.getPath_qOrg();
   tau = komo.getPath_tau();
 
-  if(!feasible || komo.pathConfig.setJointStateCount>50){
+  if(!feasible){ // || komo.pathConfig.setJointStateCount>50){
     komo.reset();
     komo.initWithConstant(qHome);
   }
@@ -67,15 +67,16 @@ void WaypointMPC::solve(){
 
 //===========================================================================
 
-SecMPC::SecMPC(KOMO& komo, const arr& qHome, double timeCost, double ctrlCost)
-  : pathMPC(komo, qHome),
-    timingMPC(pathMPC.path, timeCost, ctrlCost) {
+SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, double ctrlCost)
+  : pathMPC(komo),
+    timingMPC(pathMPC.path({subSeqStart,subSeqStop}), timeCost, ctrlCost),
+    subSeqStart(subSeqStart), subSeqStop(subSeqStop){
 
-  uint K = pathMPC.komo.T;
+  uint K = timingMPC.waypoints.d0;
 
-  timingMPC.tangents = zeros(K-1, qHome.N);
+  timingMPC.tangents = zeros(K-1, timingMPC.waypoints.d1);
   for(uint k=1; k<K; k++){
-    timingMPC.tangents[k-1] = pathMPC.path[k] - pathMPC.path[k-1];
+    timingMPC.tangents[k-1] = timingMPC.waypoints[k] - timingMPC.waypoints[k-1];
     op_normalize(timingMPC.tangents[k-1]());
   }
 }
@@ -90,7 +91,7 @@ void SecMPC::updateWaypoints(const rai::Configuration& C){
 
 void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, double ctrlTime, const arr& q_real, const arr& qDot_real, const arr& q_ref, const arr& qDot_ref){
   //-- adopt the new path
-  timingMPC.update_flags(pathMPC.path);
+  timingMPC.update_waypoints(pathMPC.path({subSeqStart, subSeqStop}));
 
   //-- progress time (potentially phase)
   if(!timingMPC.done() && ctrlTimeLast>0.) timingMPC.update_progressTime(ctrlTime - ctrlTimeLast);
@@ -99,6 +100,7 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, do
   //-- phase backtracking
   if(timingMPC.done()){
     if(phi.maxError(C, timingMPC.phase) > precision){
+      phi.maxError(C, timingMPC.phase, 1); //verbose
       timingMPC.update_backtrack();
     }
   }
@@ -124,17 +126,17 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, do
   msg <<" tau: " <<timingMPC.tau << ctrlTime + timingMPC.getTimes(); // <<' ' <<F.vels;
 }
 
-void SecMPC::cycle(const rai::Configuration& C, const ObjectiveL& phi, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
+void SecMPC::cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
   msg.clear();
   msg <<"CYCLE ctrlTime:" <<ctrlTime; //<<' ' <<q;
 
   updateWaypoints(C);
-  updateTiming(C, phi, ctrlTime, q_real, qDot_real, q_ref, qDot_ref);
+  updateTiming(C, pathMPC.komo.objectives, ctrlTime, q_real, qDot_real, q_ref, qDot_ref);
 }
 
 rai::CubicSplineCtor SecMPC::getSpline(double realtime){
   if(timingMPC.done() || !pathMPC.feasible) return {};
-  arr pts = timingMPC.getFlags();
+  arr pts = timingMPC.getWaypoints();
   arr vels = timingMPC.getVels();
   arr times = timingMPC.getTimes();
   times -= realtime - ctrlTimeLast;
@@ -142,16 +144,8 @@ rai::CubicSplineCtor SecMPC::getSpline(double realtime){
   return {pts, vels, times};
 }
 
-void SecMPC::report(const rai::Configuration& C, const rai::Array<ObjectiveL>& phiflag, const rai::Array<ObjectiveL>& phirun){
-  msg <<" (fea) "
-     <<phirun.elem(0).maxError(C, 0) <<' '
-    <<phiflag.elem(0).maxError(C, 0) <<' '
-   <<phirun.elem(1).maxError(C, 0) <<' '
-  <<phiflag.elem(1).maxError(C, 0);
-  cout <<msg <<endl;
-}
-
-void SecMPC::report(const rai::Configuration& C, const ObjectiveL& phi) {
+void SecMPC::report(const rai::Configuration& C) {
+  const ObjectiveL& phi = pathMPC.komo.objectives;
   msg <<" (fea) " <<phi.maxError(C, 0.5+timingMPC.phase)
      <<' ' <<phi.maxError(C, 1.+timingMPC.phase)
     <<' ' <<phi.maxError(C, 1.5+timingMPC.phase)

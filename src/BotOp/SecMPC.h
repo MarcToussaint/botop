@@ -26,19 +26,19 @@ struct WaypointMPC{
 struct SecMPC{
   WaypointMPC pathMPC;
   TimingMPC timingMPC;
+  int subSeqStart=0, subSeqStop=-1;
   rai::String msg;
   double precision = .1;
   double ctrlTimeLast = -1.;
   double tauCutoff = -.1;
 
-  SecMPC(KOMO& komo, const arr& qHome={}, double timeCost=1e0, double ctrlCost=1e0);
+  SecMPC(KOMO& komo, int subSeqStart=0, int subSeqStop=-1, double timeCost=1e0, double ctrlCost=1e0);
 
   void updateWaypoints(const rai::Configuration& C);
   void updateTiming(const rai::Configuration& C, const ObjectiveL& phi, double ctrlTime, const arr& q_real, const arr& qDot_real, const arr& q_ref, const arr& qDot_ref);
-  void cycle(const rai::Configuration& C, const ObjectiveL& phi, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime);
+  void cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime);
   rai::CubicSplineCtor getSpline(double realtime);
-  void report(const rai::Configuration& C, const rai::Array<ObjectiveL>& phiflag, const rai::Array<ObjectiveL>& phirun);
-  void report(const rai::Configuration& C, const ObjectiveL& phi);
+  void report(const rai::Configuration& C);
 };
 
 
