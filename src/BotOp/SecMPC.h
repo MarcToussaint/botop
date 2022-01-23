@@ -7,7 +7,7 @@
 
 //A wrapper of KOMO to optimize waypoints for a given sequence of constraints
 struct WaypointMPC{
-  KOMO komo;
+  KOMO& komo;
   arr qHome;
   uint steps=0;
   //result
@@ -15,9 +15,7 @@ struct WaypointMPC{
   arr tau;
   bool feasible=false;
 
-  WaypointMPC(rai::Configuration& C, const rai::Array<ObjectiveL>& _phiflag, const rai::Array<ObjectiveL>& _phirun, const arr& qHome={});
-  WaypointMPC(rai::Configuration& C, const ObjectiveL& phi, const arr& _qHome={});
-  WaypointMPC(rai::Configuration& C, const KOMO& _komo, const arr& qHome={});
+  WaypointMPC(KOMO& _komo, const arr& qHome={});
 
   void reinit(const rai::Configuration& C);
   void solve();
@@ -33,9 +31,7 @@ struct SecMPC{
   double ctrlTimeLast = -1.;
   double tauCutoff = -.1;
 
-  SecMPC(rai::Configuration& C, const rai::Array<ObjectiveL>& _phiflag, const rai::Array<ObjectiveL>& _phirun, const arr& qHome={});
-  SecMPC(rai::Configuration& C, const ObjectiveL& phi, const arr& qHome={}, double timeCost=1e0, double ctrlCost=1e0);
-  SecMPC(rai::Configuration& C, const KOMO& komo, const arr& qHome={}, double timeCost=1e0, double ctrlCost=1e0);
+  SecMPC(KOMO& komo, const arr& qHome={}, double timeCost=1e0, double ctrlCost=1e0);
 
   void updateWaypoints(const rai::Configuration& C);
   void updateTiming(const rai::Configuration& C, const ObjectiveL& phi, double ctrlTime, const arr& q_real, const arr& qDot_real, const arr& q_ref, const arr& qDot_ref);
