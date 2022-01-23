@@ -23,7 +23,7 @@ void WaypointMPC::solve(){
   //re-run KOMO
   rai::OptOptions opt;
   opt.stopTolerance = 1e-3;
-  opt.stopGTolerance = 1e-3;
+//  opt.stopGTolerance = 1e-3;
   komo.opt.verbose=0;
   komo.timeTotal=0.;
   komo.pathConfig.setJointStateCount=0;
@@ -42,7 +42,7 @@ void WaypointMPC::solve(){
   path = komo.getPath_qOrg();
   tau = komo.getPath_tau();
 
-  if(!feasible){ // || komo.pathConfig.setJointStateCount>50){
+  if(!feasible){ // || komo.pathConfig.setJointStateCount>50
     komo.reset();
     komo.initWithConstant(qHome);
   }
