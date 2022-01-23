@@ -105,7 +105,7 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, do
     }
   }
   if(!timingMPC.done()){
-    while(phi.maxError(C, 0.5+timingMPC.phase) > precision){ //OR while?
+    while(timingMPC.phase>0 && phi.maxError(C, 0.5+timingMPC.phase) > precision){ //OR while?
       phi.maxError(C, 0.5+timingMPC.phase, 1); //verbose
       timingMPC.update_backtrack();
     }
