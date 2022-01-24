@@ -99,14 +99,14 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, do
 
   //-- phase backtracking
   if(timingMPC.done()){
-    if(phi.maxError(C, timingMPC.phase) > precision){
-      phi.maxError(C, timingMPC.phase, 1); //verbose
+    if(phi.maxError(C, timingMPC.phase+subSeqStart) > precision){
+      phi.maxError(C, timingMPC.phase+subSeqStart, 1); //verbose
       timingMPC.update_backtrack();
     }
   }
   if(!timingMPC.done()){
-    while(timingMPC.phase>0 && phi.maxError(C, 0.5+timingMPC.phase) > precision){ //OR while?
-      phi.maxError(C, 0.5+timingMPC.phase, 1); //verbose
+    while(timingMPC.phase>0 && phi.maxError(C, 0.5+timingMPC.phase+subSeqStart) > precision){ //OR while?
+      phi.maxError(C, 0.5+timingMPC.phase+subSeqStart, 1); //verbose
       timingMPC.update_backtrack();
     }
   }
