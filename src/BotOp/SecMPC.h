@@ -27,12 +27,13 @@ struct SecMPC{
   WaypointMPC pathMPC;
   TimingMPC timingMPC;
   int subSeqStart=0, subSeqStop=-1;
+  bool setNextWaypointTangent;
   rai::String msg;
   double precision = .1;
   double ctrlTimeLast = -1.;
   double tauCutoff = -.1;
 
-  SecMPC(KOMO& komo, int subSeqStart=0, int subSeqStop=-1, double timeCost=1e0, double ctrlCost=1e0);
+  SecMPC(KOMO& komo, int subSeqStart=0, int subSeqStop=-1, double timeCost=1e0, double ctrlCost=1e0, bool _setNextWaypointTangent=true);
 
   void updateWaypoints(const rai::Configuration& C);
   void updateTiming(const rai::Configuration& C, const ObjectiveL& phi, double ctrlTime, const arr& q_real, const arr& qDot_real, const arr& q_ref, const arr& qDot_ref);

@@ -67,18 +67,12 @@ void WaypointMPC::solve(){
 
 //===========================================================================
 
-SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, double ctrlCost)
+SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, double ctrlCost, bool _setNextWaypointTangent)
   : pathMPC(komo),
     timingMPC(pathMPC.path({subSeqStart,subSeqStop}), timeCost, ctrlCost),
-    subSeqStart(subSeqStart), subSeqStop(subSeqStop){
+    subSeqStart(subSeqStart), subSeqStop(subSeqStop), setNextWaypointTangent(_setNextWaypointTangent){
 
-  uint K = timingMPC.waypoints.d0;
-
-  timingMPC.tangents = zeros(K-1, timingMPC.waypoints.d1);
-  for(uint k=1; k<K; k++){
-    timingMPC.tangents[k-1] = timingMPC.waypoints[k] - timingMPC.waypoints[k-1];
-    op_normalize(timingMPC.tangents[k-1]());
-  }
+  if(setNextWaypointTangent) timingMPC.update_waypoints(timingMPC.waypoints, true);
 }
 
 void SecMPC::updateWaypoints(const rai::Configuration& C){
@@ -91,7 +85,7 @@ void SecMPC::updateWaypoints(const rai::Configuration& C){
 
 void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, double ctrlTime, const arr& q_real, const arr& qDot_real, const arr& q_ref, const arr& qDot_ref){
   //-- adopt the new path
-  timingMPC.update_waypoints(pathMPC.path({subSeqStart, subSeqStop}));
+  timingMPC.update_waypoints(pathMPC.path({subSeqStart, subSeqStop}), setNextWaypointTangent);
 
   //-- progress time (potentially phase)
   if(!timingMPC.done() && ctrlTimeLast>0.) timingMPC.update_progressTime(ctrlTime - ctrlTimeLast);
