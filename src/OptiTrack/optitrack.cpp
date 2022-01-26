@@ -19,7 +19,7 @@ void poseFilter(rai::Transformation& X, double alpha, const rai::Transformation&
 
 namespace rai{
 
-  OptiTrack::OptiTrack() : Thread("OptitrackThread"){
+  OptiTrack::OptiTrack() : Thread("OptitrackThread", 0.){
     mocap = libmotioncapture::MotionCapture::connect("optitrack", rai::getParameter<rai::String>("optitrack/host", "130.149.82.29").p);
     threadLoop();
   }
@@ -47,10 +47,12 @@ namespace rai{
       }
     }
 
+    std::lock_guard<std::mutex> lock(mux);
+
     //loop through all ot signals
-    for (auto const& item: poses) {
+    for (auto const& obj: poses) {
       //get (or create) frame for that body
-      const char* name = item.first;
+      const char* name = obj.first.c_str();
       rai::Frame *f = C.getFrame(name, false);
       if(!f){//create a new marker frame!
         LOG(0) <<"creating new frame '" <<name <<"'";
@@ -61,7 +63,7 @@ namespace rai{
       }
 
       //set pose of frame
-      f->set_Q() = item.second.pose;
+      f->set_Q() = obj.second;
     }
   }
 
@@ -73,20 +75,23 @@ namespace rai{
     std::map<std::string, libmotioncapture::RigidBody> rigidBodies = mocap->rigidBodies();
 
     std::lock_guard<std::mutex> lock(mux);
+
+    double alpha=0.1;
+
     //loop through all ot signals
     for (auto const& item: rigidBodies) {
       if(item.second.occluded()) continue;
 
-      //get (or create) frame for that body
-      const char* name = item.first.c_str();
+      const char* name = item.second.name().c_str();
+      auto pose = poses.find(name);
 
-      auto entry = poses.find(name);
-      if(entry!=poses.end()){  //filter the entry
-        double alpha=0.1;
-        poseFilter(entry->second.pose, alpha, rb2pose(item.second));
+      if(pose!=poses.end()){
+        //filter an existing entry
+        poseFilter(pose->second, alpha, rb2pose(item.second));
       }else{
         //create a new entry
-        poses[name] = { 0, rb2pose(item.second) };
+        LOG(0) <<"adding signal to entries '" <<name <<"'";
+        poses.insert({name, rb2pose(item.second)});
       }
     }
   }

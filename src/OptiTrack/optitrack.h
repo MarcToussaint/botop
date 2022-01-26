@@ -19,8 +19,7 @@ struct OptiTrack : Thread {
 
 private:
   std::mutex mux;
-  struct Entry{ rai::Frame *frame=0; rai::Transformation pose=0; };
-  std::map<const char*, Entry> poses;
+  std::map<std::string, rai::Transformation> poses;
 };
 
 } //namespace

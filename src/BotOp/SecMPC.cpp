@@ -43,6 +43,7 @@ void WaypointMPC::solve(){
   tau = komo.getPath_tau();
 
   if(!feasible){ // || komo.pathConfig.setJointStateCount>50
+    cout <<komo.getReport(false);
     komo.reset();
     komo.initWithConstant(qHome);
   }
