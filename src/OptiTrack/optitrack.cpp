@@ -4,23 +4,32 @@
 
 #include <Kin/frame.h>
 
+
+rai::Transformation rb2pose(const libmotioncapture::RigidBody& rb){
+  rai::Transformation X;
+  X.pos.set(rb.position()(0), rb.position()(1), rb.position()(2));
+  X.rot.set(rb.rotation().w(), rb.rotation().vec()(0), rb.rotation().vec()(1), rb.rotation().vec()(2));
+  return X;
+}
+
+void poseFilter(rai::Transformation& X, double alpha, const rai::Transformation& signal){
+  X.pos = (1.-alpha)*X.pos + alpha*signal.pos;
+  X.rot.setInterpolate(alpha, X.rot, signal.rot);
+}
+
 namespace rai{
 
-  OptiTrack::OptiTrack() {
+  OptiTrack::OptiTrack() : Thread("OptitrackThread"){
     mocap = libmotioncapture::MotionCapture::connect("optitrack", rai::getParameter<rai::String>("optitrack/host", "130.149.82.29").p);
+    threadLoop();
   }
 
   OptiTrack::~OptiTrack(){
+    threadClose();
     delete mocap;
   }
 
   void OptiTrack::pull(rai::Configuration& C){
-    // Get a frame
-    mocap->waitForNextFrame();
-    uint64_t timeStamp = mocap->timeStamp();
-
-    std::map<std::string, libmotioncapture::RigidBody> rigidBodies = mocap->rigidBodies();
-
     //-- update configuration
     //we need a base frame
     const char* name = "optitrack_base";
@@ -39,9 +48,9 @@ namespace rai{
     }
 
     //loop through all ot signals
-    for (auto const& item: rigidBodies) {
+    for (auto const& item: poses) {
       //get (or create) frame for that body
-      const char* name = item.first.c_str();
+      const char* name = item.first;
       rai::Frame *f = C.getFrame(name, false);
       if(!f){//create a new marker frame!
         LOG(0) <<"creating new frame '" <<name <<"'";
@@ -52,18 +61,32 @@ namespace rai{
       }
 
       //set pose of frame
-      const auto& rigidBody = item.second;
-      if (rigidBody.occluded() == false) {
-        const Eigen::Vector3f& position = rigidBody.position();
-        const Eigen::Quaternionf& rotation = rigidBody.rotation();
-        {
-          auto Q = f->set_Q();
-          Q->pos.set(position(0), position(1), position(2));
-          Q->rot.set(rotation.w(), rotation.vec()(0), rotation.vec()(1), rotation.vec()(2));
-        }
+      f->set_Q() = item.second.pose;
+    }
+  }
+
+  void OptiTrack::step(){
+    // Get a frame
+    mocap->waitForNextFrame();
+    //uint64_t timeStamp = mocap->timeStamp();
+
+    std::map<std::string, libmotioncapture::RigidBody> rigidBodies = mocap->rigidBodies();
+
+    std::lock_guard<std::mutex> lock(mux);
+    //loop through all ot signals
+    for (auto const& item: rigidBodies) {
+      if(item.second.occluded()) continue;
+
+      //get (or create) frame for that body
+      const char* name = item.first.c_str();
+
+      auto entry = poses.find(name);
+      if(entry!=poses.end()){  //filter the entry
+        double alpha=0.1;
+        poseFilter(entry->second.pose, alpha, rb2pose(item.second));
       }else{
-        LOG(0) <<"OCCLUDED: " <<f->name;
-        f->set_Q()->setZero();
+        //create a new entry
+        poses[name] = { 0, rb2pose(item.second) };
       }
     }
   }
