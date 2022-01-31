@@ -11,7 +11,7 @@ option(USE_REALSENSE "link to realsense2 driver library" OFF)
 option(USE_LIBFRANKA "link to libfranka" ON)
 
 add_compile_options(
-  -O3 -g -Wall -fPIC -std=c++14 -Wno-terminate -Wno-pragmas -lboost_system
+  -O3 -g -Wall -fPIC -std=c++14 -Wno-terminate -Wno-pragmas
   )
 
 ################################################################################
@@ -22,6 +22,7 @@ add_definitions(
   -DRAI_GL
   -DRAI_GLFW -DRAI_ANN -DRAI_QHULL -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
   -DRAI_SWIFT -DRAI_GJK -DRAI_FCL -DRAI_CCD
+  -DRAI_PORTAUDIO
   -BOOST_ERROR_CODE_HEADER_ONLY
   )
 
@@ -62,6 +63,7 @@ file(GLOB SRC_OptiTrack src/OptiTrack/*.cpp)
 file(GLOB SRC_RealSense src/RealSense/*.cpp)
 file(GLOB SRC_BotOp src/BotOp/*.cpp)
 file(GLOB SRC_Robotiq src/Robotiq/*.cpp)
+file(GLOB SRC_Audio src/Audio/*.cpp)
 
 add_library(rai SHARED
   ${SRC_Core}
@@ -86,12 +88,14 @@ add_library(rai SHARED
   ${SRC_Robotiq}
   ${SRC_BotOp}
   ${SRC_RealSense}
+  ${SRC_Audio}
   )
 
 target_link_libraries(rai
   jsoncpp lapack blas pthread rt X11
   assimp fcl ann glfw GLEW glut GLU GL png qhull
-  boost_system
+  portaudio
+  boost_system 
   )
 
 ################################################################################

@@ -31,8 +31,9 @@ struct SecMPC{
   rai::String msg;
   double precision = .1;
   double ctrlTimeLastUpdate = -1.;
-  double tauCutoff = -.1;
+  double tauCutoff = .0;
   arr q_refAdapted, qDot_refAdapted;
+  bool phaseSwitch=false;
 
   SecMPC(KOMO& komo, int subSeqStart=0, int subSeqStop=-1, double timeCost=1e0, double ctrlCost=1e0, bool _setNextWaypointTangent=true);
 

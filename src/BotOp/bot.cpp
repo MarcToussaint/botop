@@ -4,9 +4,16 @@
 #include <Kin/F_qFeatures.h>
 #include <Kin/viewer.h>
 #include <KOMO/pathTools.h>
-#include <Robotiq/RobotiqGripper.h>
 #include <Control/timingOpt.h>
 #include <Optim/MP_Solver.h>
+
+#include <Franka/franka.h>
+#include <Franka/gripper.h>
+#include <Franka/controlEmulator.h>
+#include <Robotiq/RobotiqGripper.h>
+#include <OptiTrack/optitrack.h>
+
+#include <Audio/audio.h>
 
 //===========================================================================
 
@@ -206,6 +213,31 @@ double BotOp::moveLeap(const arr& q_target, double timeCost){
   return move(~q_target, {T}, true);
 }
 
+void BotOp::setControllerWriteData(int _writeData){
+  if(robotL) robotL->writeData=_writeData;
+  if(robotR) robotR->writeData=_writeData;
+}
+
+void BotOp::gripperOpen(rai::ArgWord leftRight, double width, double speed){
+  if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->open(width, speed); }
+  if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->open(width, speed); }
+}
+
+void BotOp::gripperClose(rai::ArgWord leftRight, double force, double width, double speed){
+  if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->close(force, width, speed); }
+  if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->close(force, width, speed); }
+}
+
+double BotOp::gripperPos(){
+  if(!gripperL){ LOG(-1) <<"gripper disabled"; return 0.; }
+  return gripperL->pos();
+}
+
+bool BotOp::isDone(){
+  if(!gripperL){ LOG(-1) <<"gripper disabled"; return false; }
+  return gripperL->isDone();
+}
+
 void BotOp::home(rai::Configuration& C){
   C.gl()->raiseWindow();
   arr q=get_q();
@@ -236,6 +268,11 @@ void BotOp::hold(bool floating, bool damping){
     zref->setPositionReference(q);
     zref->setVelocityReference({0.});
   }
+}
+
+void BotOp::addNote(int noteRelToC, float a, float decay){
+  if(!sound) sound = make_unique<rai::Sound>();
+  sound->addNote(noteRelToC, a, decay);
 }
 
 //===========================================================================

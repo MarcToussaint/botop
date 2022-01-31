@@ -90,7 +90,9 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, do
 
   //-- progress time (potentially phase)
   if(!timingMPC.done() && ctrlTimeLastUpdate>0.){
-    timingMPC.update_progressTime(ctrlTime - ctrlTimeLastUpdate);
+    phaseSwitch = timingMPC.update_progressTime(ctrlTime - ctrlTimeLastUpdate);
+  }else{
+    phaseSwitch = false;
   }
   ctrlTimeLastUpdate = ctrlTime;
 
@@ -99,12 +101,14 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, do
     if(phi.maxError(C, timingMPC.phase+subSeqStart) > precision){
       phi.maxError(C, timingMPC.phase+subSeqStart, 1); //verbose
       timingMPC.update_backtrack();
+      phaseSwitch=true;
     }
   }
   if(!timingMPC.done()){
     while(timingMPC.phase>0 && phi.maxError(C, 0.5+timingMPC.phase+subSeqStart) > precision){ //OR while?
       phi.maxError(C, 0.5+timingMPC.phase+subSeqStart, 1); //verbose
       timingMPC.update_backtrack();
+      phaseSwitch=true;
     }
   }
 

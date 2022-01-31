@@ -4,7 +4,7 @@ NAME   = $(shell basename `pwd`)
 EXT    = $(shell python3-config --extension-suffix)
 OUTPUT = lib$(NAME).so #$(EXT)
 
-DEPEND = Core Algo Optim Gui Geo Kin KOMO LGP Franka Control Logic ry
+DEPEND = Core Algo Optim Gui Geo Kin KOMO LGP Franka Control Logic ry Audio
 
 PYBIND = 1
 
