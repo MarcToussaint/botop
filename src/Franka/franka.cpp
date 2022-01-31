@@ -27,7 +27,7 @@ void FrankaThread::init(uint _robotID, const uintA& _qIndices) {
   //-- basic Kp Kd settings for reference control mode
   Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", ARR(20., 20., 20., 20., 10., 15., 10.)); //18., 18., 18., 13., 8., 8., 6.));
   Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", ARR(.6, .6, .4, .4, .1, .5, .1)); //.8, .8, .7, .7, .1, .1, .1));
-  friction = rai::getParameter<arr>("Franka/friction", zeros(7));
+  friction = rai::getParameter<arr>("Franka/friction", zeros(7));  //Franka/friction: [0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4]
   LOG(0) << "FRANKA: Kp_freq:" << Kp_freq << " Kd_ratio:" << Kd_ratio <<" friction:" <<friction;
 
   /* hand tuning result of friction calib:

@@ -89,8 +89,10 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, do
   timingMPC.update_waypoints(pathMPC.path({subSeqStart, subSeqStop}), setNextWaypointTangent);
 
   //-- progress time (potentially phase)
-  if(!timingMPC.done() && ctrlTimeLast>0.) timingMPC.update_progressTime(ctrlTime - ctrlTimeLast);
-  ctrlTimeLast = ctrlTime;
+  if(!timingMPC.done() && ctrlTimeLastUpdate>0.){
+    timingMPC.update_progressTime(ctrlTime - ctrlTimeLastUpdate);
+  }
+  ctrlTimeLastUpdate = ctrlTime;
 
   //-- phase backtracking
   if(timingMPC.done()){
@@ -106,11 +108,22 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, do
     }
   }
 
-  //-- solve the timing problem
+  //-- re-optimize the timing
   if(!timingMPC.done()){
     if(timingMPC.tau(timingMPC.phase) > tauCutoff){
-      //auto ret = timingMPC.solve(q_real, qDot_real, 0);
-      auto ret = timingMPC.solve(q_ref, qDot_ref, 0);
+      shared_ptr<SolverReturn> ret;
+      double ctrlErr = length(q_real-q_ref);
+      double thresh = .02;
+      //cout <<"err: " <<err <<"  \t" <<flush;
+      if(ctrlErr>thresh){ //LOG(0) <<"ERROR MODE" <<endl;
+        q_refAdapted = q_ref + ((ctrlErr-thresh)/ctrlErr) * (q_real-q_ref);
+        qDot_refAdapted = qDot_ref;
+        ret = timingMPC.solve(q_refAdapted, qDot_ref, 0);
+      }else{
+        q_refAdapted.clear();
+        qDot_refAdapted.clear();
+        ret = timingMPC.solve(q_ref, qDot_ref, 0);
+      }
       msg <<" (timing) ph:" <<timingMPC.phase <<" #:" <<ret->evals;
       //      msg <<" T:" <<ret->time <<" f:" <<ret->f;
     }else{
@@ -134,8 +147,13 @@ rai::CubicSplineCtor SecMPC::getSpline(double realtime){
   arr pts = timingMPC.getWaypoints();
   arr vels = timingMPC.getVels();
   arr times = timingMPC.getTimes();
-  times -= realtime - ctrlTimeLast;
+  times -= realtime - ctrlTimeLastUpdate; //ctrlTimeLast=when the timing was optimized; realtime=time now; -> shift spline to stich it at realtime
   if(times.first()<tauCutoff) return {};
+  if(q_refAdapted.N){ //this will overrideHard the spline, as first time is negative;
+    pts.prepend(q_refAdapted);
+    vels.prepend(qDot_refAdapted);
+    times.prepend(0. - (realtime - ctrlTimeLastUpdate));
+  }
   return {pts, vels, times};
 }
 

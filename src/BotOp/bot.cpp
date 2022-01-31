@@ -137,7 +137,11 @@ double BotOp::move(const arr& path, const arr& vels, const arr& times, bool over
   double ctrlTime = get_t();
   if(override){
     //LOG(1) <<"override: " <<ctrlTime <<" - " <<_times;
-    getSplineRef()->overrideSmooth(path, vels, times, ctrlTime);
+    if(times.first()>0.){
+      getSplineRef()->overrideSmooth(path, vels, times, ctrlTime);
+    }else{
+      getSplineRef()->overrideHard(path, vels, times, ctrlTime);
+    }
   }else{
     //LOG(1) <<"append: " <<ctrlTime <<" - " <<_times;
     getSplineRef()->append(path, vels, times, ctrlTime);
