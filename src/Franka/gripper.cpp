@@ -73,17 +73,15 @@ void FrankaGripper::step() {
       msg.width = maxWidth - .001;
   }
 
-  bool ret=true;
-
   switch(msg.cmd){
     case msg._close:
-      ret = frankaGripper->grasp(msg.width, msg.speed, msg.force, 0.08, 0.08);
+      frankaGripper->grasp(msg.width, msg.speed, msg.force, 0.08, 0.08);
       break;
     case msg._open:
-      ret = frankaGripper->move(msg.width, msg.speed);
+      frankaGripper->move(msg.width, msg.speed);
       break;
     case msg._home:
-      ret = frankaGripper->homing();
+      frankaGripper->homing();
       break;
     case msg._done:
       break;

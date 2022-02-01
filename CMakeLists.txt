@@ -11,7 +11,7 @@ option(USE_REALSENSE "link to realsense2 driver library" OFF)
 option(USE_LIBFRANKA "link to libfranka" ON)
 
 add_compile_options(
-  -O3 -g -Wall -fPIC -std=c++14 -Wno-terminate -Wno-pragmas
+  -O3 -g -Wall -Wpedantic -fPIC -std=c++14 -Wno-terminate
   )
 
 ################################################################################
