@@ -4,8 +4,8 @@
 
 #include <librealsense2/rs.hpp>
 #include <librealsense2/rsutil.h>
+#include "utils.h"
 
-float get_depth_scale(rs2::device dev);
 rs2_stream find_stream_to_align(const std::vector<rs2::stream_profile>& streams);
 
 struct sRealSenseThread{
@@ -127,7 +127,7 @@ void RealSenseThread::open(){
   }
 
   //-- depth scale of the camera (
-  s->depth_scale = get_depth_scale(profile.get_device());
+  s->depth_scale = rai::realsense::get_depth_scale(profile.get_device());
   LOG(1) <<"depth scale: " <<s->depth_scale;
 
   //-- align with depth or color?
@@ -193,18 +193,6 @@ void RealSenseThread::step(){
   }
 }
 
-float get_depth_scale(rs2::device dev){
-    // Go over the device's sensors
-    for (rs2::sensor& sensor : dev.query_sensors())
-    {
-        // Check if the sensor if a depth sensor
-        if (rs2::depth_sensor dpt = sensor.as<rs2::depth_sensor>())
-        {
-            return dpt.get_depth_scale();
-        }
-    }
-    throw std::runtime_error("Device does not have a depth sensor");
-}
 
 
 void rs2_get_motion_intrinsics(const rs2_stream_profile* mode, rs2_motion_device_intrinsic * intrinsics, rs2_error ** error);
