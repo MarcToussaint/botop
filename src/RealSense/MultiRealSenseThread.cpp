@@ -60,16 +60,6 @@ void setSettings(rs2::pipeline_profile& profile, bool autoExposure, double expos
       }
     }
   }
-
-  //-- info on all streams
-  for (rs2::stream_profile sp : profile.get_streams()) {
-    LOG(1) <<"stream '" <<sp.stream_name() <<"' idx:" <<sp.stream_index() <<" type:" <<sp.stream_type() <<" format:" <<sp.format() <<" fps" <<sp.fps() <<" id:" <<sp.unique_id();
-    rs2::video_stream_profile vsp = sp.as<rs2::video_stream_profile>();
-    if(vsp){
-      rs2_intrinsics intrinsics = vsp.get_intrinsics();
-      LOG(1) <<"  is video: w=" <<intrinsics.width <<" h=" <<intrinsics.height <<" px=" <<intrinsics.ppx << " py=" <<intrinsics.ppy <<" fx=" <<intrinsics.fx <<" fy=" <<intrinsics.fy <<" distorsion=" <<intrinsics.model <<floatA(intrinsics.coeffs, 5, true);
-    }
-  }
 }
 
 }
@@ -77,52 +67,63 @@ void setSettings(rs2::pipeline_profile& profile, bool autoExposure, double expos
 namespace rai {
 namespace realsense {
 
-struct RealSenseCamera {
-  std::string serialNumber;
-  bool captureColor;
-  bool captureDepth;
-  std::unique_ptr<rs2::config> cfg;
-  std::unique_ptr<rs2::pipeline> pipe;
-  std::unique_ptr<rs2::align> align;
-  float depth_scale;
 
-  RealSenseCamera(std::string serialNumber, bool captureColor, bool captureDepth)
-    : serialNumber(serialNumber),
-      captureColor(captureColor),
-      captureDepth(captureDepth)
-  {
-    cfg = std::make_unique<rs2::config>();
-    cfg->enable_device(serialNumber);
+RealSenseCamera::RealSenseCamera(std::string serialNumber, bool captureColor, bool captureDepth)
+  : serialNumber(serialNumber),
+    captureColor(captureColor),
+    captureDepth(captureDepth)
+{
+  cfg = std::make_unique<rs2::config>();
+  cfg->enable_device(serialNumber);
 
-    if(captureColor) cfg->enable_stream(RS2_STREAM_COLOR, -1, 1920, 1080, rs2_format::RS2_FORMAT_RGB8, 30);
-    if(captureDepth) cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 30);
+  if(captureColor) cfg->enable_stream(RS2_STREAM_COLOR, -1, 1920, 1080, rs2_format::RS2_FORMAT_RGB8, 30);
+  if(captureDepth) cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 30);
 
-    pipe = std::make_unique<rs2::pipeline>();
-    pipe->start(*cfg);
+  pipe = std::make_unique<rs2::pipeline>();
+  pipe->start(*cfg);
 
-    // settings TODO make available for each camera?
-    bool alignToDepth = rai::getParameter<bool>("RealSense/alignToDepth", true);
-    bool autoExposure = rai::getParameter<bool>("RealSense/autoExposure", true);
-    double exposure = rai::getParameter<double>("RealSense/exposure", 500);
-    double white = rai::getParameter<double>("RealSense/white", 4000);
+  // settings TODO make available for each camera?
+  bool alignToDepth = rai::getParameter<bool>("RealSense/alignToDepth", true);
+  bool autoExposure = rai::getParameter<bool>("RealSense/autoExposure", true);
+  double exposure = rai::getParameter<double>("RealSense/exposure", 500);
+  double white = rai::getParameter<double>("RealSense/white", 4000);
 
-    rs2::pipeline_profile profile = pipe->get_active_profile();
-    setSettings(profile, autoExposure, exposure, white);
+  rs2::pipeline_profile profile = pipe->get_active_profile();
+  setSettings(profile, autoExposure, exposure, white);
 
-    //-- depth scale of the camera (
-    depth_scale = rai::realsense::get_depth_scale(profile.get_device());
-    LOG(1) << "depth scale: " << depth_scale;
-
-    //-- align with depth or color?
-    if(captureColor && captureDepth) {
-      if(alignToDepth){
-        align = std::make_unique<rs2::align>(RS2_STREAM_DEPTH);
-      }else{
-        align = std::make_unique<rs2::align>(RS2_STREAM_COLOR);
-      }
+  //-- info on all streams
+  for(rs2::stream_profile sp : profile.get_streams()) {
+    LOG(1) <<"stream '" <<sp.stream_name() <<"' idx:" <<sp.stream_index() <<" type:" <<sp.stream_type() <<" format:" <<sp.format() <<" fps" <<sp.fps() <<" id:" <<sp.unique_id();
+    rs2::video_stream_profile vsp = sp.as<rs2::video_stream_profile>();
+    if(vsp){
+      rs2_intrinsics intrinsics = vsp.get_intrinsics();
+      LOG(1) <<"  is video: w=" <<intrinsics.width <<" h=" <<intrinsics.height <<" px=" <<intrinsics.ppx << " py=" <<intrinsics.ppy <<" fx=" <<intrinsics.fx <<" fy=" <<intrinsics.fy <<" distorsion=" <<intrinsics.model <<floatA(intrinsics.coeffs, 5, true);
+      if(sp.stream_type()==RS2_STREAM_DEPTH) depth_fxypxy = ARR(intrinsics.fx, intrinsics.fy, intrinsics.ppx, intrinsics.ppy);
+      if(sp.stream_type()==RS2_STREAM_COLOR) color_fxypxy = ARR(intrinsics.fx, intrinsics.fy, intrinsics.ppx, intrinsics.ppy);
     }
   }
-};
+
+  //-- depth scale of the camera (
+  depth_scale = rai::realsense::get_depth_scale(profile.get_device());
+  LOG(1) << "depth scale: " << depth_scale;
+
+  //-- align with depth or color?
+  if(captureColor && captureDepth) {
+    if(alignToDepth){
+      align = std::make_unique<rs2::align>(RS2_STREAM_DEPTH);
+      fxypxy = depth_fxypxy;
+    }else{
+      align = std::make_unique<rs2::align>(RS2_STREAM_COLOR);
+      fxypxy = color_fxypxy;
+    }
+  }
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+
+
 
 MultiRealSenseThread::MultiRealSenseThread(const std::vector<std::string> serialNumbers, const Var<std::vector<byteA>>& color, const Var<std::vector<floatA>>& depth, bool captureColor, bool captureDepth)
   : Thread("MultiRealSenseThread"),
@@ -154,13 +155,14 @@ void MultiRealSenseThread::open() {
   }
 }
 
-void MultiRealSenseThread::close(){
+void MultiRealSenseThread::close() {
   LOG(0) << "REALSENSE STOPPING";
   for(auto cam : cameras) {
     cam->pipe->stop();
     rai::wait(0.2);
     delete cam;
   }
+  cameras.clear();
 }
 
 void MultiRealSenseThread::step() {

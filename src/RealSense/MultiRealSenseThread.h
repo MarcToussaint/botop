@@ -3,10 +3,28 @@
 #include <Core/array.h>
 #include <Core/thread.h>
 
+namespace rs2 {
+struct config;
+struct pipeline;
+struct align;
+}
+
 namespace rai {
 namespace realsense {
 
-struct RealSenseCamera;
+struct RealSenseCamera {
+  std::string serialNumber;
+  bool captureColor;
+  bool captureDepth;
+  std::unique_ptr<rs2::config> cfg;
+  std::unique_ptr<rs2::pipeline> pipe;
+  std::unique_ptr<rs2::align> align;
+  float depth_scale;
+  arr fxypxy, color_fxypxy, depth_fxypxy;
+
+  RealSenseCamera(std::string serialNumber, bool captureColor, bool captureDepth);
+  ~RealSenseCamera() {}
+};
 
 struct MultiRealSenseThread : Thread {
   std::vector<std::string> serialNumbers;
