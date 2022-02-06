@@ -64,22 +64,26 @@ void setSettings(rs2::pipeline_profile& profile, bool autoExposure, double expos
 
 }
 
+#endif
+
+
 namespace rai {
 namespace realsense {
 
+#ifdef RAI_REALSENSE
 
 RealSenseCamera::RealSenseCamera(std::string serialNumber, bool captureColor, bool captureDepth)
   : serialNumber(serialNumber),
     captureColor(captureColor),
     captureDepth(captureDepth)
 {
-  cfg = std::make_unique<rs2::config>();
+  cfg = std::make_shared<rs2::config>();
   cfg->enable_device(serialNumber);
 
   if(captureColor) cfg->enable_stream(RS2_STREAM_COLOR, -1, 1920, 1080, rs2_format::RS2_FORMAT_RGB8, 30);
   if(captureDepth) cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 30);
 
-  pipe = std::make_unique<rs2::pipeline>();
+  pipe = std::make_sharedrs2::pipeline>();
   pipe->start(*cfg);
 
   // settings TODO make available for each camera?
@@ -110,10 +114,10 @@ RealSenseCamera::RealSenseCamera(std::string serialNumber, bool captureColor, bo
   //-- align with depth or color?
   if(captureColor && captureDepth) {
     if(alignToDepth){
-      align = std::make_unique<rs2::align>(RS2_STREAM_DEPTH);
+      align = std::make_shared<rs2::align>(RS2_STREAM_DEPTH);
       fxypxy = depth_fxypxy;
     }else{
-      align = std::make_unique<rs2::align>(RS2_STREAM_COLOR);
+      align = std::make_shared<rs2::align>(RS2_STREAM_COLOR);
       fxypxy = color_fxypxy;
     }
   }
@@ -213,9 +217,12 @@ void MultiRealSenseThread::step() {
 
 
 #else //REALSENSE
+
+RealSenseCamera::RealSenseCamera(std::string serialNumber, bool captureColor, bool captureDepth) { NICO }
+
 MultiRealSenseThread::MultiRealSenseThread(const std::vector<std::string> serialNumbers, const Var<std::vector<byteA>>& color, const Var<std::vector<floatA>>& depth, bool captureColor, bool captureDepth)
   : Thread("MultiRealSenseThread") { NICO }
-MultiRealSenseThread::~MultiRealSenseThread(){ NICO }
+MultiRealSenseThread::~MultiRealSenseThread() { NICO }
 void MultiRealSenseThread::open(){ NICO }
 void MultiRealSenseThread::close(){ NICO }
 void MultiRealSenseThread::step(){ NICO }
@@ -224,16 +231,3 @@ void MultiRealSenseThread::step(){ NICO }
 
 }
 }
-
-
-
-
-/*
-rs2::context ctx;
-    for(auto&& dev : ctx.query_devices()) {
-      rs2::pipeline pipe(ctx);
-      rs2::config cfg;
-      cfg.enable_device(dev.get_info(RS2_CAMERA_INFO_SERIAL_NUMBER));
-      pipe.start(cfg);
-    }
-*/

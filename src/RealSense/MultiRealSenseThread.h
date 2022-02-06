@@ -16,14 +16,14 @@ struct RealSenseCamera {
   std::string serialNumber;
   bool captureColor;
   bool captureDepth;
-  std::unique_ptr<rs2::config> cfg;
-  std::unique_ptr<rs2::pipeline> pipe;
-  std::unique_ptr<rs2::align> align;
+  std::shared_ptr<rs2::config> cfg;
+  std::shared_ptr<rs2::pipeline> pipe;
+  std::shared_ptr<rs2::align> align;
   float depth_scale;
   arr fxypxy, color_fxypxy, depth_fxypxy;
 
   RealSenseCamera(std::string serialNumber, bool captureColor, bool captureDepth);
-  ~RealSenseCamera() {}
+  ~RealSenseCamera();
 };
 
 struct MultiRealSenseThread : Thread {
