@@ -83,7 +83,7 @@ RealSenseCamera::RealSenseCamera(std::string serialNumber, bool captureColor, bo
   if(captureColor) cfg->enable_stream(RS2_STREAM_COLOR, -1, 1920, 1080, rs2_format::RS2_FORMAT_RGB8, 30);
   if(captureDepth) cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 30);
 
-  pipe = std::make_sharedrs2::pipeline>();
+  pipe = std::make_shared<rs2::pipeline>();
   pipe->start(*cfg);
 
   // settings TODO make available for each camera?
