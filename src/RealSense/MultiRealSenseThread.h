@@ -23,7 +23,6 @@ struct RealSenseCamera {
   arr fxypxy, color_fxypxy, depth_fxypxy;
 
   RealSenseCamera(std::string serialNumber, bool captureColor, bool captureDepth);
-  ~RealSenseCamera();
 };
 
 struct MultiRealSenseThread : Thread {

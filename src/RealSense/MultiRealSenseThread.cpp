@@ -223,6 +223,7 @@ RealSenseCamera::RealSenseCamera(std::string serialNumber, bool captureColor, bo
 MultiRealSenseThread::MultiRealSenseThread(const std::vector<std::string> serialNumbers, const Var<std::vector<byteA>>& color, const Var<std::vector<floatA>>& depth, bool captureColor, bool captureDepth)
   : Thread("MultiRealSenseThread") { NICO }
 MultiRealSenseThread::~MultiRealSenseThread() { NICO }
+uint MultiRealSenseThread::getNumberOfCameras() { NICO }
 void MultiRealSenseThread::open(){ NICO }
 void MultiRealSenseThread::close(){ NICO }
 void MultiRealSenseThread::step(){ NICO }
