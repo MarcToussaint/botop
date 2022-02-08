@@ -158,11 +158,11 @@ double BotOp::move(const arr& path, const arr& vels, const arr& times, bool over
 
 double BotOp::move(const arr& path, const arr& times, bool override){
   arr _times=times;
-  if(_times.N==1 && path.d0>1){
+  if(_times.N==1 && path.d0>1){ //divide total time in grid
     _times = range(0., times.scalar(), path.d0-1);
     _times += _times(1);
   }
-  if(_times.N){
+  if(_times.N){ //times are fully specified
     CHECK_EQ(_times.N, path.d0, "");
   }
   arr vels;
@@ -177,7 +177,9 @@ double BotOp::move(const arr& path, const arr& times, bool override){
     arr tangents = getVelocities_centralDifference(path, .1);
     tangents.delRows(-1);
     bool optTau = (times.N==0);
-    TimingProblem timingProblem(path, tangents, q, qDot, 1e1, {}, differencing(_times), optTau);
+    arr tauInitial = {};
+    if(!optTau) tauInitial = differencing(_times);
+    TimingProblem timingProblem(path, tangents, q, qDot, 1e1, {}, tauInitial, optTau);
     MP_Solver solver;
     solver
         .setProblem(timingProblem.ptr())
