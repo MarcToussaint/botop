@@ -67,6 +67,11 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     optitrack->pull(C);
   }
 
+  //-- launch Audio/Sound
+  if(rai::getParameter<bool>("bot/useAudio", false)){
+    audio = make_unique<rai::Sound>();
+  }
+
   C.watch(false, STRING("time: 0"));
 }
 
@@ -87,7 +92,9 @@ void BotOp::getState(arr& q_real, arr& qDot_real, double& ctrlTime){
 }
 
 void BotOp::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
-  cmd.get()->ref->getReference(q_ref, qDot_ref, qDDot_ref, q_real, qDot_real, ctrlTime);
+  auto cmdGet = cmd.get();
+  CHECK(cmdGet->ref, "reference not initialized yet!");
+  cmdGet->ref->getReference(q_ref, qDot_ref, qDDot_ref, q_real, qDot_real, ctrlTime);
 }
 
 arr BotOp::get_q() {
@@ -272,9 +279,10 @@ void BotOp::hold(bool floating, bool damping){
   }
 }
 
-void BotOp::addNote(int noteRelToC, float a, float decay){
-  if(!sound) sound = make_unique<rai::Sound>();
-  sound->addNote(noteRelToC, a, decay);
+void BotOp::sound(int noteRelToC, float a, float decay){
+  if(audio){
+    audio->addNote(noteRelToC, a, decay);
+  }
 }
 
 //===========================================================================

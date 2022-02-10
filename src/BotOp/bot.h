@@ -22,7 +22,7 @@ struct BotOp{
   std::unique_ptr<rai::GripperAbstraction> gripperR;
   std::shared_ptr<rai::ReferenceFeed> ref;
   std::unique_ptr<rai::OptiTrack> optitrack;
-  std::unique_ptr<rai::Sound> sound;
+  std::unique_ptr<rai::Sound> audio;
   arr qHome;
   int keypressed=0;
 
@@ -59,7 +59,7 @@ struct BotOp{
   void hold(bool floating=true, bool damping=true);
 
   //-- audio
-  void addNote(int noteRelToC=0, float a=.5, float decay=0.0007);
+  void sound(int noteRelToC=0, float a=.5, float decay=0.0007);
 
 private:
   template<class T> BotOp& setReference();

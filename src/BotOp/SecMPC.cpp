@@ -15,6 +15,7 @@ WaypointMPC::WaypointMPC(KOMO& _komo, const arr& _qHome)
 
 void WaypointMPC::reinit(const rai::Configuration& C){
   komo.updateRootObjects(C);
+//  komo.setConfiguration_qOrg(-1, C.getJointState());
 }
 
 void WaypointMPC::solve(){
@@ -23,7 +24,6 @@ void WaypointMPC::solve(){
   //re-run KOMO
   rai::OptOptions opt;
   opt.stopTolerance = 1e-3;
-//  opt.stopGTolerance = 1e-3;
   komo.opt.verbose=0;
   komo.timeTotal=0.;
   komo.pathConfig.setJointStateCount=0;
@@ -47,23 +47,6 @@ void WaypointMPC::solve(){
     komo.reset();
     komo.initWithConstant(qHome);
   }
-
-  //  while(komo.view_play(true, 1.));
-
-  //  arr path = komo.getPath_qOrg();
-
-  //  bot.move(path, {2., 2.5});
-  //  while(bot.step(C, .5));
-  //  if(bot.keypressed=='q' || bot.keypressed==27) return;
-
-  //  rai::wait();
-
-
-
-  //store as output result
-  //  x1 = komo.getConfiguration_qOrg(0);
-  //  xT = komo.getConfiguration_qOrg(komo.T-1); //the last one
-  //  tau = komo.getPath_tau();
 }
 
 //===========================================================================
