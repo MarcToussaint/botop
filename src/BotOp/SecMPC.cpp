@@ -2,52 +2,6 @@
 
 #include <Optim/MP_Solver.h>
 
-WaypointMPC::WaypointMPC(KOMO& _komo, const arr& _qHome)
-  : komo(_komo), qHome(_qHome){
-
-  if(!qHome.N) qHome=_komo.world.getJointState();
-
-//  komo.reset();
-//  komo.initWithConstant(qHome);
-  path = komo.getPath_qOrg();
-  this->tau = komo.getPath_tau();
-}
-
-void WaypointMPC::reinit(const rai::Configuration& C){
-  komo.updateRootObjects(C);
-//  komo.setConfiguration_qOrg(-1, C.getJointState());
-}
-
-void WaypointMPC::solve(){
-  steps++;
-
-  //re-run KOMO
-  rai::OptOptions opt;
-  opt.stopTolerance = 1e-3;
-  komo.opt.verbose=0;
-  komo.timeTotal=0.;
-  komo.pathConfig.setJointStateCount=0;
-  //komo.reportProblem();
-//  komo.initWithConstant(qHome);
-  komo.optimize(.0, opt);
-  //komo.checkGradients();
-
-  //is feasible?
-  feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
-  rai::String msg;
-  msg <<"it " <<steps <<" feasible: " <<(feasible?" good":" FAIL") <<" -- queries: " <<komo.pathConfig.setJointStateCount <<" time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
-
-  komo.view(false, msg);
-
-  path = komo.getPath_qOrg();
-  tau = komo.getPath_tau();
-
-  if(!feasible){ // || komo.pathConfig.setJointStateCount>50
-    cout <<komo.getReport(false);
-    komo.reset();
-    komo.initWithConstant(qHome);
-  }
-}
 
 //===========================================================================
 
@@ -114,11 +68,12 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, do
       msg <<" (timing) ph:" <<timingMPC.phase <<" #:" <<ret->evals;
       //      msg <<" T:" <<ret->time <<" f:" <<ret->f;
     }else{
-      LOG(0) <<"skipping timing opt, as too close ahead: " <<timingMPC.tau;
+      msg <<" (timing) ph:" <<timingMPC.phase <<" #skipped";
+//      LOG(0) <<"skipping timing opt, as too close ahead: " <<timingMPC.tau;
     }
   }
 
-  msg <<" tau: " <<timingMPC.tau << ctrlTime + timingMPC.getTimes(); // <<' ' <<F.vels;
+  msg <<" tau: " <<timingMPC.tau; // << ctrlTime + timingMPC.getTimes(); // <<' ' <<F.vels;
 }
 
 void SecMPC::cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
