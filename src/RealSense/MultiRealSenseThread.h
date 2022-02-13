@@ -2,6 +2,7 @@
 
 #include <Core/array.h>
 #include <Core/thread.h>
+#include <unordered_map>
 
 namespace rs2 {
 struct config;
@@ -12,21 +13,24 @@ struct align;
 namespace rai {
 namespace realsense {
 
+extern std::unordered_map<std::string, std::string> cameraMapping;
+
 struct RealSenseCamera {
-  std::string serialNumber;
+  std::string cameraName;
   bool captureColor;
   bool captureDepth;
+  std::string serialNumber;
   std::shared_ptr<rs2::config> cfg;
   std::shared_ptr<rs2::pipeline> pipe;
   std::shared_ptr<rs2::align> align;
   float depth_scale;
   arr fxypxy, color_fxypxy, depth_fxypxy;
 
-  RealSenseCamera(std::string serialNumber, bool captureColor, bool captureDepth);
+  RealSenseCamera(std::string cameraName, bool captureColor, bool captureDepth);
 };
 
 struct MultiRealSenseThread : Thread {
-  std::vector<std::string> serialNumbers;
+  std::vector<std::string> cameraNames;
   Var<std::vector<byteA>> color;
   Var<std::vector<floatA>> depth;
   bool captureColor;
@@ -34,7 +38,7 @@ struct MultiRealSenseThread : Thread {
 
   std::vector<RealSenseCamera*> cameras;
 
-  MultiRealSenseThread(const std::vector<std::string> serialNumbers,
+  MultiRealSenseThread(const std::vector<std::string> cameraNames,
                        const Var<std::vector<byteA>>& color,
                        const Var<std::vector<floatA>>& depth,
                        bool captureColor, bool captureDepth);

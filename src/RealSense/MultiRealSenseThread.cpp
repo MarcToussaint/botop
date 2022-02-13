@@ -10,7 +10,7 @@
 
 namespace {
 
-void setSettings(rs2::pipeline_profile& profile, bool autoExposure, double exposure, double white) {
+void setSettings(rs2::pipeline_profile& profile, bool autoExposure, double exposure, double white, double gain) {
   rs2::device dev = profile.get_device();
   for(rs2::sensor& sensor : dev.query_sensors()) {
     LOG(1) <<"sensor " <<sensor.get_info(RS2_CAMERA_INFO_NAME);
@@ -31,6 +31,10 @@ void setSettings(rs2::pipeline_profile& profile, bool autoExposure, double expos
           sensor.set_option(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, 0);
           sensor.set_option(RS2_OPTION_WHITE_BALANCE, white);
           LOG(1) <<"  I disabled auto white balance";
+        }
+        if(sensor.supports(RS2_OPTION_GAIN)) {
+          sensor.set_option(RS2_OPTION_GAIN, gain);
+          LOG(1) <<"  I set gain";
         }
       }
       if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")) {
@@ -70,30 +74,49 @@ void setSettings(rs2::pipeline_profile& profile, bool autoExposure, double expos
 namespace rai {
 namespace realsense {
 
+std::unordered_map<std::string, std::string> cameraMapping = {
+  {"c1", "102422075114"},
+  {"c2", "102422071099"},
+  {"c3", "922612070608"},
+  {"c4", "922612070831"},
+  {"c5", "825312070938"}
+};
+
 #ifdef RAI_REALSENSE
 
-RealSenseCamera::RealSenseCamera(std::string serialNumber, bool captureColor, bool captureDepth)
-  : serialNumber(serialNumber),
+RealSenseCamera::RealSenseCamera(std::string cameraName, bool captureColor, bool captureDepth)
+  : cameraName(cameraName),
     captureColor(captureColor),
     captureDepth(captureDepth)
 {
+
+  if(cameraName.at(0) == 'c') {
+    serialNumber = cameraMapping.at(cameraName);
+  } else {
+    serialNumber = cameraName;
+  }
+
   cfg = std::make_shared<rs2::config>();
   cfg->enable_device(serialNumber);
 
-  if(captureColor) cfg->enable_stream(RS2_STREAM_COLOR, -1, 1920, 1080, rs2_format::RS2_FORMAT_RGB8, 30);
-  if(captureDepth) cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 30);
+  double wRGB = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/wRGB"), 1920);
+  double hRGB = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/hRGB"), 1080);
+  double wDepth = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/wDepth"), 424);
+  double hDepth = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/hDepth"), 240);
+  if(captureColor) cfg->enable_stream(RS2_STREAM_COLOR, -1, wRGB, hRGB, rs2_format::RS2_FORMAT_RGB8, 30);
+  if(captureDepth) cfg->enable_stream(RS2_STREAM_DEPTH, -1, wDepth, hDepth, rs2_format::RS2_FORMAT_Z16, 30);
 
   pipe = std::make_shared<rs2::pipeline>();
   pipe->start(*cfg);
 
-  // settings TODO make available for each camera?
-  bool alignToDepth = rai::getParameter<bool>("RealSense/alignToDepth", true);
-  bool autoExposure = rai::getParameter<bool>("RealSense/autoExposure", true);
-  double exposure = rai::getParameter<double>("RealSense/exposure", 500);
-  double white = rai::getParameter<double>("RealSense/white", 4000);
+  bool alignToDepth = rai::getParameter<bool>(STRING("RealSense/" << cameraName << "/alignToDepth"), false);
+  bool autoExposure = rai::getParameter<bool>(STRING("RealSense/" << cameraName << "/autoExposure"), false);
+  double exposure = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/exposure"), 500);
+  double white = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/white"), 4000);
+  double gain = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/gain"), 50);
 
   rs2::pipeline_profile profile = pipe->get_active_profile();
-  setSettings(profile, autoExposure, exposure, white);
+  setSettings(profile, autoExposure, exposure, white, gain);
 
   //-- info on all streams
   for(rs2::stream_profile sp : profile.get_streams()) {
@@ -129,9 +152,9 @@ RealSenseCamera::RealSenseCamera(std::string serialNumber, bool captureColor, bo
 
 
 
-MultiRealSenseThread::MultiRealSenseThread(const std::vector<std::string> serialNumbers, const Var<std::vector<byteA>>& color, const Var<std::vector<floatA>>& depth, bool captureColor, bool captureDepth)
+MultiRealSenseThread::MultiRealSenseThread(const std::vector<std::string> cameraNames, const Var<std::vector<byteA>>& color, const Var<std::vector<floatA>>& depth, bool captureColor, bool captureDepth)
   : Thread("MultiRealSenseThread"),
-    serialNumbers(serialNumbers),
+    cameraNames(cameraNames),
     color(this, color),
     depth(this, depth),
     captureColor(captureColor),
@@ -154,8 +177,8 @@ uint MultiRealSenseThread::getNumberOfCameras() {
 void MultiRealSenseThread::open() {
   rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
 
-  for(const auto& serialNumber : serialNumbers) {
-    cameras.push_back(new RealSenseCamera(serialNumber, captureColor, captureDepth));
+  for(const auto& cameraName : cameraNames) {
+    cameras.push_back(new RealSenseCamera(cameraName, captureColor, captureDepth));
   }
 }
 
@@ -199,6 +222,10 @@ void MultiRealSenseThread::step() {
 
     if(captureDepth) {
       rs2::depth_frame rs_depth = processed.get_depth_frame();
+
+      /*rs2::hole_filling_filter hole_filter(2);
+      rs_depth = hole_filter.process(rs_depth);*/
+
       floatA depthArr;
       depthArr.resize(rs_depth.get_height(), rs_depth.get_width());
       CHECK_EQ(rs_depth.get_bits_per_pixel(), 16, "");
@@ -220,7 +247,7 @@ void MultiRealSenseThread::step() {
 
 RealSenseCamera::RealSenseCamera(std::string serialNumber, bool captureColor, bool captureDepth) { NICO }
 
-MultiRealSenseThread::MultiRealSenseThread(const std::vector<std::string> serialNumbers, const Var<std::vector<byteA>>& color, const Var<std::vector<floatA>>& depth, bool captureColor, bool captureDepth)
+MultiRealSenseThread::MultiRealSenseThread(const std::vector<std::string> cameraNames, const Var<std::vector<byteA>>& color, const Var<std::vector<floatA>>& depth, bool captureColor, bool captureDepth)
   : Thread("MultiRealSenseThread") { NICO }
 MultiRealSenseThread::~MultiRealSenseThread() { NICO }
 uint MultiRealSenseThread::getNumberOfCameras() { NICO }
