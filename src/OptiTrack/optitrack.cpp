@@ -13,8 +13,20 @@ rai::Transformation rb2pose(const libmotioncapture::RigidBody& rb){
 }
 
 void poseFilter(rai::Transformation& X, double alpha, const rai::Transformation& signal){
-  X.pos = (1.-alpha)*X.pos + alpha*signal.pos;
-  X.rot.setInterpolate(alpha, X.rot, signal.rot);
+  CHECK_GE(alpha, 0., "");
+  CHECK_LE(alpha, 1., "");
+  if(alpha>0.){
+    double posErr = (X.pos - signal.pos).length();
+    double quatErr = 1. - fabs(rai::quat_scalarProduct(X.rot, signal.rot));
+    if(posErr > .5 || quatErr > .2){
+      LOG(-1) <<"rejecting jumping optitrack signal! err:" <<posErr <<' ' <<quatErr;
+      return;
+    }
+    X.pos = alpha*X.pos + (1.-alpha)*signal.pos;
+    X.rot.setInterpolate(1.-alpha, X.rot, signal.rot);
+  }else{
+    X = signal;
+  }
 }
 
 namespace rai{
@@ -76,8 +88,6 @@ namespace rai{
 
     std::lock_guard<std::mutex> lock(mux);
 
-    double alpha=0.1;
-
     //loop through all ot signals
     for (auto const& item: rigidBodies) {
       if(item.second.occluded()) continue;
@@ -87,7 +97,7 @@ namespace rai{
 
       if(pose!=poses.end()){
         //filter an existing entry
-        poseFilter(pose->second, alpha, rb2pose(item.second));
+        poseFilter(pose->second, filter, rb2pose(item.second));
       }else{
         //create a new entry
         LOG(0) <<"adding signal to entries '" <<name <<"'";

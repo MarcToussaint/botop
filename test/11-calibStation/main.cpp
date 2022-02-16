@@ -5,6 +5,7 @@
 
 #include <BotOp/bot.h>
 #include <BotOp/motionHelpers.h>
+#include <OptiTrack/optitrack.h>
 
 //===========================================================================
 
@@ -132,7 +133,7 @@ void computeCalibration(){
   }
   fil.close();
 
-  int ot_delay = 0; //in steps of 10msec!
+  int ot_delay = 1; //in steps of 10msec!
   q.delRows(-ot_delay, ot_delay);
   poseL.delRows(0, ot_delay);
   poseR.delRows(0, ot_delay);

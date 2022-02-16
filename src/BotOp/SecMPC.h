@@ -16,9 +16,10 @@ struct SecMPC{
   bool setNextWaypointTangent;
   rai::String msg;
   double precision = .1;
-  double ctrlTimeLastUpdate = -1.;
   double tauCutoff = .0;
-  arr q_ref, qDot_ref, q_refAdapted, qDot_refAdapted;
+
+  double ctrlTime_atLastUpdate = -1.;
+  arr q_ref_atLastUpdate, qDot_ref_atLastUpdate, q_refAdapted, qDot_refAdapted;
   bool phaseSwitch=false;
 
   SecMPC(KOMO& komo, int subSeqStart=0, int subSeqStop=-1, double timeCost=1e0, double ctrlCost=1e0, bool _setNextWaypointTangent=true);

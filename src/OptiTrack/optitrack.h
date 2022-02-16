@@ -10,6 +10,8 @@ namespace rai{
 struct OptiTrack : Thread {
   libmotioncapture::MotionCapture *mocap = 0;
 
+  RAI_PARAM("optitrack/", double, filter, .9)
+
   OptiTrack();
   ~OptiTrack();
 
