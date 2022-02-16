@@ -1,14 +1,23 @@
 #include "SecMPC.h"
 
 #include <Optim/MP_Solver.h>
-
+#include <KOMO/pathTools.h>
+#include <Kin/F_qFeatures.h>
 
 //===========================================================================
 
 SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, double ctrlCost, bool _setNextWaypointTangent)
   : pathMPC(komo),
     timingMPC(pathMPC.path({subSeqStart,subSeqStop}), timeCost, ctrlCost),
+    shortMPC(komo.world, 10, .1),
     subSeqStart(subSeqStart), subSeqStop(subSeqStop), setNextWaypointTangent(_setNextWaypointTangent){
+
+  shortMPC.komo.addObjective({}, FS_distance, {"obst", "l_gripper"}, OT_ineqP, {1e1}, {-.05});
+
+  for(uint t=0;t<shortMPC.komo.T;t++){
+    shortMPC.komo.addObjective({0.}, FS_qItself, {}, OT_sos, {1e0}, pathMPC.qHome, 0, t+1, t+1);
+  }
+//  shortMPC.komo.addObjective({1.}, FS_qItself, {}, OT_sos, {1e0}, {}, 1);
 
   if(setNextWaypointTangent) timingMPC.update_waypoints(timingMPC.waypoints, true);
 }
@@ -73,15 +82,53 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, do
     }
   }
 
-  msg <<" tau: " <<timingMPC.tau; // << ctrlTime + timingMPC.getTimes(); // <<' ' <<F.vels;
+  msg <<" tau: " <<timingMPC.tau << ctrlTime + timingMPC.getTimes(); // <<' ' <<F.vels;
+}
+
+void SecMPC::updateShortPath(const rai::Configuration& C, const arr& q_real, const arr& qDot_real, const arr& q_ref, const arr& qDot_ref){
+  shortMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
+  shortMPC.reinit(q_ref, qDot_ref);
+  rai::CubicSpline S;
+  timingMPC.getCubicSpline(S, q_ref, qDot_ref);
+  if(!S.pieces.N) return;
+  arr times = shortMPC.komo.getPath_times();
+  arr init = S.eval(times);
+  CHECK_EQ(times.N, shortMPC.komo.T, "");
+  CHECK_EQ(init.d0, shortMPC.komo.T, "");
+  for(int t=0;t<(int)init.d0;t++){
+    shortMPC.komo.setConfiguration_qOrg(t, q_ref);
+    std::shared_ptr<GroundedObjective> ob = shortMPC.komo.objs.elem(t - (int)init.d0);
+    ob->feat->setTarget(init[t]);
+//    cout <<off <<' ' <<t <<' ' <<ob->feat->shortTag(C) <<ob->feat->scale <<ob->feat->target <<ob->timeSlices <<endl;
+  }
+  shortMPC.komo.run_prepare(0.);
+  //shortMPC.reinit_taus(times(0));
+
+  shortMPC.solve();
+//  shortMPC.komo.view(false, "SHORT");
+//  shortMPC.path = init; shortMPC.feasible=true;
+  shortMPC.path = shortMPC.komo.getPath_qOrg();
+  shortMPC.tau = shortMPC.komo.getPath_tau();
+//  cout <<init - shortMPC.path <<endl;
+//  cout <<shortMPC.komo.getConfiguration_qOrg(-2) <<endl;
+//  cout <<shortMPC.komo.getConfiguration_qOrg(-1) <<endl;
+//  cout <<shortMPC.komo.getConfiguration_qOrg(-0) <<endl;
+//  cout <<q_ref <<endl <<qDot_ref <<endl;
+//  cout <<init <<endl <<shortMPC.path <<endl;
+//  rai::wait();
+//  shortMPC.komo.reportProblem();
 }
 
 void SecMPC::cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
   msg.clear();
   msg <<"CYCLE ctrlTime:" <<ctrlTime; //<<' ' <<q;
 
+  this->q_ref = q_ref;
+  this->qDot_ref = qDot_ref;
+
   updateWaypoints(C);
   updateTiming(C, pathMPC.komo.objectives, ctrlTime, q_real, qDot_real, q_ref, qDot_ref);
+  updateShortPath(C, q_real, qDot_real, q_ref, qDot_ref);
 }
 
 rai::CubicSplineCtor SecMPC::getSpline(double realtime){
@@ -97,6 +144,36 @@ rai::CubicSplineCtor SecMPC::getSpline(double realtime){
     times.prepend(0. - (realtime - ctrlTimeLastUpdate));
   }
   return {pts, vels, times};
+}
+
+rai::CubicSplineCtor SecMPC::getShortPath(double realtime){
+  if(timingMPC.done() || !pathMPC.feasible || !shortMPC.feasible){ return {}; }
+  arr times = shortMPC.komo.getPath_times();
+  arr pts = shortMPC.path;
+
+  times -= realtime - ctrlTimeLastUpdate; //ctrlTimeLast=when the timing was optimized; realtime=time now; -> shift spline to stich it at realtime
+  while(times.N && times.first()<tauCutoff){
+    times.remove(0);
+    pts.delRows(0);
+  }
+  return {pts, arr{}, times};
+}
+
+rai::CubicSplineCtor SecMPC::getShortPath2(double realtime){
+  if(timingMPC.done() || !pathMPC.feasible) return {};
+
+  rai::CubicSpline S;
+  timingMPC.getCubicSpline(S, q_ref, qDot_ref);
+
+  arr times = grid(1, tauCutoff, 1., 20).reshape(-1);
+  arr pts = S.eval(times);
+
+  times -= realtime - ctrlTimeLastUpdate; //ctrlTimeLast=when the timing was optimized; realtime=time now; -> shift spline to stich it at realtime
+  while(times.N && times.first()<tauCutoff){
+    times.remove(0);
+    pts.delRows(0);
+  }
+  return {pts, arr{}, times};
 }
 
 void SecMPC::report(const rai::Configuration& C) {

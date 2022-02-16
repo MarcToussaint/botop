@@ -5,7 +5,11 @@
 struct ShortPathMPC{
   KOMO komo;
   arr qHome;
-  uint steps=0;
+  uint iters=0;
+
+  double defaultTau;
+  int sliceOfConstraint;
+
 
   //results
   arr path;
@@ -13,10 +17,12 @@ struct ShortPathMPC{
   bool feasible=false;
   rai::String msg;
 
-  ShortPathMPC(rai::Configuration& C, double timingScale=1.);
+  ShortPathMPC(rai::Configuration& C, uint steps=10, double _defaultTau=.1);
 
+  void reinit_taus(double timeToConstraint);
   void reinit(const arr& x, const arr& v);  //update robot state
   void reinit(const rai::Configuration& C); //update object movements
 
   void solve();
+  arr getPath();
 };

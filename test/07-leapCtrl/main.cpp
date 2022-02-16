@@ -26,10 +26,11 @@ void testLeapCtrl() {
   bot.home(C);
 
   //-- create a leap controller (essentially receeding horizon KOMO solver)
-  ShortPathMPC shortMPC(C, 1.);
+  ShortPathMPC shortMPC(C, 10, .1);
+//  shortMPC.komo.addObjective({}, FS_distance, {"stick", "l_gripper"}, OT_ineq, {1e1}, {-.1});
+//  shortMPC.komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e0});
   shortMPC.komo.addObjective({1.}, FS_positionDiff, {"l_gripper", "target"}, OT_eq, {1e1});
-  shortMPC.komo.addObjective({}, FS_distance, {"stick", "l_gripper"}, OT_ineq, {1e1}, {-.1});
-  shortMPC.komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq, {1e0});
+  shortMPC.komo.addObjective({1.}, FS_qItself, {}, OT_eq, {1e0}, {}, 1);
 
   //-- iterate (with wait(.1))
   for(uint t=0;;t++){
@@ -63,7 +64,7 @@ void testLeapCtrl() {
 
 
     if(shortMPC.feasible){
-      arr path = shortMPC.path;
+      arr path = shortMPC.getPath();
       TimingProblem timingProblem(path, {}, q, qDot, 1e1); //, {}, tauInitial, optTau);
       MP_Solver solver;
       solver
@@ -78,10 +79,10 @@ void testLeapCtrl() {
       arr vels, times;
       timingProblem.getVels(vels);
       times = integral(timingProblem.tau);
-      cout <<times <<endl;
+      //cout <<times <<endl;
 
-      if(times.last()>.5){
-        shortMPC.komo.tau = times.last() / shortMPC.komo.T;
+      if(times.last()>.1){
+        shortMPC.reinit_taus(times.last());
 
         double ctrlTimeNow = bot.get_t();
         times -= ctrlTimeNow - ctrlTime;
@@ -90,7 +91,7 @@ void testLeapCtrl() {
         bot.moveLeap(shortMPC.path[-1]);
       }
     }else{
-      shortMPC.komo.tau = .1;
+      shortMPC.reinit_taus(1.);
     }
 
 

@@ -181,12 +181,12 @@ double BotOp::move(const arr& path, const arr& times, bool override){
     q = path[0];
     qDot = zeros(q.N);
 
-    arr tangents = getVelocities_centralDifference(path, .1);
-    tangents.delRows(-1);
+//    arr tangents = getVelocities_centralDifference(path, .1);
+//    tangents.delRows(-1);
     bool optTau = (times.N==0);
     arr tauInitial = {};
     if(!optTau) tauInitial = differencing(_times);
-    TimingProblem timingProblem(path, tangents, q, qDot, 1e1, {}, tauInitial, optTau);
+    TimingProblem timingProblem(path, {}, q, qDot, 1e0, {}, tauInitial, optTau);
     MP_Solver solver;
     solver
         .setProblem(timingProblem.ptr())

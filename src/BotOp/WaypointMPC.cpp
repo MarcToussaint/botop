@@ -32,7 +32,7 @@ void WaypointMPC::solve(){
 
   //is feasible?
   feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
-  msg.clear() <<"it " <<steps <<" feasible: " <<(feasible?" good":" FAIL") <<" -- queries: " <<komo.pathConfig.setJointStateCount <<" time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
+  msg.clear() <<"WAY it " <<steps <<" feasible: " <<(feasible?" good":" FAIL") <<" -- queries: " <<komo.pathConfig.setJointStateCount <<" time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
 
   komo.view(false, msg);
 
