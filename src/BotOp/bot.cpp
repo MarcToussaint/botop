@@ -172,17 +172,23 @@ double BotOp::move(const arr& path, const arr& times, bool override){
   if(_times.N){ //times are fully specified
     CHECK_EQ(_times.N, path.d0, "");
   }
+  if(std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref)){
+    return move(path, {}, _times, override);
+  }
   arr vels;
   if(path.d0==1){
     vels = zeros(1, path.d1);
   }else{ //use timing opt to decide on vels and, optionally, on timing
     arr q, qDot;
-    getSplineRef()->eval(q, qDot, NoArr, getSplineRef()->getEndTime());
-    q = path[0];
-    qDot = zeros(q.N);
+    if(!override){
+      getSplineRef()->eval(q, qDot, NoArr, getSplineRef()->getEndTime());
+      q = path[0];
+      qDot = zeros(q.N);
+    }else{ //THIS IS STILL BUGGY - need overrideCtrlTime!!
+      double ctrlTime = get_t();
+      getSplineRef()->eval(q, qDot, NoArr, ctrlTime);
+    }
 
-//    arr tangents = getVelocities_centralDifference(path, .1);
-//    tangents.delRows(-1);
     bool optTau = (times.N==0);
     arr tauInitial = {};
     if(!optTau) tauInitial = differencing(_times);

@@ -1,4 +1,6 @@
 #include "ShortPathMPC.h"
+#include <Control/timingOpt.h>
+#include <Optim/MP_Solver.h>
 
 ShortPathMPC::ShortPathMPC(rai::Configuration& C, uint steps, double _defaultTau)
   : defaultTau(_defaultTau)
@@ -48,6 +50,7 @@ void ShortPathMPC::reinit_taus(double timeToConstraint){
 }
 
 void ShortPathMPC::reinit(const arr& x, const arr& v){
+  x0=x; v0=v;
   //set the prefix to init:
   komo.setConfiguration_qOrg(-1, x);
   komo.setConfiguration_qOrg(-2, x - defaultTau*v);
@@ -63,7 +66,7 @@ void ShortPathMPC::reinit(const rai::Configuration& C){
   komo.updateRootObjects(C);
 }
 
-void ShortPathMPC::solve(){
+void ShortPathMPC::solve(bool alsoVels){
   iters++;
 
   //re-run KOMO
@@ -85,9 +88,24 @@ void ShortPathMPC::solve(){
 
   path = komo.getPath_qOrg();
   tau = komo.getPath_tau();
+  vels.clear();
 
   //store as output result
   if(feasible){
+    if(alsoVels){
+      TimingProblem timingProblem(path, {}, x0, v0, 1e0, {}, tau, true);
+      MP_Solver solver;
+      solver
+          .setProblem(timingProblem.ptr())
+          .setSolver(MPS_newton);
+      solver.opt
+          .set_stopTolerance(1e-4)
+          .set_maxStep(1e0)
+          .set_damping(1e-2);
+      auto ret = solver.solve();
+      //LOG(1) <<"timing f: " <<ret->f;
+      timingProblem.getVels(vels);
+    }
   }else{
     cout <<komo.getReport(true);
 //    komo.reset();

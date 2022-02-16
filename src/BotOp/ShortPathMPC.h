@@ -10,10 +10,12 @@ struct ShortPathMPC{
   double defaultTau;
   int sliceOfConstraint;
 
+  arr x0, v0;
 
   //results
   arr path;
   arr tau;
+  arr vels;
   bool feasible=false;
   rai::String msg;
 
@@ -23,6 +25,6 @@ struct ShortPathMPC{
   void reinit(const arr& x, const arr& v);  //update robot state
   void reinit(const rai::Configuration& C); //update object movements
 
-  void solve();
+  void solve(bool alsoVels);
   arr getPath();
 };
