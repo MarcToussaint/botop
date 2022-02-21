@@ -71,8 +71,7 @@ void ShortPathMPC::solve(bool alsoVels){
 
   //re-run KOMO
   rai::OptOptions opt;
-  opt.stopTolerance = 1e-4;
-  opt.stopGTolerance = 1e-4;
+  opt.stopTolerance = 1e-3;
   komo.opt.verbose=0;
   komo.timeTotal=0.;
   komo.pathConfig.setJointStateCount=0;
@@ -88,12 +87,14 @@ void ShortPathMPC::solve(bool alsoVels){
 
   path = komo.getPath_qOrg();
   tau = komo.getPath_tau();
+  times = komo.getPath_times();
   vels.clear();
 
   //store as output result
   if(feasible){
     if(alsoVels){
-      TimingProblem timingProblem(path, {}, x0, v0, 1e0, {}, tau, true);
+//      arr tangents = getVelocities_centralDifference(path, tau(0));
+      TimingProblem timingProblem(path, {}, x0, v0, 1e0, {}, tau, true, -1., -1., -1., 1e0, true);
       MP_Solver solver;
       solver
           .setProblem(timingProblem.ptr())
@@ -103,11 +104,19 @@ void ShortPathMPC::solve(bool alsoVels){
           .set_maxStep(1e0)
           .set_damping(1e-2);
       auto ret = solver.solve();
-      //LOG(1) <<"timing f: " <<ret->f;
       timingProblem.getVels(vels);
+      LOG(1) <<"timing f: " <<ret->f <<' ' <<ret->evals <<'\n' <<vels;
+      vels.prepend(v0);
+    }else{
+      vels.clear();
     }
+
+    path.prepend(x0);
+    times.prepend(0.);
+
   }else{
     cout <<komo.getReport(true);
+    path.clear();
 //    komo.reset();
 //    komo.initWithConstant(qHome);
   }

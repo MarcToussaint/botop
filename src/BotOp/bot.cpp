@@ -106,7 +106,7 @@ arr BotOp::get_qDot() {
 }
 
 double BotOp::getTimeToEnd(){
-  auto sp = std::dynamic_pointer_cast<rai::CubicSplineCtrlReference>(ref);
+  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
   if(!sp){
     LOG(-1) <<"can't get timeToEnd for non-spline mode";
     return 0.;
@@ -128,17 +128,17 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   if(keypressed) C.gl()->resetPressedKey();
   if(keypressed==13) return false;
   if(keypressed=='q' || keypressed==27) return false;
-  auto sp = std::dynamic_pointer_cast<rai::CubicSplineCtrlReference>(ref);
+  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
   if(sp && ctrlTime>sp->getEndTime()) return false;
   if(waitTime>0.) rai::wait(waitTime);
   return true;
 }
 
-std::shared_ptr<rai::CubicSplineCtrlReference> BotOp::getSplineRef(){
-  auto sp = std::dynamic_pointer_cast<rai::CubicSplineCtrlReference>(ref);
+std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
+  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
   if(!sp){
-    setReference<rai::CubicSplineCtrlReference>();
-    sp = std::dynamic_pointer_cast<rai::CubicSplineCtrlReference>(ref);
+    setReference<rai::SplineCtrlReference>();
+    sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
     CHECK(sp, "this is not a spline reference!")
   }
   return sp;
@@ -146,19 +146,19 @@ std::shared_ptr<rai::CubicSplineCtrlReference> BotOp::getSplineRef(){
 
 void BotOp::move(const arr& path, const arr& vels, const arr& times, bool override, double overrideCtrlTime){
   CHECK_EQ(times.N, path.d0, "");
-  CHECK_EQ(times.N, vels.d0, "");
+//  CHECK_EQ(times.N, vels.d0, "");
 
   if(override){
-    CHECK(overrideCtrlTime>0., "override -> need to give a cut-time (e.g. start og MPC cycle, or just get_t())");
+    CHECK(overrideCtrlTime>0., "override -> need to give a cut-time (e.g. start or MPC cycle, or just get_t())");
     //LOG(1) <<"override: " <<ctrlTime <<" - " <<_times;
     if(times.first()>0.){
-      getSplineRef()->overrideSmooth(path, vels, times, overrideCtrlTime);
+      getSplineRef()->overrideSmooth(path, /*vels,*/ times, overrideCtrlTime);
     }else{
-      getSplineRef()->overrideHard(path, vels, times, overrideCtrlTime);
+      getSplineRef()->overrideHard(path, /*vels,*/ times, overrideCtrlTime);
     }
   }else{
     //LOG(1) <<"append: " <<ctrlTime <<" - " <<_times;
-    getSplineRef()->append(path, vels, times, get_t());
+    getSplineRef()->append(path, /*vels,*/ times, get_t(), true);
   }
 }
 
@@ -172,7 +172,7 @@ void BotOp::move(const arr& path, const arr& times, bool override, double overri
     CHECK_EQ(_times.N, path.d0, "");
   }
   if(std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref)){
-    return move(path, {}, _times, override);
+    return move(path, {}, _times, override, overrideCtrlTime);
   }
   arr vels;
   if(path.d0==1){
@@ -224,7 +224,7 @@ void BotOp::moveLeap(const arr& q_target, double timeCost){
   double vel = scalarProduct(qDot, q_target-q)/dist;
   double T = (sqrt(6.*timeCost*dist+vel*vel) - vel)/timeCost;
   if(dist<1e-4 || T<.1) T=.1;
-  move(~q_target, {T}, true);
+  move(~q_target, {T}, true, get_t());
 }
 
 void BotOp::setControllerWriteData(int _writeData){

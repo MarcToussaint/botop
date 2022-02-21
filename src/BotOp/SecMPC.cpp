@@ -14,10 +14,10 @@ SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, dou
 
 //  shortMPC.komo.addObjective({}, FS_distance, {"obst", "l_gripper"}, OT_ineqP, {1e1}, {-.05});
 
-  StringA colls = {"l_palm", "l_finger1", "l_finger2", "l_panda_coll7b", "l_panda_coll7b"};
-  for(auto& s:colls){
-    shortMPC.komo.addObjective({}, FS_distance, {"obst", s}, OT_ineqP, {1e1}, {-.05});
-  }
+//  StringA colls = {"l_palm", "l_finger1", "l_finger2", "l_panda_coll7b", "l_panda_coll7b"};
+//  for(auto& s:colls){
+//    shortMPC.komo.addObjective({}, FS_distance, {"obst", s}, OT_ineqP, {1e1}, {-.05});
+//  }
 
   for(uint t=0;t<shortMPC.komo.T;t++){
     shortMPC.komo.addObjective({0.}, FS_qItself, {}, OT_sos, {1e1}, pathMPC.qHome, 0, t+1, t+1);
@@ -69,7 +69,8 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
       double ctrlErr = length(q_real-q_ref_atLastUpdate);
       double thresh = .02;
       //cout <<"err: " <<err <<"  \t" <<flush;
-      if(ctrlErr>thresh){ //LOG(0) <<"ERROR MODE" <<endl;
+      if(ctrlErr>thresh){
+        //LOG(0) <<"ERROR MODE: " <<ctrlErr <<endl;
         q_refAdapted = q_ref_atLastUpdate + ((ctrlErr-thresh)/ctrlErr) * (q_real-q_ref_atLastUpdate);
         ret = timingMPC.solve(q_refAdapted, qDot_ref_atLastUpdate, 0);
       }else{
@@ -88,9 +89,9 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
   msg <<" tau: " <<timingMPC.tau <<ctrlTime_atLastUpdate + timingMPC.getTimes(); // <<' ' <<F.vels;
 }
 
-void SecMPC::updateShortPath(const rai::Configuration& C, const arr& q_ref, const arr& qDot_ref){
+void SecMPC::updateShortPath(const rai::Configuration& C){
   shortMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
-  shortMPC.reinit(q_ref, qDot_ref);
+  shortMPC.reinit(q_refAdapted, qDot_ref_atLastUpdate);
   rai::CubicSpline S;
 #if 0
   timingMPC.getCubicSpline(S, q_ref, qDot_ref);
@@ -98,25 +99,31 @@ void SecMPC::updateShortPath(const rai::Configuration& C, const arr& q_ref, cons
 #else
 //  timingMPC.getCubicSpline(S, q_ref_atLastUpdate, qDot_ref_atLastUpdate);
   auto sp = getSpline(ctrlTime_atLastUpdate, true);
-  if(!sp.pts.N) return;
+  if(!sp.pts.N){ shortMPC.feasible=false; return; }
   S.set(sp.pts, sp.vels, sp.times);
 #endif
   arr times = shortMPC.komo.getPath_times();
-  arr init = S.eval(times);
+  arr pts = S.eval(times);
   CHECK_EQ(times.N, shortMPC.komo.T, "");
-  CHECK_EQ(init.d0, shortMPC.komo.T, "");
-  for(int t=0;t<(int)init.d0;t++){
-    shortMPC.komo.setConfiguration_qOrg(t, q_ref);
-    std::shared_ptr<GroundedObjective> ob = shortMPC.komo.objs.elem(t - (int)init.d0);
-    ob->feat->setTarget(init[t]);
+  CHECK_EQ(pts.d0, shortMPC.komo.T, "");
+  for(int t=0;t<(int)pts.d0;t++){
+    shortMPC.komo.setConfiguration_qOrg(t, q_refAdapted); //pts[t]);
+    std::shared_ptr<GroundedObjective> ob = shortMPC.komo.objs.elem(t - (int)pts.d0);
+    ob->feat->setTarget(pts[t]);
 //    cout <<off <<' ' <<t <<' ' <<ob->feat->shortTag(C) <<ob->feat->scale <<ob->feat->target <<ob->timeSlices <<endl;
   }
   shortMPC.komo.run_prepare(0.);
   //shortMPC.reinit_taus(times(0));
 
-  shortMPC.solve(true);
+  shortMPC.solve(false);
+
 //  shortMPC.komo.view(false, "SHORT");
-//  shortMPC.path = init; shortMPC.feasible=true;
+//  shortMPC.feasible = true;
+//  shortMPC.times = shortMPC.komo.getPath_times(); //grid(1, .0, .5, 10).reshape(-1);
+//  shortMPC.times.prepend(0);
+//  shortMPC.path = S.eval(shortMPC.times);
+//  shortMPC.vels = S.eval(shortMPC.times, 1);
+
 //  cout <<init - shortMPC.path <<endl;
 //  cout <<shortMPC.komo.getConfiguration_qOrg(-2) <<endl;
 //  cout <<shortMPC.komo.getConfiguration_qOrg(-1) <<endl;
@@ -141,7 +148,7 @@ void SecMPC::cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDo
 
   updateWaypoints(C);
   updateTiming(C, pathMPC.komo.objectives, q_real);
-  updateShortPath(C, q_refAdapted, qDot_ref_atLastUpdate);
+  updateShortPath(C);
 }
 
 rai::CubicSplineCtor SecMPC::getSpline(double realtime, bool prependRef){
@@ -163,21 +170,6 @@ rai::CubicSplineCtor SecMPC::getSpline(double realtime, bool prependRef){
   return {pts, vels, times};
 }
 
-rai::CubicSplineCtor SecMPC::getShortPath(double realtime){
-  if(timingMPC.done() || !pathMPC.feasible || !shortMPC.feasible){ return {}; }
-  arr times = shortMPC.komo.getPath_times();
-  arr pts = shortMPC.path;
-  arr vels = shortMPC.vels;
-
-  times -= realtime - ctrlTime_atLastUpdate; //ctrlTimeLast=when the timing was optimized; realtime=time now; -> shift spline to stich it at realtime
-  while(times.N && times.first()<tauCutoff){
-    times.remove(0);
-    pts.delRows(0);
-    if(vels.N) vels.delRows(0);
-  }
-  return {pts, vels, times};
-}
-
 rai::CubicSplineCtor SecMPC::getShortPath2(double realtime){
   if(timingMPC.done() || !pathMPC.feasible) return {};
 
@@ -187,18 +179,40 @@ rai::CubicSplineCtor SecMPC::getShortPath2(double realtime){
   if(!sp.pts.N) return {};
   S.set(sp.pts, sp.vels, sp.times);
 
-  arr times = grid(1, .1, .5, 4).reshape(-1);
+#if 1
+  arr times = grid(1, .0, .5, 10).reshape(-1);
   arr pts = S.eval(times);
   arr vels = S.eval(times, 1);
+  vels.clear();
+#else
+  arr times = sp.times, pts=sp.pts, vels=sp.vels;
+#endif
 
   times -= realtime - ctrlTime_atLastUpdate; //ctrlTimeLast=when the timing was optimized; realtime=time now; -> shift spline to stich it at realtime
-  while(times.N && times.first()<tauCutoff){
-    times.remove(0);
-    pts.delRows(0);
-    vels.delRows(0);
-  }
+//  while(times.N && times.first()<tauCutoff){
+//    times.remove(0);
+//    pts.delRows(0);
+//    vels.delRows(0);
+//  }
   return {pts, vels, times};
 }
+
+rai::CubicSplineCtor SecMPC::getShortPath(double realtime){
+  if(timingMPC.done() || !pathMPC.feasible || !shortMPC.feasible){ return {}; }
+  arr times = shortMPC.times; //komo.getPath_times();
+  arr pts = shortMPC.path;
+  arr vels = shortMPC.vels;
+  if(!pts.N) return {};
+
+  times -= realtime - ctrlTime_atLastUpdate; //ctrlTimeLast=when the timing was optimized; realtime=time now; -> shift spline to stich it at realtime
+//  while(times.N && times.first()<tauCutoff){
+//    times.remove(0);
+//    pts.delRows(0);
+//    if(vels.N) vels.delRows(0);
+//  }
+  return {pts, vels, times};
+}
+
 
 void SecMPC::report(const rai::Configuration& C) {
   const ObjectiveL& phi = pathMPC.komo.objectives;

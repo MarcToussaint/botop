@@ -63,7 +63,7 @@ struct BotOp{
 
 private:
   template<class T> BotOp& setReference();
-  std::shared_ptr<rai::CubicSplineCtrlReference> getSplineRef();
+  std::shared_ptr<rai::SplineCtrlReference> getSplineRef();
 };
 
 //===========================================================================

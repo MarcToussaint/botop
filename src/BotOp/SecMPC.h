@@ -27,7 +27,7 @@ struct SecMPC{
 
   void updateWaypoints(const rai::Configuration& C);
   void updateTiming(const rai::Configuration& C, const ObjectiveL& phi, const arr& q_real);
-  void updateShortPath(const rai::Configuration& C, const arr& q_ref, const arr& qDot_ref);
+  void updateShortPath(const rai::Configuration& C);
   void cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime);
   rai::CubicSplineCtor getSpline(double realtime, bool prependRef=false);
   rai::CubicSplineCtor getShortPath(double realtime);

@@ -44,8 +44,8 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
   }
   state.set()->q = q_real;
   state.set()->qDot = qDot_real;
-  emuConfig.watch(false, STRING("EMULATION - initialization"));
-  emuConfig.gl()->update(0, true);
+  //emuConfig.watch(false, STRING("EMULATION - initialization"));
+  //emuConfig.gl()->update(0, true);
   threadLoop();
   state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
 }
@@ -129,6 +129,9 @@ void ControlEmulator::step(){
     noise *= noise_th;
     qDot_real += noise;
   }
+
+  //-- add other crazy perturbations?
+  if((step_count%1000)<100) q_real(0) = .1;
 
   //-- directly integrate
   q_real += .5 * tau * qDot_real;

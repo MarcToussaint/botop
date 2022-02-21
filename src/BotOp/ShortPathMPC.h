@@ -13,6 +13,7 @@ struct ShortPathMPC{
   arr x0, v0;
 
   //results
+  arr times;
   arr path;
   arr tau;
   arr vels;
