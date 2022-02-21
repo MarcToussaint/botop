@@ -144,26 +144,25 @@ std::shared_ptr<rai::CubicSplineCtrlReference> BotOp::getSplineRef(){
   return sp;
 }
 
-double BotOp::move(const arr& path, const arr& vels, const arr& times, bool override){
+void BotOp::move(const arr& path, const arr& vels, const arr& times, bool override, double overrideCtrlTime){
   CHECK_EQ(times.N, path.d0, "");
   CHECK_EQ(times.N, vels.d0, "");
 
-  double ctrlTime = get_t();
   if(override){
+    CHECK(overrideCtrlTime>0., "override -> need to give a cut-time (e.g. start og MPC cycle, or just get_t())");
     //LOG(1) <<"override: " <<ctrlTime <<" - " <<_times;
     if(times.first()>0.){
-      getSplineRef()->overrideSmooth(path, vels, times, ctrlTime);
+      getSplineRef()->overrideSmooth(path, vels, times, overrideCtrlTime);
     }else{
-      getSplineRef()->overrideHard(path, vels, times, ctrlTime);
+      getSplineRef()->overrideHard(path, vels, times, overrideCtrlTime);
     }
   }else{
     //LOG(1) <<"append: " <<ctrlTime <<" - " <<_times;
-    getSplineRef()->append(path, vels, times, ctrlTime);
+    getSplineRef()->append(path, vels, times, get_t());
   }
-  return ctrlTime+times.last();
 }
 
-double BotOp::move(const arr& path, const arr& times, bool override){
+void BotOp::move(const arr& path, const arr& times, bool override, double overrideCtrlTime){
   arr _times=times;
   if(_times.N==1 && path.d0>1){ //divide total time in grid
     _times = range(0., times.scalar(), path.d0-1);
@@ -185,8 +184,8 @@ double BotOp::move(const arr& path, const arr& times, bool override){
       q = path[0];
       qDot = zeros(q.N);
     }else{ //THIS IS STILL BUGGY - need overrideCtrlTime!!
-      double ctrlTime = get_t();
-      getSplineRef()->eval(q, qDot, NoArr, ctrlTime);
+      CHECK(overrideCtrlTime>0., "override -> need to give a cut-time (e.g. start og MPC cycle, or just get_t())");
+      getSplineRef()->eval(q, qDot, NoArr, overrideCtrlTime);
     }
 
     bool optTau = (times.N==0);
@@ -207,7 +206,7 @@ double BotOp::move(const arr& path, const arr& times, bool override){
     if(!_times.N) _times = integral(timingProblem.tau);
   }
 
-  return move(path, vels, _times, override);
+  move(path, vels, _times, override, overrideCtrlTime);
 }
 
 void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
@@ -218,14 +217,14 @@ void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
   move(path, times);
 }
 
-double BotOp::moveLeap(const arr& q_target, double timeCost){
+void BotOp::moveLeap(const arr& q_target, double timeCost){
   arr q = get_q();
   arr qDot = get_qDot();
   double dist = length(q-q_target);
   double vel = scalarProduct(qDot, q_target-q)/dist;
   double T = (sqrt(6.*timeCost*dist+vel*vel) - vel)/timeCost;
   if(dist<1e-4 || T<.1) T=.1;
-  return move(~q_target, {T}, true);
+  move(~q_target, {T}, true);
 }
 
 void BotOp::setControllerWriteData(int _writeData){

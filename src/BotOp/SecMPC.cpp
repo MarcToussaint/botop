@@ -9,7 +9,7 @@
 SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, double ctrlCost, bool _setNextWaypointTangent)
   : pathMPC(komo),
     timingMPC(pathMPC.path({subSeqStart,subSeqStop}), timeCost, ctrlCost),
-    shortMPC(komo.world, 5, .1),
+    shortMPC(komo.world, 10, .1),
     subSeqStart(subSeqStart), subSeqStop(subSeqStop), setNextWaypointTangent(_setNextWaypointTangent){
 
 //  shortMPC.komo.addObjective({}, FS_distance, {"obst", "l_gripper"}, OT_ineqP, {1e1}, {-.05});
