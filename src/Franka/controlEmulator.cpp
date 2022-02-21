@@ -136,7 +136,7 @@ void ControlEmulator::step(){
   q_real += .5 * tau * qDot_real;
 
   //-- display? 20fps
-  if(!(step_count%int(1./(20.*tau)))){
+  if(false && !(step_count%int(1./(20.*tau)))){
     emuConfig.setJointState(q_real);
     emuConfig.watch(false, STRING("EMULATION - time " <<ctrlTime));
   }

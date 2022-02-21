@@ -141,7 +141,7 @@ void SecMPC::cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDo
 
   updateWaypoints(C);
   updateTiming(C, pathMPC.komo.objectives, q_real);
-  updateShortPath(C, q_ref, qDot_ref);
+  updateShortPath(C, q_refAdapted, qDot_ref_atLastUpdate);
 }
 
 rai::CubicSplineCtor SecMPC::getSpline(double realtime, bool prependRef){
