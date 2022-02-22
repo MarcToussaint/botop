@@ -9,14 +9,14 @@
 SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, double ctrlCost, bool _setNextWaypointTangent)
   : pathMPC(komo),
     timingMPC(pathMPC.path({subSeqStart,subSeqStop}), timeCost, ctrlCost),
-    shortMPC(komo.world, 10, .1),
+    shortMPC(komo.world, 5, .1),
     subSeqStart(subSeqStart), subSeqStop(subSeqStop), setNextWaypointTangent(_setNextWaypointTangent){
 
 //  shortMPC.komo.addObjective({}, FS_distance, {"obst", "l_gripper"}, OT_ineqP, {1e1}, {-.05});
 
   StringA colls = {"l_palm", "l_finger1", "l_finger2", "l_panda_coll7b", "l_panda_coll7", "l_panda_coll6", "l_panda_coll5", "l_panda_coll4", "l_panda_coll3"};
   for(auto& s:colls){
-    shortMPC.komo.addObjective({}, FS_distance, {"obst", s}, OT_ineqP, {1e1}, {-.05});
+    shortMPC.komo.addObjective({}, FS_distance, {"obst", s}, OT_ineqP, {5.}, {-.05});
   }
 
   for(uint t=0;t<shortMPC.komo.T;t++){

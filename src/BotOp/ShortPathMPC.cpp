@@ -14,7 +14,7 @@ ShortPathMPC::ShortPathMPC(rai::Configuration& C, uint steps, double _defaultTau
   //control costs at short horizon
   //komo.add_qControlObjective({}, 1, 1e-1);
 //  komo.add_jointLimits();
-  komo.add_qControlObjective({}, 2, 1);
+  komo.add_qControlObjective({}, 2, .1);
 //  komo.add_qControlObjective({}, 0, 1e0);
   //komo.add_collision();
   komo.reportProblem();
