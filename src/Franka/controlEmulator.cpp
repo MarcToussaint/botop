@@ -130,13 +130,13 @@ void ControlEmulator::step(){
     qDot_real += noise;
   }
 
-  //-- add other crazy perturbations?
-  if((step_count%1000)<100) q_real(0) = .1;
-
   //-- directly integrate
   q_real += .5 * tau * qDot_real;
   qDot_real += tau * qDDot_des;
   q_real += .5 * tau * qDot_real;
+
+  //-- add other crazy perturbations?
+//  if((step_count%1000)<100) q_real(0) = .1;
 
   //-- display? 20fps
   if(false && !(step_count%int(1./(20.*tau)))){

@@ -14,10 +14,10 @@ SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, dou
 
 //  shortMPC.komo.addObjective({}, FS_distance, {"obst", "l_gripper"}, OT_ineqP, {1e1}, {-.05});
 
-//  StringA colls = {"l_palm", "l_finger1", "l_finger2", "l_panda_coll7b", "l_panda_coll7b"};
-//  for(auto& s:colls){
-//    shortMPC.komo.addObjective({}, FS_distance, {"obst", s}, OT_ineqP, {1e1}, {-.05});
-//  }
+  StringA colls = {"l_palm", "l_finger1", "l_finger2", "l_panda_coll7b", "l_panda_coll7", "l_panda_coll6", "l_panda_coll5", "l_panda_coll4", "l_panda_coll3"};
+  for(auto& s:colls){
+    shortMPC.komo.addObjective({}, FS_distance, {"obst", s}, OT_ineqP, {1e1}, {-.05});
+  }
 
   for(uint t=0;t<shortMPC.komo.T;t++){
     shortMPC.komo.addObjective({0.}, FS_qItself, {}, OT_sos, {1e1}, pathMPC.qHome, 0, t+1, t+1);
@@ -29,7 +29,7 @@ SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, dou
 
 void SecMPC::updateWaypoints(const rai::Configuration& C){
   pathMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
-  pathMPC.solve();
+  pathMPC.solve(verbose-2);
 
   msg <<" (path) #:" <<pathMPC.komo.pathConfig.setJointStateCount;
   //      msg <<" T:" <<pathProblem.komo.timeTotal <<" f:" <<pathProblem.komo.sos <<" eq:" <<pathProblem.komo.eq <<" iq:" <<pathProblem.komo.ineq;
@@ -72,11 +72,11 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
       if(ctrlErr>thresh){
         //LOG(0) <<"ERROR MODE: " <<ctrlErr <<endl;
         q_refAdapted = q_ref_atLastUpdate + ((ctrlErr-thresh)/ctrlErr) * (q_real-q_ref_atLastUpdate);
-        ret = timingMPC.solve(q_refAdapted, qDot_ref_atLastUpdate, 0);
+        ret = timingMPC.solve(q_refAdapted, qDot_ref_atLastUpdate, verbose-2);
       }else{
         q_refAdapted.clear();
         q_refAdapted = q_ref_atLastUpdate;
-        ret = timingMPC.solve(q_ref_atLastUpdate, qDot_ref_atLastUpdate, 0);
+        ret = timingMPC.solve(q_ref_atLastUpdate, qDot_ref_atLastUpdate, verbose-2);
       }
       msg <<" (timing) ph:" <<timingMPC.phase <<" #:" <<ret->evals;
       //      msg <<" T:" <<ret->time <<" f:" <<ret->f;
@@ -115,7 +115,7 @@ void SecMPC::updateShortPath(const rai::Configuration& C){
   shortMPC.komo.run_prepare(0.);
   //shortMPC.reinit_taus(times(0));
 
-  shortMPC.solve(false);
+  shortMPC.solve(false, verbose-2);
 
 //  shortMPC.komo.view(false, "SHORT");
 //  shortMPC.feasible = true;
@@ -170,7 +170,7 @@ rai::CubicSplineCtor SecMPC::getSpline(double realtime, bool prependRef){
   return {pts, vels, times};
 }
 
-rai::CubicSplineCtor SecMPC::getShortPath2(double realtime){
+rai::CubicSplineCtor SecMPC::getShortPath_debug(double realtime){
   if(timingMPC.done() || !pathMPC.feasible) return {};
 
   rai::CubicSpline S;

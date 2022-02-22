@@ -26,6 +26,6 @@ struct ShortPathMPC{
   void reinit(const arr& x, const arr& v);  //update robot state
   void reinit(const rai::Configuration& C); //update object movements
 
-  void solve(bool alsoVels);
+  void solve(bool alsoVels, int verbose);
   arr getPath();
 };

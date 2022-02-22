@@ -66,7 +66,7 @@ void ShortPathMPC::reinit(const rai::Configuration& C){
   komo.updateRootObjects(C);
 }
 
-void ShortPathMPC::solve(bool alsoVels){
+void ShortPathMPC::solve(bool alsoVels, int verbose){
   iters++;
 
   //re-run KOMO
@@ -81,9 +81,11 @@ void ShortPathMPC::solve(bool alsoVels){
 
   //is feasible?
   feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
-  msg.clear() <<"SHORT it " <<iters <<" feasible: " <<(feasible?" good":" FAIL") <<" -- queries: " <<komo.pathConfig.setJointStateCount <<" time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
 
-  komo.view(false, msg);
+  if(verbose>0){
+    msg.clear() <<"SHORT it " <<iters <<" feasible: " <<(feasible?" good":" FAIL") <<" -- queries: " <<komo.pathConfig.setJointStateCount <<" time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
+    komo.view(false, msg);
+  }
 
   path = komo.getPath_qOrg();
   tau = komo.getPath_tau();
@@ -115,8 +117,9 @@ void ShortPathMPC::solve(bool alsoVels){
     times.prepend(0.);
 
   }else{
-    cout <<komo.getReport(true);
+    cout <<komo.getReport(false);
     path.clear();
+    times.clear();
 //    komo.reset();
 //    komo.initWithConstant(qHome);
   }

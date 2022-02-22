@@ -23,6 +23,8 @@ struct SecMPC{
   arr q_ref_atLastUpdate, qDot_ref_atLastUpdate, q_refAdapted;
   bool phaseSwitch=false;
 
+  int verbose=1;
+
   SecMPC(KOMO& komo, int subSeqStart=0, int subSeqStop=-1, double timeCost=1e0, double ctrlCost=1e0, bool _setNextWaypointTangent=true);
 
   void updateWaypoints(const rai::Configuration& C);
@@ -31,7 +33,7 @@ struct SecMPC{
   void cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime);
   rai::CubicSplineCtor getSpline(double realtime, bool prependRef=false);
   rai::CubicSplineCtor getShortPath(double realtime);
-  rai::CubicSplineCtor getShortPath2(double realtime);
+  rai::CubicSplineCtor getShortPath_debug(double realtime);
   void report(const rai::Configuration& C);
 };
 
