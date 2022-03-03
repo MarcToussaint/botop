@@ -4,6 +4,8 @@
 #include <KOMO/pathTools.h>
 #include <Kin/F_qFeatures.h>
 
+#include <iomanip>
+
 //===========================================================================
 
 SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, double ctrlCost, bool _setNextWaypointTangent)
@@ -31,8 +33,8 @@ void SecMPC::updateWaypoints(const rai::Configuration& C){
   pathMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
   pathMPC.solve(verbose-2);
 
-  msg <<" (path) #:" <<pathMPC.komo.pathConfig.setJointStateCount;
-  //      msg <<" T:" <<pathProblem.komo.timeTotal <<" f:" <<pathProblem.komo.sos <<" eq:" <<pathProblem.komo.eq <<" iq:" <<pathProblem.komo.ineq;
+  msg <<" WAY #:" <<pathMPC.komo.pathConfig.setJointStateCount;
+  msg <<' ' <<pathMPC.komo.sos <<'|' <<pathMPC.komo.ineq <<'|' <<pathMPC.komo.eq;
 }
 
 void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, const arr& q_real){
@@ -78,15 +80,16 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
         q_refAdapted = q_ref_atLastUpdate;
         ret = timingMPC.solve(q_ref_atLastUpdate, qDot_ref_atLastUpdate, verbose-2);
       }
-      msg <<" (timing) ph:" <<timingMPC.phase <<" #:" <<ret->evals;
+      msg <<" \tTIMING #:" <<ret->evals <<" phase: " <<timingMPC.phase ;
       //      msg <<" T:" <<ret->time <<" f:" <<ret->f;
     }else{
-      msg <<" (timing) ph:" <<timingMPC.phase <<" #skipped";
+      msg <<" \tTIMING #skipped" <<" phase: " <<timingMPC.phase ;
 //      LOG(0) <<"skipping timing opt, as too close ahead: " <<timingMPC.tau;
     }
   }
 
-  msg <<" tau: " <<timingMPC.tau <<ctrlTime_atLastUpdate + timingMPC.getTimes(); // <<' ' <<F.vels;
+  msg <<" tau: " <<timingMPC.tau;
+//  msg <<ctrlTime_atLastUpdate + timingMPC.getTimes(); // <<' ' <<F.vels;
 }
 
 void SecMPC::updateShortPath(const rai::Configuration& C){
@@ -132,11 +135,16 @@ void SecMPC::updateShortPath(const rai::Configuration& C){
 //  cout <<init <<endl <<shortMPC.path <<endl;
 //  rai::wait();
 //  shortMPC.komo.reportProblem();
+
+  msg <<" \tPATH #:" <<shortMPC.komo.pathConfig.setJointStateCount;
+  msg <<' ' <<shortMPC.komo.sos <<'|' <<shortMPC.komo.ineq <<'|' <<shortMPC.komo.eq;
 }
 
 void SecMPC::cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
   msg.clear();
-  msg <<"CYCLE ctrlTime:" <<ctrlTime; //<<' ' <<q;
+  msg <<std::setprecision(6);
+  msg <<"CYCLE ctrlTime:" <<ctrlTime;
+  msg <<std::setprecision(3);
 
   //-- store ctrl state at start of this cycle
   if(ctrlTime_atLastUpdate>0.){
@@ -216,7 +224,7 @@ rai::CubicSplineCtor SecMPC::getShortPath(double realtime){
 
 void SecMPC::report(const rai::Configuration& C) {
   const ObjectiveL& phi = pathMPC.komo.objectives;
-  msg <<" (fea) " <<phi.maxError(C, 0.5+timingMPC.phase)
+  msg <<" \tFEA " <<phi.maxError(C, 0.5+timingMPC.phase)
      <<' ' <<phi.maxError(C, 1.+timingMPC.phase)
     <<' ' <<phi.maxError(C, 1.5+timingMPC.phase)
    <<' ' <<phi.maxError(C, 2.+timingMPC.phase);

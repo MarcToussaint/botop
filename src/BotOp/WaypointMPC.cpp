@@ -25,7 +25,7 @@ void WaypointMPC::solve(int verbose){
   komo.opt.verbose=0;
   komo.timeTotal=0.;
   komo.pathConfig.setJointStateCount=0;
-  //komo.reportProblem();
+//  komo.reportProblem();
 //  komo.initWithConstant(qHome);
   komo.optimize(.0, opt);
   //komo.checkGradients();

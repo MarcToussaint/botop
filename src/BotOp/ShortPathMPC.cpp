@@ -17,7 +17,7 @@ ShortPathMPC::ShortPathMPC(rai::Configuration& C, uint steps, double _defaultTau
   komo.add_qControlObjective({}, 2, .1);
 //  komo.add_qControlObjective({}, 0, 1e0);
   //komo.add_collision();
-  komo.reportProblem();
+//  komo.reportProblem();
 }
 
 void ShortPathMPC::reinit_taus(double timeToConstraint){
