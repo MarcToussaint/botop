@@ -133,7 +133,7 @@ void computeCalibration(){
   }
   fil.close();
 
-  int ot_delay = 1; //in steps of 10msec!
+  int ot_delay = 2; //in steps of 10msec!
   q.delRows(-ot_delay, ot_delay);
   poseL.delRows(0, ot_delay);
   poseR.delRows(0, ot_delay);
@@ -266,7 +266,7 @@ void demoCalibration(){
 
       arr pt = points[l];
       komo.addObjective({}, FS_positionDiff, {"r_gripper", "table_base"}, OT_eq, {1e2}, pt);
-      komo.addObjective({}, FS_positionDiff, {"r_gripper", "l_gripper"}, OT_eq, {1e2}, {.04, 0., 0.});
+      komo.addObjective({}, FS_positionDiff, {"r_gripper", "l_gripper"}, OT_eq, {1e2}, {.05, 0., 0.});
 
       komo.addObjective({}, FS_scalarProductXY, {"r_gripper", "l_gripper"}, OT_eq, {1e2});
       komo.addObjective({}, FS_vectorZ, {"r_gripper"}, OT_eq, {1e2}, {1.,0.,0.});
