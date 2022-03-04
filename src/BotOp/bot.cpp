@@ -6,6 +6,7 @@
 #include <KOMO/pathTools.h>
 #include <Control/timingOpt.h>
 #include <Optim/MP_Solver.h>
+#include <Gui/opengl.h>
 
 #include <Franka/franka.h>
 #include <Franka/gripper.h>
@@ -73,6 +74,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   }
 
   C.watch(false, STRING("time: 0"));
+  C.gl()->ensure_gl().setTitle("BotOp Configuration");
 }
 
 BotOp::~BotOp(){

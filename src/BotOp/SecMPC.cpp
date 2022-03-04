@@ -14,8 +14,6 @@ SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, dou
     shortMPC(komo.world, 5, .1),
     subSeqStart(subSeqStart), subSeqStop(subSeqStop), setNextWaypointTangent(_setNextWaypointTangent){
 
-//  shortMPC.komo.addObjective({}, FS_distance, {"obst", "l_gripper"}, OT_ineqP, {1e1}, {-.05});
-
   StringA colls = {"l_palm", "l_finger1", "l_finger2", "l_panda_coll7b", "l_panda_coll7", "l_panda_coll6", "l_panda_coll5", "l_panda_coll4", "l_panda_coll3"};
   for(auto& s:colls){
     shortMPC.komo.addObjective({}, FS_distance, {"obst", s}, OT_ineqP, {5.}, {-.05});
@@ -24,7 +22,6 @@ SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, dou
   for(uint t=0;t<shortMPC.komo.T;t++){
     shortMPC.komo.addObjective({0.}, FS_qItself, {}, OT_sos, {1e1}, pathMPC.qHome, 0, t+1, t+1);
   }
-//  shortMPC.komo.addObjective({1.}, FS_qItself, {}, OT_sos, {1e0}, {}, 1);
 
   if(setNextWaypointTangent) timingMPC.update_waypoints(timingMPC.waypoints, true);
 }
