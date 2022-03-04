@@ -8,7 +8,7 @@
 //===========================================================================
 
 struct SecMPC{
-  WaypointMPC pathMPC;
+  WaypointMPC waypointMPC;
   TimingMPC timingMPC;
   ShortPathMPC shortMPC;
 

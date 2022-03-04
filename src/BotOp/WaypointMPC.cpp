@@ -22,6 +22,7 @@ void WaypointMPC::solve(int verbose){
   //re-run KOMO
   rai::OptOptions opt;
   opt.stopTolerance = 1e-3;
+  opt.set_stopEvals(300);
   komo.opt.verbose=0;
   komo.timeTotal=0.;
   komo.pathConfig.setJointStateCount=0;

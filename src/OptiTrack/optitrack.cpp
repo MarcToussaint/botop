@@ -20,7 +20,7 @@ void poseFilter(rai::Transformation& X, double alpha, const rai::Transformation&
     double quatErr = 1. - fabs(rai::quat_scalarProduct(X.rot, signal.rot));
     if(posErr > .5 || quatErr > .2){
       LOG(-1) <<"rejecting jumping optitrack signal! err:" <<posErr <<' ' <<quatErr;
-      return;
+//      return;
     }
     X.pos = alpha*X.pos + (1.-alpha)*signal.pos;
     X.rot.setInterpolate(1.-alpha, X.rot, signal.rot);

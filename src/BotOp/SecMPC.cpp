@@ -9,35 +9,35 @@
 //===========================================================================
 
 SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, double ctrlCost, bool _setNextWaypointTangent)
-  : pathMPC(komo),
-    timingMPC(pathMPC.path({subSeqStart,subSeqStop}), timeCost, ctrlCost),
+  : waypointMPC(komo),
+    timingMPC(waypointMPC.path({subSeqStart,subSeqStop}), timeCost, ctrlCost),
     shortMPC(komo.world, 5, .1),
     subSeqStart(subSeqStart), subSeqStop(subSeqStop), setNextWaypointTangent(_setNextWaypointTangent){
 
   StringA colls = {"l_palm", "l_finger1", "l_finger2", "l_panda_coll7b", "l_panda_coll7", "l_panda_coll6", "l_panda_coll5", "l_panda_coll4", "l_panda_coll3"};
-  colls.append("stick");
+  if(komo.world["stick"]) colls.append("stick");
   for(auto& s:colls){
     shortMPC.komo.addObjective({}, FS_distance, {"obst", s}, OT_ineqP, {5.}, {-.1});
   }
 
   for(uint t=0;t<shortMPC.komo.T;t++){
-    shortMPC.komo.addObjective({0.}, FS_qItself, {}, OT_sos, {1e1}, pathMPC.qHome, 0, t+1, t+1);
+    shortMPC.komo.addObjective({0.}, FS_qItself, {}, OT_sos, {1e1}, waypointMPC.qHome, 0, t+1, t+1);
   }
 
   if(setNextWaypointTangent) timingMPC.update_waypoints(timingMPC.waypoints, true);
 }
 
 void SecMPC::updateWaypoints(const rai::Configuration& C){
-  pathMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
-  pathMPC.solve(verbose-2);
+  waypointMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
+  waypointMPC.solve(verbose-2);
 
-  msg <<" WAY #:" <<pathMPC.komo.pathConfig.setJointStateCount;
-  msg <<' ' <<pathMPC.komo.sos <<'|' <<pathMPC.komo.ineq <<'|' <<pathMPC.komo.eq;
+  msg <<" WAY #:" <<waypointMPC.komo.pathConfig.setJointStateCount;
+  msg <<' ' <<waypointMPC.komo.sos <<'|' <<waypointMPC.komo.ineq <<'|' <<waypointMPC.komo.eq;
 }
 
 void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, const arr& q_real){
   //-- adopt the new path
-  timingMPC.update_waypoints(pathMPC.path({subSeqStart, subSeqStop}), setNextWaypointTangent);
+  timingMPC.update_waypoints(waypointMPC.path({subSeqStart, subSeqStop}), setNextWaypointTangent);
 
   //-- progress time (potentially phase)
   if(!timingMPC.done() && ctrlTimeDelta>0.){
@@ -153,12 +153,12 @@ void SecMPC::cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDo
   qDot_ref_atLastUpdate = qDot_ref;
 
   updateWaypoints(C);
-  updateTiming(C, pathMPC.komo.objectives, q_real);
+  updateTiming(C, waypointMPC.komo.objectives, q_real);
   updateShortPath(C);
 }
 
 rai::CubicSplineCtor SecMPC::getSpline(double realtime, bool prependRef){
-  if(timingMPC.done() || !pathMPC.feasible) return {};
+  if(timingMPC.done() || !waypointMPC.feasible) return {};
   arr pts = timingMPC.getWaypoints();
   arr vels = timingMPC.getVels();
   arr times = timingMPC.getTimes();
@@ -177,7 +177,7 @@ rai::CubicSplineCtor SecMPC::getSpline(double realtime, bool prependRef){
 }
 
 rai::CubicSplineCtor SecMPC::getShortPath_debug(double realtime){
-  if(timingMPC.done() || !pathMPC.feasible) return {};
+  if(timingMPC.done() || !waypointMPC.feasible) return {};
 
   rai::CubicSpline S;
 //  timingMPC.getCubicSpline(S, q_ref_atLastUpdate, qDot_ref_atLastUpdate);
@@ -204,7 +204,7 @@ rai::CubicSplineCtor SecMPC::getShortPath_debug(double realtime){
 }
 
 rai::CubicSplineCtor SecMPC::getShortPath(double realtime){
-  if(timingMPC.done() || !pathMPC.feasible || !shortMPC.feasible){ return {}; }
+  if(timingMPC.done() || !waypointMPC.feasible || !shortMPC.feasible){ return {}; }
   arr times = shortMPC.times; //komo.getPath_times();
   arr pts = shortMPC.path;
   arr vels = shortMPC.vels;
@@ -221,7 +221,7 @@ rai::CubicSplineCtor SecMPC::getShortPath(double realtime){
 
 
 void SecMPC::report(const rai::Configuration& C) {
-  const ObjectiveL& phi = pathMPC.komo.objectives;
+  const ObjectiveL& phi = waypointMPC.komo.objectives;
   msg <<" \tFEA " <<phi.maxError(C, 0.5+timingMPC.phase)
      <<' ' <<phi.maxError(C, 1.+timingMPC.phase)
     <<' ' <<phi.maxError(C, 1.5+timingMPC.phase)
