@@ -193,7 +193,7 @@ void BotOp::move(const arr& path, const arr& times, bool override, double overri
     bool optTau = (times.N==0);
     arr tauInitial = {};
     if(!optTau) tauInitial = differencing(_times);
-    TimingProblem timingProblem(path, {}, q, qDot, 1e0, {}, tauInitial, optTau);
+    TimingProblem timingProblem(path, {}, q, qDot, 1., 1., optTau, false, {}, tauInitial);
     MP_Solver solver;
     solver
         .setProblem(timingProblem.ptr())

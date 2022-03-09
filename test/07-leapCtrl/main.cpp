@@ -65,7 +65,7 @@ void testLeapCtrl() {
 
     if(shortMPC.feasible){
       arr path = shortMPC.getPath();
-      TimingProblem timingProblem(path, {}, q, qDot, 1e1); //, {}, tauInitial, optTau);
+      TimingProblem timingProblem(path, {}, q, qDot, 1e1, 1.); //, {}, tauInitial, optTau);
       MP_Solver solver;
       solver
           .setProblem(timingProblem.ptr())

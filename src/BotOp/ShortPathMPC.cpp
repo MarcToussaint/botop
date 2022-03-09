@@ -96,7 +96,7 @@ void ShortPathMPC::solve(bool alsoVels, int verbose){
   if(feasible){
     if(alsoVels){
 //      arr tangents = getVelocities_centralDifference(path, tau(0));
-      TimingProblem timingProblem(path, {}, x0, v0, 1e0, {}, tau, true, -1., -1., -1., 1e0, true);
+      TimingProblem timingProblem(path, {}, x0, v0, 1., 1., true, true, {}, tau);
       MP_Solver solver;
       solver
           .setProblem(timingProblem.ptr())
