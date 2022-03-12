@@ -1,5 +1,13 @@
 # LIS robot operation repo
 
+This repo is how we, in the [Learning & Intelligent Systems Lab](https://argmin.lis.tu-berlin.de/), operate our robots. Perhaps the most significant aspect is that we decided for a spline-based convention to command motion (in class BotOp), which turned out the cleanest interface to our pose and motion optimization methods, and now also MPC methods.
+
+This repo is really our working environment, is not clean, contains much outdated code, and might be too specific for others to use, but we're happy to share. When run without hardware, the BotOp interface can  emulate/simulate any robot (e.g., found in rai-robotModels).
+
+The [rai](https://github.com/MarcToussaint/rai) submodule contains our actual algorithmic code base (data structures, optimizers, kinematics, KOMO, LGP, etc).
+
+No, we don't use ROS at all anymore.
+
 ## Installation
 
 This assumes a standard Ubuntu 18.04 or 20.04 machine.
