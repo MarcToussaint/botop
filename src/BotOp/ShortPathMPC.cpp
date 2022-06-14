@@ -1,6 +1,6 @@
 #include "ShortPathMPC.h"
 #include <Control/timingOpt.h>
-#include <Optim/MP_Solver.h>
+#include <Optim/NLP_Solver.h>
 
 ShortPathMPC::ShortPathMPC(rai::Configuration& C, uint steps, double _defaultTau)
   : defaultTau(_defaultTau)
@@ -97,10 +97,10 @@ void ShortPathMPC::solve(bool alsoVels, int verbose){
     if(alsoVels){
 //      arr tangents = getVelocities_centralDifference(path, tau(0));
       TimingProblem timingProblem(path, {}, x0, v0, 1., 1., true, true, {}, tau);
-      MP_Solver solver;
+      NLP_Solver solver;
       solver
           .setProblem(timingProblem.ptr())
-          .setSolver(MPS_newton);
+          .setSolver(NLPS_newton);
       solver.opt
           .set_stopTolerance(1e-4)
           .set_maxStep(1e0)

@@ -42,8 +42,8 @@ void init_PyBot(pybind11::module& m) {
   .def("get_qDot", &BotOp::get_qDot)
   .def("getTimeToEnd", &BotOp::getTimeToEnd)
 
-  .def("move", pybind11::overload_cast<const arr&, const arr&, const arr&, bool>(&BotOp::move))
-  .def("move", pybind11::overload_cast<const arr&, const arr&, bool>(&BotOp::move))
+    .def("move", pybind11::overload_cast<const arr&, const arr&, const arr&, bool, double>(&BotOp::move))
+    .def("move", pybind11::overload_cast<const arr&, const arr&, bool, double>(&BotOp::move))
   .def("moveAutoTimed", &BotOp::moveAutoTimed)
   .def("moveLeap", &BotOp::moveLeap)
   .def("setControllerWriteData", &BotOp::setControllerWriteData)

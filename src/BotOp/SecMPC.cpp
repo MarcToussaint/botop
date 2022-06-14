@@ -1,6 +1,6 @@
 #include "SecMPC.h"
 
-#include <Optim/MP_Solver.h>
+#include <Optim/NLP_Solver.h>
 #include <KOMO/pathTools.h>
 #include <Kin/F_qFeatures.h>
 
