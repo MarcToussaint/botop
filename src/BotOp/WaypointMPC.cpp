@@ -1,5 +1,7 @@
 #include "WaypointMPC.h"
 
+#include <Optim/options.h>
+
 WaypointMPC::WaypointMPC(KOMO& _komo, const arr& _qHome)
   : komo(_komo), qHome(_qHome){
 
@@ -21,8 +23,10 @@ void WaypointMPC::solve(int verbose){
 
   //re-run KOMO
   rai::OptOptions opt;
-  opt.stopTolerance = 1e-3;
-  opt.set_stopEvals(300);
+  opt
+      .set_verbose(0)
+      .set_stopTolerance(1e-3)
+      .set_stopEvals(300);
   komo.opt.verbose=0;
   komo.timeTotal=0.;
   komo.pathConfig.setJointStateCount=0;

@@ -24,8 +24,10 @@ SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, dou
     shortMPC.komo.addObjective({0.}, FS_qItself, {}, OT_sos, {1e1}, waypointMPC.qHome, 0, t+1, t+1);
   }
 
-  if(setNextWaypointTangent) timingMPC.update_waypoints(timingMPC.waypoints, true);
+  if(setNextWaypointTangent) timingMPC.set_updatedWaypoints(timingMPC.waypoints, true);
 }
+
+//===========================================================================
 
 void SecMPC::updateWaypoints(const rai::Configuration& C){
   waypointMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
@@ -35,13 +37,15 @@ void SecMPC::updateWaypoints(const rai::Configuration& C){
   msg <<' ' <<waypointMPC.komo.sos <<'|' <<waypointMPC.komo.ineq <<'|' <<waypointMPC.komo.eq;
 }
 
+//===========================================================================
+
 void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, const arr& q_real){
   //-- adopt the new path
-  timingMPC.update_waypoints(waypointMPC.path({subSeqStart, subSeqStop}), setNextWaypointTangent);
+  timingMPC.set_updatedWaypoints(waypointMPC.path({subSeqStart, subSeqStop}), setNextWaypointTangent);
 
   //-- progress time (potentially phase)
   if(!timingMPC.done() && ctrlTimeDelta>0.){
-    phaseSwitch = timingMPC.update_progressTime(ctrlTimeDelta);
+    phaseSwitch = timingMPC.set_progressedTime(ctrlTimeDelta);
   }else{
     phaseSwitch = false;
   }
@@ -62,6 +66,7 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
     }
   }
 
+  msg <<" \tTIMING";
   //-- re-optimize the timing
   if(!timingMPC.done()){
     if(timingMPC.tau(timingMPC.phase) > tauCutoff){
@@ -78,17 +83,19 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
         q_refAdapted = q_ref_atLastUpdate;
         ret = timingMPC.solve(q_ref_atLastUpdate, qDot_ref_atLastUpdate, verbose-2);
       }
-      msg <<" \tTIMING #:" <<ret->evals <<" phase: " <<timingMPC.phase ;
+      msg <<" #:" <<ret->evals;
       //      msg <<" T:" <<ret->time <<" f:" <<ret->f;
     }else{
-      msg <<" \tTIMING #skipped" <<" phase: " <<timingMPC.phase ;
+      msg <<" #skipped";
 //      LOG(0) <<"skipping timing opt, as too close ahead: " <<timingMPC.tau;
     }
   }
 
-  msg <<" tau: " <<timingMPC.tau;
+  msg <<" phase: " <<timingMPC.phase <<" tau: " <<timingMPC.tau;
 //  msg <<ctrlTime_atLastUpdate + timingMPC.getTimes(); // <<' ' <<F.vels;
 }
+
+//===========================================================================
 
 void SecMPC::updateShortPath(const rai::Configuration& C){
   shortMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
@@ -138,6 +145,8 @@ void SecMPC::updateShortPath(const rai::Configuration& C){
   msg <<' ' <<shortMPC.komo.sos <<'|' <<shortMPC.komo.ineq <<'|' <<shortMPC.komo.eq;
 }
 
+//===========================================================================
+
 void SecMPC::cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
   msg.clear();
   msg <<std::setprecision(6);
@@ -158,12 +167,14 @@ void SecMPC::cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDo
 }
 
 rai::CubicSplineCtor SecMPC::getSpline(double realtime, bool prependRef){
-  if(timingMPC.done() || !waypointMPC.feasible) return {};
+  if(!waypointMPC.feasible) return {};
+//  if(timingMPC.done() || !waypointMPC.feasible) return {};
   arr pts = timingMPC.getWaypoints();
   arr vels = timingMPC.getVels();
   arr times = timingMPC.getTimes();
+  CHECK_EQ(vels.d0, times.N, "");
   times -= realtime - ctrlTime_atLastUpdate; //ctrlTimeLast=when the timing was optimized; realtime=time now; -> shift spline to stich it at realtime
-  if(times.first()<tauCutoff) return {};
+//  if(times.first()<tauCutoff) return {};
   if(q_refAdapted.N){ //this will overrideHard the spline, as first time is negative;
     pts.prepend(q_refAdapted);
     vels.prepend(qDot_ref_atLastUpdate);
@@ -204,7 +215,7 @@ rai::CubicSplineCtor SecMPC::getShortPath_debug(double realtime){
 }
 
 rai::CubicSplineCtor SecMPC::getShortPath(double realtime){
-  if(timingMPC.done() || !waypointMPC.feasible || !shortMPC.feasible){ return {}; }
+  if(/*timingMPC.done() || */!waypointMPC.feasible || !shortMPC.feasible){ return {}; }
   arr times = shortMPC.times; //komo.getPath_times();
   arr pts = shortMPC.path;
   arr vels = shortMPC.vels;
