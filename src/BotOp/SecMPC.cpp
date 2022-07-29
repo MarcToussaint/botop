@@ -45,11 +45,11 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
 
   //-- progress time (potentially phase)
   if(!timingMPC.done() && ctrlTimeDelta>0.){
-    phaseSwitch = timingMPC.set_progressedTime(ctrlTimeDelta);
+    phaseSwitch = timingMPC.set_progressedTime(ctrlTimeDelta, tauCutoff);
   }else{
     phaseSwitch = false;
-  }
 
+  }
   //-- phase backtracking
   if(timingMPC.done()){
     if(phi.maxError(C, timingMPC.phase+subSeqStart) > precision){
