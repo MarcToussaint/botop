@@ -16,14 +16,6 @@
 
 #include <KOMO/pathTools.h>
 
-template<> pybind11::array_t<double> arr2numpy(const rai::Array<double>& x){
-  //default!
-  if(!x.isSparse()) return pybind11::array_t<double>(x.dim(), x.p);
-  //sparse!
-  arr triplets = x.sparse().getTriplets();
-  return pybind11::array_t<double>(triplets.dim(), triplets.p);
-}
-
 PYBIND11_MODULE(libpybot, m) {
   m.doc() = "bot bindings";
 
@@ -42,8 +34,8 @@ void init_PyBot(pybind11::module& m) {
   .def("get_qDot", &BotOp::get_qDot)
   .def("getTimeToEnd", &BotOp::getTimeToEnd)
 
-    .def("move", pybind11::overload_cast<const arr&, const arr&, const arr&, bool, double>(&BotOp::move))
-    .def("move", pybind11::overload_cast<const arr&, const arr&, bool, double>(&BotOp::move))
+  .def("move", pybind11::overload_cast<const arr&, const arr&, const arr&, bool, double>(&BotOp::move))
+  .def("move", pybind11::overload_cast<const arr&, const arr&, bool, double>(&BotOp::move))
   .def("moveAutoTimed", &BotOp::moveAutoTimed)
   .def("moveLeap", &BotOp::moveLeap)
   .def("setControllerWriteData", &BotOp::setControllerWriteData)

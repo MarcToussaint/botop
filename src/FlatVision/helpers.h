@@ -65,7 +65,7 @@ void extendRect(intA& rect, int pad, int H, int W);
 
 void computePolyAndRotatedBoundingBox(intA& polygon, floatA& rotatedBBox, const floatA& mask);
 
-void recomputeObjMinMaxAvgDepthSize(ptr<Object> obj);
+void recomputeObjMinMaxAvgDepthSize(std::shared_ptr<Object> obj);
 
 void determineObjectMainColor(std::shared_ptr<Object> obj, const arr& fixedColors);
 

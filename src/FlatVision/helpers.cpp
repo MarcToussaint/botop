@@ -38,7 +38,7 @@ intA nonZeroRect(floatA& mask, double threshold){
   return ARRAY<int>(0,0,0,0);
 }
 
-void recomputeObjMinMaxAvgDepthSize(ptr<Object> obj){
+void recomputeObjMinMaxAvgDepthSize(std::shared_ptr<Object> obj){
   double D=0., S=0., Dmin=2., Dmax=0.;
   floatA depthTmp;
   for(int x=obj->rect(0);x<obj->rect(2);x++) for(int y=obj->rect(1);y<obj->rect(3);y++){

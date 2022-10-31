@@ -160,13 +160,13 @@ void ControlEmulator::step(){
   if(writeData>0 && !(step_count%1)){
     if(!dataFile.is_open()) dataFile.open("z.panda.dat");
     dataFile <<ctrlTime <<' '; //single number
-    q_real.writeRaw(dataFile); //7
-    cmd_q_ref.writeRaw(dataFile); //7
+    q_real.modRaw().write(dataFile); //7
+    cmd_q_ref.modRaw().write(dataFile); //7
     if(writeData>1){
-      qDot_real.writeRaw(dataFile); //7
-      cmd_qDot_ref.writeRaw(dataFile); //7
-      qDDot_des.writeRaw(dataFile); //7
-      cmd_qDDot_ref.writeRaw(dataFile);
+      qDot_real.modRaw().write(dataFile); //7
+      cmd_qDot_ref.modRaw().write(dataFile); //7
+      qDDot_des.modRaw().write(dataFile); //7
+      cmd_qDDot_ref.modRaw().write(dataFile);
     }
     if(writeData>2){
     }

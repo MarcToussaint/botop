@@ -5,7 +5,7 @@ project(LISRobotOperation)
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
 
 option(USE_PYBIND "build python bindings" ON)
-option(USE_BULLET "link to bullet" OFF)
+option(USE_BULLET "link to bullet" ON)
 option(USE_OPENCV "link to opencv" OFF)
 option(USE_REALSENSE "link to realsense2 driver library" OFF)
 option(USE_LIBFRANKA "link to libfranka" ON)
@@ -99,6 +99,9 @@ target_link_libraries(rai
   )
 
 ################################################################################
+
+find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+target_link_libraries (rai Eigen3::Eigen)
 
 if(USE_BULLET)
   find_package(Bullet REQUIRED)

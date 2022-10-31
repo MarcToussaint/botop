@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Core/array.h>
+#include <Core/util.h>
 
 namespace rai {
 //===========================================================================

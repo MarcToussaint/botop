@@ -22,11 +22,11 @@ void FrankaThread::init(uint _robotID, const uintA& _qIndices) {
   qIndices=_qIndices;
 
   CHECK_EQ(qIndices.N, 7, "");
-  qIndices_max = qIndices.max();
+  qIndices_max = rai::max(qIndices);
 
   //-- basic Kp Kd settings for reference control mode
-  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", ARR(20., 20., 20., 20., 10., 15., 10.)); //18., 18., 18., 13., 8., 8., 6.));
-  Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", ARR(.6, .6, .4, .4, .1, .5, .1)); //.8, .8, .7, .7, .1, .1, .1));
+  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", arr{20., 20., 20., 20., 10., 15., 10.}); //18., 18., 18., 13., 8., 8., 6.));
+  Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", arr{.6, .6, .4, .4, .1, .5, .1}); //.8, .8, .7, .7, .1, .1, .1));
   friction = rai::getParameter<arr>("Franka/friction", zeros(7));  //Franka/friction: [0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4]
   LOG(0) << "FRANKA: Kp_freq:" << Kp_freq << " Kd_ratio:" << Kd_ratio <<" friction:" <<friction;
 
@@ -236,7 +236,7 @@ void FrankaThread::step(){
 
       //-- add feedforward term
       if(qDDot_ref.N==7 && absMax(qDDot_ref)>0.){
-        arr M = M_org; // + diag(ARR(0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2));
+        arr M = M_org; // + diag(arr{0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2));
         u += M*qDDot_ref;
       }
 
@@ -282,7 +282,7 @@ void FrankaThread::step(){
       M(5,5) = 0.2;../04-trivialCtrl/retired.cpp
       M(6,6) = 0.1;
 #else
-      arr MDiag = diag(ARR(0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2));
+      arr MDiag = diag(arr{0.4, 0.3, 0.3, 0.4, 0.4, 0.4, 0.2});
       M = M + MDiag;
 #endif
 
@@ -310,16 +310,16 @@ void FrankaThread::step(){
     if(writeData>0 && !(steps%1)){
       if(!dataFile.is_open()) dataFile.open(STRING("z.panda"<<robotID <<".dat"));
       dataFile <<ctrlTime <<' '; //single number
-      q_real.writeRaw(dataFile); //7
-      q_ref.writeRaw(dataFile); //7
+      q_real.modRaw().write(dataFile); //7
+      q_ref.modRaw().write(dataFile); //7
       if(writeData>1){
-        qDot_real.writeRaw(dataFile); //7
-        qDot_ref.writeRaw(dataFile); //7
-        u.writeRaw(dataFile); //7
-        torques_real.writeRaw(dataFile); //7
-        G_org.writeRaw(dataFile); //7-vector gravity
-        C_org.writeRaw(dataFile); //7-vector coriolis
-        qDDot_ref.writeRaw(dataFile);
+        qDot_real.modRaw().write(dataFile); //7
+        qDot_ref.modRaw().write(dataFile); //7
+        u.modRaw().write(dataFile); //7
+        torques_real.modRaw().write(dataFile); //7
+        G_org.modRaw().write(dataFile); //7-vector gravity
+        C_org.modRaw().write(dataFile); //7-vector coriolis
+        qDDot_ref.modRaw().write(dataFile);
       }
       if(writeData>2){
         M_org.write(dataFile, " ", " ", "  "); //7x7 inertia matrix
@@ -329,7 +329,7 @@ void FrankaThread::step(){
 
     //-- send torques
     std::array<double, 7> u_array = {0., 0., 0., 0., 0., 0., 0.};
-    std::copy(u.begin(), u.end(), u_array.begin());
+    u.setCarray(u_array.data(), 7); //std::copy(u.begin(), u.end(), u_array.begin());
     if(stop) return franka::MotionFinished(franka::Torques(u_array));
     return franka::Torques(u_array);
   };
