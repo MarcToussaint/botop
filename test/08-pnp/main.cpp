@@ -34,7 +34,7 @@ void testPnp() {
   uint L=50;
   for(uint l=0;l<=L;l++){
     //-- pick a random place direction
-    rai::Enum<rai::ArgWord> placeDirection = random(rai::Array<rai::ArgWord>{rai::_yAxis, rai::_zAxis, rai::_yNegAxis, rai::_zNegAxis });
+    rai::Enum<rai::ArgWord> placeDirection = rai::Array<rai::ArgWord>{rai::_yAxis, rai::_zAxis, rai::_yNegAxis, rai::_zNegAxis }.rndElem();
     cout <<"========= PLACEMENT " <<l <<": " <<placeDirection <<endl;
 
     //-- compute pnp keyframes (that box can only be picked in x-direction)

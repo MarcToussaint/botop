@@ -1,25 +1,38 @@
 set style data lines
 
+J = 14
+
+_qreal = 2+0*J
+_qref = 2+1*J
+
+_vreal = 2+2*J
+_vref = 2+3*J
+
+_ucmd = 2+4*J
+_ureal = 2+5*J
+_ug = 2+6*J
+_uc = 2+7*J
+
 #plot 'z.dat' 0:1 t 'time'
 
-plot 'z.panda0.dat' \
-      us 0:($2-$9) t 'err1', \
-   '' us 0:($3-$10) t 'err2', \
-   '' us 0:($4-$11) t 'err3', \
-   '' us 0:($5-$12) t 'err4', \
-   '' us 0:($6-$13) t 'err5', \
-   '' us 0:($7-$14) t 'err6', \
-   '' us 0:($8-$15) t 'err7'
+plot 'z.panda.dat' \
+      us 0:(column(_qreal+0)-column(_qref+0)) t 'err1', \
+   '' us 0:(column(_qreal+1)-column(_qref+1)) t 'err2', \
+   '' us 0:(column(_qreal+2)-column(_qref+2)) t 'err3', \
+   '' us 0:(column(_qreal+3)-column(_qref+3)) t 'err4', \
+   '' us 0:(column(_qreal+4)-column(_qref+4)) t 'err5', \
+   '' us 0:(column(_qreal+5)-column(_qref+5)) t 'err6', \
+   '' us 0:(column(_qreal+6)-column(_qref+6)) t 'err7'
 
 exit
 
-plot 'z.panda0.dat' us 1:($2) t 'real1', '' us 1:($9) t 'ref1',\
-  '' us 1:($3) t 'real2', '' us 1:($10) t 'ref2', \
-  '' us 1:($4) t 'real3', '' us 1:($11) t 'ref3', \
-  '' us 1:($5) t 'real4', '' us 1:($12) t 'ref4', \
-  '' us 1:($6) t 'real5', '' us 1:($13) t 'ref5', \
-  '' us 1:($7) t 'real6', '' us 1:($14) t 'ref6', \
-  '' us 1:($8) t 'real7', '' us 1:($15) t 'ref7', \
+plot 'z.panda.dat' us 1:_qreal+0 t 'real1', '' us 1:_qref+0 t 'ref1',\
+ '' us 1:_qreal+1 t 'real2', '' us 1:_qref+1 t 'ref2', \
+ '' us 1:_qreal+2 t 'real3', '' us 1:_qref+2 t 'ref3', \
+ '' us 1:_qreal+3 t 'real4', '' us 1:_qref+3 t 'ref4', \
+ '' us 1:_qreal+4 t 'real5', '' us 1:_qref+4 t 'ref5', \
+ '' us 1:_qreal+5 t 'real6', '' us 1:_qref+5 t 'ref6', \
+ '' us 1:_qreal+6 t 'real7', '' us 1:_qref+6 t 'ref7', \
 
 exit
 

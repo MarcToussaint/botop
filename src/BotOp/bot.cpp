@@ -9,8 +9,8 @@
 #include <Gui/opengl.h>
 
 #include <Franka/franka.h>
-#include <Franka/gripper.h>
-#include <Franka/controlEmulator.h>
+#include <Franka/FrankaGripper.h>
+#include "simulation.h"
 #include <Robotiq/RobotiqGripper.h>
 #include <OptiTrack/optitrack.h>
 
@@ -56,8 +56,8 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       //if(fg) fg->homing();
     }
   }else{
-    robotL = make_unique<ControlEmulator>(C, cmd, state); //, StringA(), .001, 10.);
-    if(useGripper) gripperL = make_unique<GripperEmulator>();
+    robotL = make_unique<BotSimulation>(C, cmd, state); //, StringA(), .001, 10.);
+    if(useGripper) gripperL = make_unique<GripperSimulation>();
   }
   C.setJointState(get_q());
 

@@ -49,7 +49,7 @@ arr getLoopPath(rai::Configuration& C){
     komo.x = q;
     komo.set_x(q);
   }
-  komo.view(true);
+  komo.view(true, "computed path");
   return q;
 }
 

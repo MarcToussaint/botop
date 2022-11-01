@@ -1,4 +1,4 @@
-#include "gripper.h"
+#include "FrankaGripper.h"
 
 #ifdef RAI_FRANKA
 

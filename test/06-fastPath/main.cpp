@@ -1,5 +1,6 @@
 #include <BotOp/bot.h>
 #include <BotOp/motionHelpers.h>
+#include <OptiTrack/optitrack.h>
 
 //===========================================================================
 
@@ -28,7 +29,7 @@ int main(int argc, char * argv[]){
 
   //-- send path as spline
   for(double speed=1.;speed<=5.;speed+=.5){
-    bot.move(path, ARR(10.)/speed);
+    bot.move(path, arr{10.}/speed);
 
     Metronome tic(.01);
     while(bot.step(C, -1.)){

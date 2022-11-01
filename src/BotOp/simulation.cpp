@@ -1,4 +1,4 @@
-#include "controlEmulator.h"
+#include "simulation.h"
 #include <Kin/kin.h>
 #include <Kin/frame.h>
 #include <Kin/F_collisions.h>
@@ -6,19 +6,23 @@
 
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
-ControlEmulator::ControlEmulator(const rai::Configuration& C,
-                                 const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state,
-                                 const StringA& joints,
-                                 double _tau, double hyperSpeed)
+BotSimulation::BotSimulation(const rai::Configuration& C,
+                             const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state,
+                             const StringA& joints,
+                             double _tau, double hyperSpeed)
   : RobotAbstraction(_cmd, _state),
     Thread("FrankaThread_Emulated", _tau/hyperSpeed),
-    tau(_tau),
     emuConfig(C),
+    tau(_tau),
     noise_sig(.001){
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
-  noise_th = rai::getParameter<double>("botemu/noise_th", -1.);
+  if(rai::getParameter<bool>("botsim/bullet")){
+    sim=make_shared<rai::Simulation>(emuConfig, rai::Simulation::_bullet);
+  }else{
+    noise_th = rai::getParameter<double>("botsim/noise_th", -1.);
+  }
 
   {
     q_real = C.getJointState();
@@ -50,12 +54,12 @@ ControlEmulator::ControlEmulator(const rai::Configuration& C,
   state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
 }
 
-ControlEmulator::~ControlEmulator(){
+BotSimulation::~BotSimulation(){
   emuConfig.glClose();
   threadClose();
 }
 
-void ControlEmulator::step(){
+void BotSimulation::step(){
   //-- get real time
   ctrlTime += tau;
 //  ctrlTime = rai::realTime();
@@ -103,37 +107,41 @@ void ControlEmulator::step(){
     P_compliance = cmdGet->P_compliance;
   }
 
+  if(!sim){
+    arr qDDot_des = zeros(7);
 
-  arr qDDot_des = zeros(7);
+    //-- construct torques from control message depending on the control type
+    if(controlType == rai::ControlType::configRefs) { // plain qRef, qDotRef references
+      if(cmd_q_ref.N == 0) return;
 
-  //-- construct torques from control message depending on the control type
+      double k_p, k_d;
+      naturalGains(k_p, k_d, .05, 1.);
+      qDDot_des = k_p * (cmd_q_ref - q_real) + k_d * (cmd_qDot_ref - qDot_real);
+      qDDot_des += cmd_qDDot_ref;
+      //    q = q_ref;
+      //    qdot = qdot_ref;
 
-  if(controlType == rai::ControlType::configRefs) { // plain qRef, qDotRef references
-    if(cmd_q_ref.N == 0) return;
+    } else if(controlType == rai::ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
+      qDDot_des = cmd_qDDot_ref - KpRef*q_real - KdRef*qDot_real;
+    }
 
-    double k_p, k_d;
-    naturalGains(k_p, k_d, .05, 1.);
-    qDDot_des = k_p * (cmd_q_ref - q_real) + k_d * (cmd_qDot_ref - qDot_real);
-    qDDot_des += cmd_qDDot_ref;
-//    q = q_ref;
-//    qdot = qdot_ref;
+    //-- add noise (to controls, vel, pos?)
+    if(noise_th>0.){
+      if(!noise.N) noise = zeros(q_real.N);
+      rndGauss(noise, noise_sig, true);
+      noise *= noise_th;
+      qDot_real += noise;
+    }
 
-  } else if(controlType == rai::ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
-    qDDot_des = cmd_qDDot_ref - KpRef*q_real - KdRef*qDot_real;
+    //-- directly integrate
+    q_real += .5 * tau * qDot_real;
+    qDot_real += tau * qDDot_des;
+    q_real += .5 * tau * qDot_real;
+  }else{
+    sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
+    q_real = emuConfig.getJointState();
+    qDot_real = cmd_qDot_ref;
   }
-
-  //-- add noise (to controls, vel, pos?)
-  if(noise_th>0.){
-    if(!noise.N) noise = zeros(q_real.N);
-    rndGauss(noise, noise_sig, true);
-    noise *= noise_th;
-    qDot_real += noise;
-  }
-
-  //-- directly integrate
-  q_real += .5 * tau * qDot_real;
-  qDot_real += tau * qDDot_des;
-  q_real += .5 * tau * qDot_real;
 
   //-- add other crazy perturbations?
 //  if((step_count%1000)<100) q_real(0) = .1;
@@ -165,8 +173,8 @@ void ControlEmulator::step(){
     if(writeData>1){
       qDot_real.modRaw().write(dataFile); //7
       cmd_qDot_ref.modRaw().write(dataFile); //7
-      qDDot_des.modRaw().write(dataFile); //7
-      cmd_qDDot_ref.modRaw().write(dataFile);
+      //qDDot_des.modRaw().write(dataFile); //7
+      //cmd_qDDot_ref.modRaw().write(dataFile);
     }
     if(writeData>2){
     }

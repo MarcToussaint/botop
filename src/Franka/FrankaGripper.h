@@ -2,8 +2,7 @@
 
 #include <Core/util.h>
 #include <Core/thread.h>
-
-#include "controlEmulator.h"
+#include <Control/CtrlMsgs.h>
 
 namespace franka{
   class Gripper;
