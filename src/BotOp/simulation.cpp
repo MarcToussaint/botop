@@ -6,7 +6,7 @@
 
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
-BotSimulation::BotSimulation(const rai::Configuration& C,
+BotSim::BotSim(const rai::Configuration& C,
                              const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state,
                              const StringA& joints,
                              double _tau, double hyperSpeed)
@@ -18,6 +18,7 @@ BotSimulation::BotSimulation(const rai::Configuration& C,
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
+  //do this in bot.cpp!
   if(rai::getParameter<bool>("botsim/bullet")){
     sim=make_shared<rai::Simulation>(emuConfig, rai::Simulation::_bullet);
   }else{
@@ -54,15 +55,24 @@ BotSimulation::BotSimulation(const rai::Configuration& C,
   state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
 }
 
-BotSimulation::~BotSimulation(){
+BotSim::~BotSim(){
   emuConfig.glClose();
   threadClose();
 }
 
-void BotSimulation::step(){
+void BotSim::pullDynamicStates(rai::Configuration& C){
+  auto mux = stepMutex(RAI_HERE);
+  for(rai::Frame *f:C.frames){
+    if(f->inertia && f->inertia->type==rai::BT_dynamic){
+      f->set_X() = emuConfig.frames(f->ID)->ensure_X();
+    }
+  }
+}
+
+void BotSim::step(){
   //-- get real time
   ctrlTime += tau;
-//  ctrlTime = rai::realTime();
+  //  ctrlTime = rai::realTime();
 
   //-- publish state
   {
@@ -138,7 +148,7 @@ void BotSimulation::step(){
     qDot_real += tau * qDDot_des;
     q_real += .5 * tau * qDot_real;
   }else{
-    sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
+    sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_pdRef);
     q_real = emuConfig.getJointState();
     qDot_real = cmd_qDot_ref;
   }
@@ -180,4 +190,40 @@ void BotSimulation::step(){
     }
     dataFile <<endl;
   }
+}
+
+void GripperSim::open(double width, double speed) {
+  if(sim){
+    auto mux = sim->stepMutex(RAI_HERE);
+    sim->sim->openGripper("l_gripper");
+  }
+  else q=width;
+  isClosing=false; isOpening=true;
+}
+
+void GripperSim::close(double force, double width, double speed) {
+  if(sim){
+    auto mux = sim->stepMutex(RAI_HERE);
+    sim->sim->closeGripper("l_gripper");
+  }
+  else q=width;
+  isOpening=false; isClosing=true;
+}
+
+void GripperSim::close(const char* objName, double force, double width, double speed){
+  if(sim){
+    auto mux = sim->stepMutex(RAI_HERE);
+    sim->sim->closeGripperGrasp("l_gripper", objName);
+  }
+  else q=width;
+  isOpening=false; isClosing=true;
+}
+
+bool GripperSim::isDone(){
+  if(sim){
+    auto mux = sim->stepMutex(RAI_HERE);
+    if(isClosing) return sim->sim->getGripperIsGrasping("l_gripper") || sim->sim->getGripperIsClose("l_gripper");
+    if(isOpening) return sim->sim->getGripperIsOpen("l_gripper");
+  }
+  return true;
 }

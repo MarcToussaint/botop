@@ -56,8 +56,9 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       //if(fg) fg->homing();
     }
   }else{
-    robotL = make_unique<BotSimulation>(C, cmd, state); //, StringA(), .001, 10.);
-    if(useGripper) gripperL = make_unique<GripperSimulation>();
+    sim = make_shared<BotSim>(C, cmd, state); //, StringA(), .001, 10.);
+    robotL = sim;
+    if(useGripper) gripperL = make_unique<GripperSim>(sim);
   }
   C.setJointState(get_q());
 
@@ -78,7 +79,8 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 }
 
 BotOp::~BotOp(){
-  if(robotL) robotL.release();
+  if(sim) sim.reset();
+  if(robotL) robotL.reset();
   if(robotR) robotR.release();
 }
 
@@ -124,6 +126,10 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   //update optitrack state
   if(optitrack) optitrack->pull(C);
 
+  //update sim state
+  if(sim) sim->pullDynamicStates(C);
+
+  //gui
   if(rai::getParameter("bot/raiseWindow",false)) C.gl()->raiseWindow();
   double ctrlTime = get_t();
   keypressed = C.watch(false, STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));

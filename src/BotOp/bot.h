@@ -9,6 +9,7 @@ namespace rai{
   struct OptiTrack;
   struct Sound;
 }
+struct BotSim;
 
 //===========================================================================
 
@@ -16,13 +17,15 @@ struct BotOp{
   Var<rai::CtrlCmdMsg> cmd;
   Var<rai::CtrlStateMsg> state;
   //since each of the following interfaces is already pimpl, we don't have to hide them again
-  std::unique_ptr<rai::RobotAbstraction> robotL;
+  std::shared_ptr<rai::RobotAbstraction> robotL;
   std::unique_ptr<rai::RobotAbstraction> robotR;
   std::unique_ptr<rai::GripperAbstraction> gripperL;
   std::unique_ptr<rai::GripperAbstraction> gripperR;
   std::shared_ptr<rai::ReferenceFeed> ref;
   std::unique_ptr<rai::OptiTrack> optitrack;
   std::unique_ptr<rai::Sound> audio;
+  std::shared_ptr<BotSim> sim;
+
   arr qHome;
   int keypressed=0;
 

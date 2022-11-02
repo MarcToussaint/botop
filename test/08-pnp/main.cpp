@@ -11,7 +11,8 @@ void testPnp() {
   C.addFrame("box", "table")
       ->setJoint(rai::JT_rigid)
       .setShape(rai::ST_ssBox, {.06,.15,.09,.01})
-      .setRelativePosition(arr{-.0,-.0,.095});
+      .setRelativePosition(arr{-.0,-.0,.195})
+      .setMass(.1);
 
   C.addFrame("target", "table")
       ->setJoint(rai::JT_rigid)
@@ -78,7 +79,7 @@ void testPnp() {
 
       if(bot.gripperL){
         if(k==0){ bot.gripperL->open(); while(!bot.gripperL->isDone()) rai::wait(.1); }
-        else if(k==1){ bot.gripperL->close(); while(!bot.gripperL->isDone()) rai::wait(.1); }
+        else if(k==1){ bot.gripperL->close(boxName); while(!bot.gripperL->isDone()) rai::wait(.1); }
         else if(k==2){ bot.gripperL->open(); while(!bot.gripperL->isDone()) rai::wait(.1); }
       }
 
