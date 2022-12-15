@@ -3,7 +3,6 @@
 #include <KOMO/komo.h>
 #include <KOMO/komo-ext.h>
 
-#include <Operate/path.h>
 #include <Operate/robotio.h>
 #include <Operate/simulationThread.h>
 #include <Operate/op.h>

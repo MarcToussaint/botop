@@ -3,4 +3,4 @@ BASE2 = ../../src
 
 DEPEND = Core Algo Gui Geo Kin Franka Control
 
-include $(BASE)/build/generic.mk
+include $(BASE)/makeutils/generic.mk

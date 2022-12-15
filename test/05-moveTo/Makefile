@@ -5,4 +5,4 @@ DEPEND = Core Algo Gui Geo Kin Franka Control
 
 OPENCV = 1
 
-include $(BASE)/build/generic.mk
+include $(BASE)/makeutils/generic.mk

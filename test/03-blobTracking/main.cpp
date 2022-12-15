@@ -97,7 +97,7 @@ void tracking2(){
       .setQuaternion({1,1,0,0})
       .setShape(rai::ST_marker, {.2});
   obj->setShape(rai::ST_sphere, {.05});
-  C.watch();
+  C.view();
 
   // launch camera
   RealSenseThread RS({}, {});
@@ -124,7 +124,7 @@ void tracking2(){
 
     if(pos.N){
       obj->setRelativePosition(pos); // in world coordinate
-      C.watch(false);
+      C.view(false);
     }
 
     int key = cv::waitKey(1);

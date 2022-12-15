@@ -21,7 +21,7 @@ add_definitions(
   -DRAI_X11 -DRAI_LAPACK -DRAI_EIGEN -DRAI_PTHREAD
   -DRAI_GL
   -DRAI_GLFW -DRAI_ANN -DRAI_QHULL -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
-  -DRAI_SWIFT -DRAI_GJK -DRAI_FCL -DRAI_CCD
+  -DRAI_SWIFT -DRAI_GJK -DRAI_CCD -DRAI_FCL
   -DRAI_PORTAUDIO
   -BOOST_ERROR_CODE_HEADER_ONLY
   )
@@ -44,6 +44,7 @@ file(GLOB SRC_Optim rai/rai/Optim/*.cpp)
 file(GLOB SRC_Geo rai/rai/Geo/*.cpp)
 file(GLOB SRC_GeoGJK rai/rai/Geo/GJK/*.c)
 file(GLOB SRC_GeoPly rai/rai/Geo/ply/*.c)
+file(GLOB SRC_GeoLewiner rai/rai/Geo/Lewiner/*.cpp)
 file(GLOB SRC_Algo rai/rai/Algo/*.cpp)
 file(GLOB SRC_Plot rai/rai/Plot/*.cpp)
 file(GLOB SRC_Gui rai/rai/Gui/*.cpp)
@@ -71,6 +72,7 @@ add_library(rai SHARED
   ${SRC_Geo}
   ${SRC_GeoGJK}
   ${SRC_GeoPly}
+  ${SRC_GeoLewiner}
   ${SRC_Algo}
   ${SRC_Plot}
   ${SRC_Gui}
@@ -93,7 +95,7 @@ add_library(rai SHARED
 
 target_link_libraries(rai
   jsoncpp lapack blas pthread rt X11
-  assimp fcl ann glfw GLEW glut GLU GL png qhull
+  assimp ann glfw GLEW glut GLU GL png qhull ccd fcl
   portaudio
   boost_system 
   )

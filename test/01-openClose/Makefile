@@ -5,4 +5,4 @@ DEPEND = Core Gui Geo Franka Kin Control
 
 LIBS = -lpthread -lboost_system
 
-include $(BASE)/build/generic.mk
+include $(BASE)/makeutils/generic.mk

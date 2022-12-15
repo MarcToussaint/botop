@@ -8,4 +8,4 @@ OBJS = main.o cameraCalibration.o
 OPENCV = 1
 
 
-include $(BASE)/build/generic.mk
+include $(BASE)/makeutils/generic.mk

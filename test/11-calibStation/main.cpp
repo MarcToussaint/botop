@@ -73,7 +73,7 @@ void collectData(){
       q_target = bot.qHome;
     }
 
-    //C.setJointState(q_target);  C.watch(true, "pose");
+    //C.setJointState(q_target);  C.view(true, "pose");
 
     //compute path
     C.setJointState(q_last);
@@ -112,7 +112,7 @@ void computeCalibration(){
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
   C.addFrame("optitrack_base", "world");
-  C.watch();
+  C.view();
 
   //-- load data from
   ifstream fil("z.calib.dat");
@@ -126,7 +126,7 @@ void computeCalibration(){
       q.append(_q);
       poseR.append(_poseR);
       poseL.append(_poseL);
-//      C.setJointState(_q);  C.watch();  rai::wait(.01);
+//      C.setJointState(_q);  C.view();  rai::wait(.01);
     }else{
       LOG(0) <<"skipping line " <<t;
     }

@@ -19,7 +19,7 @@ BotSim::BotSim(const rai::Configuration& C,
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
   //do this in bot.cpp!
-  if(rai::getParameter<bool>("botsim/bullet")){
+  if(rai::getParameter<bool>("botsim/bullet", false)){
     sim=make_shared<rai::Simulation>(emuConfig, rai::Simulation::_bullet);
   }else{
     noise_th = rai::getParameter<double>("botsim/noise_th", -1.);
@@ -56,7 +56,7 @@ BotSim::BotSim(const rai::Configuration& C,
 }
 
 BotSim::~BotSim(){
-  emuConfig.glClose();
+  emuConfig.view_close();
   threadClose();
 }
 
@@ -159,7 +159,7 @@ void BotSim::step(){
   //-- display? 20fps
   if(false && !(step_count%int(1./(20.*tau)))){
     emuConfig.setJointState(q_real);
-    emuConfig.watch(false, STRING("EMULATION - time " <<ctrlTime));
+    emuConfig.view(false, STRING("EMULATION - time " <<ctrlTime));
   }
 
   //-- check for collisions!

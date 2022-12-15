@@ -3,4 +3,4 @@ BASE2 = ../../src
 
 DEPEND = Core Gui Franka Kin
 
-include $(BASE)/build/generic.mk
+include $(BASE)/makeutils/generic.mk

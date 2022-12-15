@@ -5,4 +5,4 @@ DEPEND = Core Gui Perception RealSense
 
 OPENCV = 1
 
-include $(BASE)/build/generic.mk
+include $(BASE)/makeutils/generic.mk

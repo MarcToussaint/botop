@@ -74,7 +74,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     audio = make_unique<rai::Sound>();
   }
 
-  C.watch(false, STRING("time: 0"));
+  C.view(false, STRING("time: 0"));
   C.gl()->ensure_gl().setTitle("BotOp Configuration");
 }
 
@@ -130,9 +130,9 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   if(sim) sim->pullDynamicStates(C);
 
   //gui
-  if(rai::getParameter("bot/raiseWindow",false)) C.gl()->raiseWindow();
+  if(rai::getParameter<bool>("bot/raiseWindow",false)) C.gl()->raiseWindow();
   double ctrlTime = get_t();
-  keypressed = C.watch(false, STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
+  keypressed = C.view(false, STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
   if(keypressed) C.gl()->resetPressedKey();
   if(keypressed==13) return false;
   if(keypressed=='q' || keypressed==27) return false;
