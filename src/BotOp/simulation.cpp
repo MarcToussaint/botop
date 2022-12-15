@@ -18,7 +18,7 @@ BotSimulation::BotSimulation(const rai::Configuration& C,
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
-  if(rai::getParameter<bool>("botsim/bullet")){
+  if(rai::getParameter<bool>("botsim/bullet", false)){
     sim=make_shared<rai::Simulation>(emuConfig, rai::Simulation::_bullet);
   }else{
     noise_th = rai::getParameter<double>("botsim/noise_th", -1.);
@@ -55,7 +55,7 @@ BotSimulation::BotSimulation(const rai::Configuration& C,
 }
 
 BotSimulation::~BotSimulation(){
-  emuConfig.glClose();
+  emuConfig.view_close();
   threadClose();
 }
 
@@ -138,7 +138,7 @@ void BotSimulation::step(){
     qDot_real += tau * qDDot_des;
     q_real += .5 * tau * qDot_real;
   }else{
-    sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
+    sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_pdRef);
     q_real = emuConfig.getJointState();
     qDot_real = cmd_qDot_ref;
   }
@@ -149,7 +149,7 @@ void BotSimulation::step(){
   //-- display? 20fps
   if(false && !(step_count%int(1./(20.*tau)))){
     emuConfig.setJointState(q_real);
-    emuConfig.watch(false, STRING("EMULATION - time " <<ctrlTime));
+    emuConfig.view(false, STRING("EMULATION - time " <<ctrlTime));
   }
 
   //-- check for collisions!

@@ -19,7 +19,7 @@ void testLeapCtrl() {
       C.addFrame("target")
       ->setShape(rai::ST_marker, {.1})
       .setPosition(center + arr{+.3,.0,+.2});
-  C.watch();
+  C.view();
 
   //-- start a robot thread
   BotOp bot(C, rai::checkParameter<bool>("real"));

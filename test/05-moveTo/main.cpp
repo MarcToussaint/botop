@@ -1,4 +1,4 @@
-#include <Franka/controlEmulator.h>
+#include <BotOp/simulation.h>
 #include <Franka/franka.h>
 #include <Franka/help.h>
 #include <Algo/SplineCtrlFeed.h>
@@ -16,7 +16,7 @@ void test_bot() {
   //-- setup a configuration
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
-  C.watch(false);
+  C.view(false);
 
   //-- start a robot thread
   BotOp bot(C, rai::checkParameter<bool>("real"));
@@ -43,7 +43,7 @@ void test_withoutBotWrapper() {
   //-- setup a configuration
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
-  C.watch(true);
+  C.view(true);
 
   //-- start a robot thread
   C.ensure_indexedJoints();
@@ -51,7 +51,7 @@ void test_withoutBotWrapper() {
   if(rai::getParameter<bool>("real", false)){
     robot = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'));
   }else{
-    robot = make_shared<ControlEmulator>(C);
+    robot = make_shared<BotSimulation>(C);
   }
   robot->writeData = 2;
 
@@ -73,7 +73,7 @@ void test_withoutBotWrapper() {
   sp->report(ctrlTime);
 
   for(;;){
-    if(C.watch(false, STRING("time: "<<robot->state.get()->ctrlTime <<" - hit 'q' to append more"))=='q') break;
+    if(C.view(false, STRING("time: "<<robot->state.get()->ctrlTime <<" - hit 'q' to append more"))=='q') break;
     C.setJointState(robot->state.get()->q);
     rai::wait(.1);
   }
@@ -89,7 +89,7 @@ void test_withoutBotWrapper() {
   rai::wait(.1);
   C.gl()->resetPressedKey();
   for(;;){
-    if(C.watch(false, STRING("time: "<<robot->state.get()->ctrlTime))=='q') break;
+    if(C.view(false, STRING("time: "<<robot->state.get()->ctrlTime))=='q') break;
     C.setJointState(robot->state.get()->q);
     rai::wait(.1);
   }

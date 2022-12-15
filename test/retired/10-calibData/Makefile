@@ -7,4 +7,4 @@ DEPEND = Core Algo Gui Geo Kin Optim KOMO Franka Control BotOp
 
 OPENCV = 1
 
-include $(BASE)/build/generic.mk
+include $(BASE)/makeutils/generic.mk

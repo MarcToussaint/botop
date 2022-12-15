@@ -72,7 +72,7 @@ void fixPoses(arr& X, rai::Configuration& C){
 
   for(uint i=0;i<X.d0;i++){
     C.setJointState(X[i]);
-//    C.watch(false, STRING("conf " <<i));
+//    C.view(false, STRING("conf " <<i));
     bool succ = checkCollisionsAndLimits(C, collisionPairs, limits, true);
     if(succ) X[i] = C.getJointState();
     else X[i] = X[i-1];
@@ -150,12 +150,12 @@ void rndPoses(){
     arr x = bounds[0] + (bounds[1]-bounds[0]) % rand(qHome.N);
 
     C.setJointState(x);
-    //C.watch(false, STRING("conf " <<i));
+    //C.view(false, STRING("conf " <<i));
     bool succ = checkCollisionsAndLimits(C, collisionPairs, limits, true);
     if(succ){
       x = C.getJointState();
       cout <<" === sending POSE " <<i <<" === " <<endl;
-      //C.watch(true, STRING("conf " <<i));
+      //C.view(true, STRING("conf " <<i));
 
       C.setJointState(bot.get_q());
       arr path = getStartGoalPath(C, x, bot.qHome);

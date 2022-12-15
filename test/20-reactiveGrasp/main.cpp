@@ -352,7 +352,7 @@ void testDroneRace(){
   M.V = S.eval(range(0., S.times.last(), 100));
   M.makeLineStrip();
   C.gl()->add(M);
-  C.watch(true);
+  C.view(true);
 
 
   //just sample & dump the spline

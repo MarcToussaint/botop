@@ -9,4 +9,4 @@ GL=1
 CXXFLAGS  += -DRAI_REALSENSE `pkg-config --cflags realsense2`
 LIBS      += `pkg-config --libs realsense2`
 
-include $(BASE)/build/generic.mk
+include $(BASE)/makeutils/generic.mk

@@ -32,8 +32,9 @@ int main(int argc, char * argv[]){
       tim.cycleStart();
       int key=0;
       {
-        auto depthGet = RS.depth.get();
-        key = gl.watchImage(128.f*depthGet(), false, 1.);
+        floatA depth = RS.depth.get();
+        for(float& d:depth) d *= 128.f;
+        key = gl.watchImage(depth, false, 1.);
       }
 
       {

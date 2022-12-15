@@ -5,4 +5,4 @@ DEPEND = Core Gui Geo Kin KOMO Operate Perception RealSense FlatVision NewContro
 
 OPENCV = 1
 
-include $(BASE)/build/generic.mk
+include $(BASE)/makeutils/generic.mk

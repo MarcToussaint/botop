@@ -13,7 +13,7 @@ void testUnrollControl(uint T, rai::Configuration& C, CtrlSet& CS, CtrlSolver& c
     C.stepSwift();
 
     ctrl.report();
-    C.watch(false, STRING("t:" <<t));
+    C.view(false, STRING("t:" <<t));
     rai::wait(.01);
 //    if(pos->status>AS_running) break;
     if(!CS.canBeInitiated(ctrl.komo.pathConfig)){
@@ -113,7 +113,7 @@ struct ClassicCtrlSetController : ControlLoop {
   virtual void stepReference(arr& qRef, arr& qDotRef, arr& qDDotRef, const arr& q_real, const arr& qDot_real){
     ctrl.set(CS);
     ctrl.komo.world.setJointState(q_real);
-    ctrl.komo.world.watch();
+    ctrl.komo.world.view();
     ctrl.update(q_real, qDot_real, ctrl.komo.world);
     qRef = ctrl.solve();
     qDotRef.resize(qRef.N).setZero();

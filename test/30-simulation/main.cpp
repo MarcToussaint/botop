@@ -163,7 +163,7 @@ void testOpenClose(){
 
   rai::Configuration C;
   C.addFile("../../rai-robotModels/scenarios/pandasTable.g");
-  C.watch(true);
+  C.view(true);
 
   double tau = .01;
 
@@ -173,7 +173,7 @@ void testOpenClose(){
 
     arr q = S.get_q();
     C.setJointState(q);
-    C.watch();
+    C.view();
 
     S.step({}, tau, S._none);
     cout <<S.getGripperWidth("r_gripper") <<endl;
@@ -186,7 +186,7 @@ void testOpenClose(){
 
     arr q = S.get_q();
     C.setJointState(q);
-    C.watch();
+    C.view();
 
     S.step({}, tau, S._none);
     cout <<S.getGripperWidth("r_gripper") <<endl;

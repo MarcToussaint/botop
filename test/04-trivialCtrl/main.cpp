@@ -37,7 +37,7 @@ void test() {
   //-- setup a configuration
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
-  C.watch(true);
+  C.view(true);
 
   //-- start the franka thread
   C.ensure_indexedJoints();
@@ -50,7 +50,7 @@ void test() {
   //ref->setVelocityReference({.0,.0,.2,0,0,0,0});
 
   for(;;){
-    if(C.watch(false,STRING("time: "<<rai::realTime()))=='q') break;
+    if(C.view(false,STRING("time: "<<rai::realTime()))=='q') break;
     C.setJointState(robot.state.get()->q);
     rai::wait(.1);
   }

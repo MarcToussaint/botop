@@ -8,4 +8,4 @@ LIBS += `pkg-config glib-2.0 --libs`
 SRCS = $(shell find . -maxdepth 2 -name '*.c' )
 OBJS = $(SRCS:%.c=%.o)
 
-include $(BASE)/build/generic.mk
+include $(BASE)/makeutils/generic.mk

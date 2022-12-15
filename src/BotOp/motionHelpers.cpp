@@ -22,7 +22,7 @@ arr getLoopPath(rai::Configuration& C){
   C.addFrame("target4")
       ->setShape(rai::ST_marker, {.1})
       .setPosition(center + arr{-.3,.0,-.2});
-  C.watch(false);
+  C.view(false);
   arr q0 = C.getJointState();
 
   //compute a path

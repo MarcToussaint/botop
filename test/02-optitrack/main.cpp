@@ -17,7 +17,7 @@ int main(int argc,char **argv){
 
   for(;;){
     OT.pull(C);
-    if(C.watch(false)=='q') break;
+    if(C.view(false)=='q') break;
   }
 
   LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';

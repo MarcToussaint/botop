@@ -178,7 +178,7 @@ void FrankaThread::step(){
       double err = length(q_ref - q_real);
       if(err>.05){ //if(err>.02){ //stall!
         state.set()->stall = 2; //no progress in reference time! for at least 2 iterations (to ensure continuous stall with multiple threads)
-        cout <<"STALLING - step:" <<steps <<endl;
+        cout <<"STALLING - step:" <<steps <<" err: " <<err <<endl;
       }
     }
 
@@ -192,14 +192,7 @@ void FrankaThread::step(){
     arr u;
 
     if(controlType == rai::ControlType::configRefs) { //default: PD for given references
-      //check for correct ctrl otherwise do something...
-      if(q_ref.N!=7){
-//        if(!(steps%10)){
-//          cerr <<"FRANKA: inconsistent ctrl q_ref message - step: " <<steps <<endl;
-//        }
-//        return std::array<double, 7>({0., 0., 0., 0., 0., 0., 0.});
-      }
-      //check for correct compliance objective
+      //check for compliance objective
       if(P_compliance.N){
         if(!(P_compliance.nd==2 && P_compliance.d0==7 && P_compliance.d1==7)){
           cerr << "FRANKA: inconsistent ctrl P_compliance message" << endl;
@@ -329,12 +322,12 @@ void FrankaThread::step(){
 
     //-- send torques
     std::array<double, 7> u_array = {0., 0., 0., 0., 0., 0., 0.};
-    u.setCarray(u_array.data(), 7); //std::copy(u.begin(), u.end(), u_array.begin());
+    for(uint i=0;i<7;i++) u_array[i]= u.elem(i);
     if(stop) return franka::MotionFinished(franka::Torques(u_array));
     return franka::Torques(u_array);
   };
 
-  // start real-time control loop
+  //start real-time control loop
   //cout <<"HERE" <<endl;
 
   try {

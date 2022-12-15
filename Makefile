@@ -18,8 +18,8 @@ tests: $(test_paths:%=inPath_make/%)
 runTests: tests
 	@rm -f z.test-report
 	@find test -mindepth 1 -maxdepth 1 -type d \
-		-exec rai/build/run-path.sh {} \;
+		-exec rai/makeutils/run-path.sh {} \;
 
-include $(BASE)/build/generic.mk
+include $(BASE)/makeutils/generic.mk
 
 .NOTPARALLEL:

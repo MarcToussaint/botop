@@ -35,12 +35,12 @@ void rndPoses(){
     arr x = bounds[0] + (bounds[1]-bounds[0]) % rand(qHome.N);
 
     C.setJointState(x);
-    //C.watch(false, STRING("conf " <<i));
+    //C.view(false, STRING("conf " <<i));
     bool succ = PoseTool(C,0).checkLimitsAndCollisions(limits, {}, true);
     if(succ){
       cout <<" === pose made feasible === " <<endl;
       x = C.getJointState();
-      //C.watch(true, STRING("conf " <<i));
+      //C.view(true, STRING("conf " <<i));
 
       //compute path
       C.setJointState(x_last);
