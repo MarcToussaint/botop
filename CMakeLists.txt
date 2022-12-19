@@ -9,6 +9,7 @@ option(USE_BULLET "link to bullet" ON)
 option(USE_OPENCV "link to opencv" OFF)
 option(USE_REALSENSE "link to realsense2 driver library" OFF)
 option(USE_LIBFRANKA "link to libfranka" ON)
+#set(PYBIND11_PYTHON_VERSION 3.7 CACHE STRING "python version")
 
 add_compile_options(
   -O3 -g -Wall -Wpedantic -fPIC -std=c++14 -Wno-terminate
@@ -21,7 +22,7 @@ add_definitions(
   -DRAI_X11 -DRAI_LAPACK -DRAI_EIGEN -DRAI_PTHREAD
   -DRAI_GL
   -DRAI_GLFW -DRAI_ANN -DRAI_QHULL -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
-  -DRAI_SWIFT -DRAI_GJK -DRAI_CCD -DRAI_FCL
+  -DRAI_GJK -DRAI_CCD -DRAI_FCL -DRAI_Lewiner #-DRAI_SWIFT 
   -DRAI_PORTAUDIO
   -BOOST_ERROR_CODE_HEADER_ONLY
   )
@@ -46,17 +47,15 @@ file(GLOB SRC_GeoGJK rai/rai/Geo/GJK/*.c)
 file(GLOB SRC_GeoPly rai/rai/Geo/ply/*.c)
 file(GLOB SRC_GeoLewiner rai/rai/Geo/Lewiner/*.cpp)
 file(GLOB SRC_Algo rai/rai/Algo/*.cpp)
-file(GLOB SRC_Plot rai/rai/Plot/*.cpp)
+file(GLOB SRC_PathAlgos rai/rai/PathAlgos/*.cpp)
 file(GLOB SRC_Gui rai/rai/Gui/*.cpp)
 file(GLOB SRC_Kin rai/rai/Kin/*.cpp)
 file(GLOB SRC_KinSwift rai/rai/Kin/SWIFT/*.cpp)
 file(GLOB SRC_KOMO rai/rai/KOMO/*.cpp)
 file(GLOB SRC_Logic rai/rai/Logic/*.cpp)
 file(GLOB SRC_LGP rai/rai/LGP/*.cpp)
-file(GLOB SRC_RosCom rai/rai/RosCom/*.cpp)
 file(GLOB SRC_Perception rai/rai/Perception/*.cpp)
 file(GLOB SRC_Control rai/rai/Control/*.cpp)
-file(GLOB SRC_Operate rai/rai/Operate/*.cpp)
 file(GLOB SRC_ry rai/rai/ry/*.cpp)
 
 file(GLOB SRC_Franka src/Franka/*.cpp)
@@ -74,17 +73,14 @@ add_library(rai SHARED
   ${SRC_GeoPly}
   ${SRC_GeoLewiner}
   ${SRC_Algo}
-  ${SRC_Plot}
+  ${SRC_PathAlgos}
   ${SRC_Gui}
   ${SRC_Kin}
-  ${SRC_KinSwift}
   ${SRC_KOMO}
   ${SRC_Logic}
   #${SRC_LGP}
-  #${SRC_RosCom}
   ${SRC_Perception}
   ${SRC_Control}
-  #${SRC_Operate}
   ${SRC_Franka}
   ${SRC_OptiTrack}
   ${SRC_Robotiq}
@@ -95,47 +91,56 @@ add_library(rai SHARED
 
 target_link_libraries(rai
   jsoncpp lapack blas pthread rt X11
-  assimp ann glfw GLEW glut GLU GL png qhull ccd fcl
+  assimp ccd fcl qhull ann glfw GLEW glut GLU GL png
   portaudio
   boost_system 
   )
 
 ################################################################################
 
-find_package (Eigen3 3.3 REQUIRED NO_MODULE)
-target_link_libraries (rai Eigen3::Eigen)
+#find_package (Eigen3 3.3 REQUIRED NO_MODULE)
+#target_link_libraries (rai Eigen3::Eigen)
 
 if(USE_BULLET)
-  find_package(Bullet REQUIRED)
+  find_package(PkgConfig)
+  pkg_check_modules(BULLET bullet REQUIRED)
+
   add_definitions(-DRAI_BULLET)
   include_directories(${BULLET_INCLUDE_DIRS})
   target_link_libraries(rai ${BULLET_LIBRARIES})
+  message(STATUS "[rai] using bullet libs:" ${BULLET_LIBRARIES})
 endif()
 
 if(USE_OPENCV)
   find_package(OpenCV REQUIRED)
   add_definitions(-DRAI_OPENCV)
   target_link_libraries(rai ${OpenCV_LIBS})
+  message(STATUS "[rai] using OpenCV libs:" ${OpenCV_LIBS})
 endif()
 
 if(USE_REALSENSE)
   add_definitions(-DRAI_REALSENSE)
   target_link_libraries(rai realsense2)
+  message(STATUS "[rai] using realsense libs")
 endif()
 
 if(USE_LIBFRANKA)
   add_definitions(-DRAI_FRANKA)
   target_link_libraries(rai franka)
+  message(STATUS "[rai] using libfranka")
 endif()
 
 ################################################################################
 
 if(USE_PYBIND)
   set(PYTHON_EXECUTABLE "python3")
+  message(STATUS "[rai] using python executable " ${PYTHON_EXECUTABLE} )
   execute_process(
-    COMMAND bash "-c" "python3 -m pybind11 --cmakedir" 
+    COMMAND bash "-c" "${PYTHON_EXECUTABLE} -m pybind11 --cmakedir" 
     OUTPUT_STRIP_TRAILING_WHITESPACE OUTPUT_VARIABLE pybind11_DIR
   )
+  message(STATUS "[rai] using pybind11_DIR " ${pybind11_DIR} )
+  
   find_package(pybind11)
   add_definitions(-DRAI_PYBIND)
 

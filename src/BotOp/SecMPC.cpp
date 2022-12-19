@@ -8,20 +8,25 @@
 
 //===========================================================================
 
-SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, double ctrlCost, bool _setNextWaypointTangent)
+SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, double ctrlCost,
+               bool _setNextWaypointTangent, const StringA& explicitCollisions)
   : waypointMPC(komo),
     timingMPC(waypointMPC.path({subSeqStart,subSeqStop}), timeCost, ctrlCost),
     shortMPC(komo.world, 5, .1),
     subSeqStart(subSeqStart), subSeqStop(subSeqStop), setNextWaypointTangent(_setNextWaypointTangent){
 
-  StringA colls = {"l_palm", "l_finger1", "l_finger2", "l_panda_coll7b", "l_panda_coll7", "l_panda_coll6", "l_panda_coll5", "l_panda_coll4", "l_panda_coll3"};
-  if(komo.world["stick"]) colls.append("stick");
-  for(auto& s:colls){
-    shortMPC.komo.addObjective({}, FS_distance, {"obst", s}, OT_ineqP, {5.}, {-.1});
+  for(uint i=0;i<explicitCollisions.d0;i++){
+    CHECK_EQ(explicitCollisions.d1, 2, "");
+    shortMPC.komo.addObjective({}, FS_distance, explicitCollisions[i], OT_ineqP, {1e1}, {-.001});
   }
+//  StringA colls = {"l_palm", "l_finger1", "l_finger2", "l_panda_coll7b", "l_panda_coll7", "l_panda_coll6", "l_panda_coll5", "l_panda_coll4", "l_panda_coll3"};
+//  if(komo.world["stick"]) colls.append("stick");
+//  for(auto& s:colls){
+//    shortMPC.komo.addObjective({}, FS_distance, {"obst", s}, OT_ineqP, {5.}, {-.1});
+//  }
 
   for(uint t=0;t<shortMPC.komo.T;t++){
-    shortMPC.komo.addObjective({0.}, FS_qItself, {}, OT_sos, {1e1}, waypointMPC.qHome, 0, t+1, t+1);
+    shortMPC.komo.addObjective({0.}, FS_qItself, {}, OT_sos, {1.}, waypointMPC.qHome, 0, t+1, t+1);
   }
 
   if(setNextWaypointTangent) timingMPC.set_updatedWaypoints(timingMPC.waypoints, true);
@@ -31,7 +36,7 @@ SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, dou
 
 void SecMPC::updateWaypoints(const rai::Configuration& C){
   waypointMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
-  waypointMPC.solve(verbose-2);
+  waypointMPC.solve(opt.verbose-2);
 
   msg <<" WAY #:" <<waypointMPC.komo.pathConfig.setJointStateCount;
   msg <<' ' <<waypointMPC.komo.sos <<'|' <<waypointMPC.komo.ineq <<'|' <<waypointMPC.komo.eq;
@@ -45,21 +50,21 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
 
   //-- progress time (potentially phase)
   if(!timingMPC.done() && ctrlTimeDelta>0.){
-    phaseSwitch = timingMPC.set_progressedTime(ctrlTimeDelta, tauCutoff);
+    phaseSwitch = timingMPC.set_progressedTime(ctrlTimeDelta, opt.tauCutoff);
   }else{
     phaseSwitch = false;
 
   }
   //-- phase backtracking
   if(timingMPC.done()){
-    if(phi.maxError(C, timingMPC.phase+subSeqStart) > precision){
+    if(phi.maxError(C, timingMPC.phase+subSeqStart) > opt.precision){
       phi.maxError(C, timingMPC.phase+subSeqStart, 1); //verbose
       timingMPC.update_backtrack();
       phaseSwitch=true;
     }
   }
   if(!timingMPC.done()){
-    while(timingMPC.phase>0 && phi.maxError(C, 0.5+timingMPC.phase+subSeqStart) > precision){ //OR while?
+    while(timingMPC.phase>0 && phi.maxError(C, 0.5+timingMPC.phase+subSeqStart) > opt.precision){ //OR while?
       phi.maxError(C, 0.5+timingMPC.phase+subSeqStart, 1); //verbose
       timingMPC.update_backtrack();
       phaseSwitch=true;
@@ -69,7 +74,7 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
   msg <<" \tTIMING";
   //-- re-optimize the timing
   if(!timingMPC.done()){
-    if(timingMPC.tau(timingMPC.phase) > tauCutoff){
+    if(timingMPC.tau(timingMPC.phase) > opt.tauCutoff){
       shared_ptr<SolverReturn> ret;
       double ctrlErr = length(q_real-q_ref_atLastUpdate);
       double thresh = .02;
@@ -77,11 +82,11 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
       if(ctrlErr>thresh){
         //LOG(0) <<"ERROR MODE: " <<ctrlErr <<endl;
         q_refAdapted = q_ref_atLastUpdate + ((ctrlErr-thresh)/ctrlErr) * (q_real-q_ref_atLastUpdate);
-        ret = timingMPC.solve(q_refAdapted, qDot_ref_atLastUpdate, verbose-2);
+        ret = timingMPC.solve(q_refAdapted, qDot_ref_atLastUpdate, opt.verbose-2);
       }else{
         q_refAdapted.clear();
         q_refAdapted = q_ref_atLastUpdate;
-        ret = timingMPC.solve(q_ref_atLastUpdate, qDot_ref_atLastUpdate, verbose-2);
+        ret = timingMPC.solve(q_ref_atLastUpdate, qDot_ref_atLastUpdate, opt.verbose-2);
       }
       msg <<" #:" <<ret->evals;
       //      msg <<" T:" <<ret->time <<" f:" <<ret->f;
@@ -123,7 +128,7 @@ void SecMPC::updateShortPath(const rai::Configuration& C){
   shortMPC.komo.run_prepare(0.);
   //shortMPC.reinit_taus(times(0));
 
-  shortMPC.solve(false, verbose-2);
+  shortMPC.solve(false, opt.verbose-2);
 
 //  shortMPC.komo.view(false, "SHORT");
 //  shortMPC.feasible = true;

@@ -7,6 +7,16 @@
 
 //===========================================================================
 
+namespace rai {
+  struct SecMPC_Options {
+    RAI_PARAM("SecMPC/", int, verbose, 1)
+    RAI_PARAM("SecMPC/", double, precision, .1)
+    RAI_PARAM("SecMPC/", double, tauCutoff, .0)
+  };
+}//namespace
+
+//===========================================================================
+
 struct SecMPC{
   WaypointMPC waypointMPC;
   TimingMPC timingMPC;
@@ -15,17 +25,15 @@ struct SecMPC{
   int subSeqStart=0, subSeqStop=-1;
   bool setNextWaypointTangent;
   rai::String msg;
-  double precision = .1;
-  double tauCutoff = .0;
 
   double ctrlTimeDelta = 0.;
   double ctrlTime_atLastUpdate = -1.;
   arr q_ref_atLastUpdate, qDot_ref_atLastUpdate, q_refAdapted;
   bool phaseSwitch=false;
 
-  int verbose=1;
+  rai::SecMPC_Options opt;
 
-  SecMPC(KOMO& komo, int subSeqStart=0, int subSeqStop=-1, double timeCost=1e0, double ctrlCost=1e0, bool _setNextWaypointTangent=true);
+  SecMPC(KOMO& komo, int subSeqStart=0, int subSeqStop=-1, double timeCost=1e0, double ctrlCost=1e0, bool _setNextWaypointTangent=true, const StringA& explicitCollisions={});
 
   void updateWaypoints(const rai::Configuration& C);
   void updateTiming(const rai::Configuration& C, const ObjectiveL& phi, const arr& q_real);

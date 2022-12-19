@@ -56,7 +56,8 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       //if(fg) fg->homing();
     }
   }else{
-    sim = make_shared<BotSim>(C, cmd, state); //, StringA(), .001, 10.);
+    double hyperSpeed = rai::getParameter<double>("bot/hyperSpeed", 1.);
+    sim = make_shared<BotSim>(C, cmd, state, StringA(), .001, hyperSpeed); //, StringA(), .001, 10.);
     robotL = sim;
     if(useGripper) gripperL = make_unique<GripperSim>(sim);
   }
