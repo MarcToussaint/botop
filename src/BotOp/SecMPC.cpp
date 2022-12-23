@@ -30,6 +30,8 @@ SecMPC::SecMPC(KOMO& komo, int subSeqStart, int subSeqStop, double timeCost, dou
   }
 
   if(setNextWaypointTangent) timingMPC.set_updatedWaypoints(timingMPC.waypoints, true);
+
+  if(opt.verbose>0) LOG(0) <<"new SecMPC";
 }
 
 //===========================================================================
@@ -38,8 +40,10 @@ void SecMPC::updateWaypoints(const rai::Configuration& C){
   waypointMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
   waypointMPC.solve(opt.verbose-2);
 
-  msg <<" WAY #:" <<waypointMPC.komo.pathConfig.setJointStateCount;
-  msg <<' ' <<waypointMPC.komo.sos <<'|' <<waypointMPC.komo.ineq <<'|' <<waypointMPC.komo.eq;
+  if(!waypointMPC.feasible) wayInfeasible++; else wayInfeasible=0;
+
+  msg <<" WAY #" <<waypointMPC.komo.pathConfig.setJointStateCount;
+  msg <<' ' <<waypointMPC.komo.sos <<'|' <<waypointMPC.komo.ineq + waypointMPC.komo.eq;
 }
 
 //===========================================================================
@@ -53,21 +57,23 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
     phaseSwitch = timingMPC.set_progressedTime(ctrlTimeDelta, opt.tauCutoff);
   }else{
     phaseSwitch = false;
-
   }
+
+  arr tauExpected = timingMPC.tau;
+
   //-- phase backtracking
   if(timingMPC.done()){
     if(phi.maxError(C, timingMPC.phase+subSeqStart) > opt.precision){
       phi.maxError(C, timingMPC.phase+subSeqStart, 1); //verbose
       timingMPC.update_backtrack();
-      phaseSwitch=true;
+      phaseSwitch = true;
     }
   }
   if(!timingMPC.done()){
     while(timingMPC.phase>0 && phi.maxError(C, 0.5+timingMPC.phase+subSeqStart) > opt.precision){ //OR while?
       phi.maxError(C, 0.5+timingMPC.phase+subSeqStart, 1); //verbose
       timingMPC.update_backtrack();
-      phaseSwitch=true;
+      phaseSwitch = true;
     }
   }
 
@@ -82,22 +88,28 @@ void SecMPC::updateTiming(const rai::Configuration& C, const ObjectiveL& phi, co
       if(ctrlErr>thresh){
         //LOG(0) <<"ERROR MODE: " <<ctrlErr <<endl;
         q_refAdapted = q_ref_atLastUpdate + ((ctrlErr-thresh)/ctrlErr) * (q_real-q_ref_atLastUpdate);
-        ret = timingMPC.solve(q_refAdapted, qDot_ref_atLastUpdate, opt.verbose-2);
+        ret = timingMPC.solve(q_refAdapted, qDot_ref_atLastUpdate, opt.verbose-3);
       }else{
         q_refAdapted.clear();
         q_refAdapted = q_ref_atLastUpdate;
-        ret = timingMPC.solve(q_ref_atLastUpdate, qDot_ref_atLastUpdate, opt.verbose-2);
+        ret = timingMPC.solve(q_ref_atLastUpdate, qDot_ref_atLastUpdate, opt.verbose-3);
       }
-      msg <<" #:" <<ret->evals;
+      msg <<" #" <<ret->evals;
       //      msg <<" T:" <<ret->time <<" f:" <<ret->f;
     }else{
-      msg <<" #skipped";
-//      LOG(0) <<"skipping timing opt, as too close ahead: " <<timingMPC.tau;
+      msg <<" skip";
     }
   }
 
-  msg <<" phase: " <<timingMPC.phase <<" tau: " <<timingMPC.tau;
+  //check if tau progress is stalling
+  if(max(timingMPC.tau - tauExpected) > .8*ctrlTimeDelta) tauStalling++;
+  else tauStalling=0;
+
+  msg <<" ph:" <<timingMPC.phase <<" tau:" <<timingMPC.tau;
+  msg <<timingMPC.tau - tauExpected;
+
 //  msg <<ctrlTime_atLastUpdate + timingMPC.getTimes(); // <<' ' <<F.vels;
+  if(phaseSwitch && opt.verbose>0) LOG(0) <<"phase switch to ph: " <<timingMPC.phase;
 }
 
 //===========================================================================
@@ -146,18 +158,13 @@ void SecMPC::updateShortPath(const rai::Configuration& C){
 //  rai::wait();
 //  shortMPC.komo.reportProblem();
 
-  msg <<" \tPATH #:" <<shortMPC.komo.pathConfig.setJointStateCount;
-  msg <<' ' <<shortMPC.komo.sos <<'|' <<shortMPC.komo.ineq <<'|' <<shortMPC.komo.eq;
+  msg <<" \tPATH #" <<shortMPC.komo.pathConfig.setJointStateCount;
+  msg <<' ' <<shortMPC.komo.sos <<'|' <<shortMPC.komo.ineq + shortMPC.komo.eq;
 }
 
 //===========================================================================
 
 void SecMPC::cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
-  msg.clear();
-  msg <<std::setprecision(6);
-  msg <<"CYCLE ctrlTime:" <<ctrlTime;
-  msg <<std::setprecision(3);
-
   //-- store ctrl state at start of this cycle
   if(ctrlTime_atLastUpdate>0.){
     ctrlTimeDelta = ctrlTime - ctrlTime_atLastUpdate;
@@ -165,6 +172,10 @@ void SecMPC::cycle(const rai::Configuration& C, const arr& q_ref, const arr& qDo
   ctrlTime_atLastUpdate = ctrlTime;
   q_ref_atLastUpdate = q_ref;
   qDot_ref_atLastUpdate = qDot_ref;
+
+  msg.clear();
+  msg <<std::setprecision(3);
+  msg <<"SecMPC d:" <<ctrlTimeDelta;
 
   updateWaypoints(C);
   updateTiming(C, waypointMPC.komo.objectives, q_real);
@@ -237,10 +248,12 @@ rai::CubicSplineCtor SecMPC::getShortPath(double realtime){
 
 
 void SecMPC::report(const rai::Configuration& C) {
+#if 0
   const ObjectiveL& phi = waypointMPC.komo.objectives;
   msg <<" \tFEA " <<phi.maxError(C, 0.5+timingMPC.phase)
      <<' ' <<phi.maxError(C, 1.+timingMPC.phase)
     <<' ' <<phi.maxError(C, 1.5+timingMPC.phase)
    <<' ' <<phi.maxError(C, 2.+timingMPC.phase);
+#endif
   cout <<msg <<endl;
 }

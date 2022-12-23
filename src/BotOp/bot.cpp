@@ -56,7 +56,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       //if(fg) fg->homing();
     }
   }else{
-    double hyperSpeed = rai::getParameter<double>("bot/hyperSpeed", 1.);
+    double hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
     sim = make_shared<BotSim>(C, cmd, state, StringA(), .001, hyperSpeed); //, StringA(), .001, 10.);
     robotL = sim;
     if(useGripper) gripperL = make_unique<GripperSim>(sim);
@@ -133,7 +133,7 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   //gui
   if(rai::getParameter<bool>("bot/raiseWindow",false)) C.gl()->raiseWindow();
   double ctrlTime = get_t();
-  keypressed = C.view(false, STRING("time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
+  keypressed = C.view(false, STRING("BotOp - time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
   if(keypressed) C.gl()->resetPressedKey();
   if(keypressed==13) return false;
   if(keypressed=='q' || keypressed==27) return false;

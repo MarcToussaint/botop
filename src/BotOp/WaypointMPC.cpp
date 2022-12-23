@@ -41,13 +41,14 @@ void WaypointMPC::solve(int verbose){
   path = komo.getPath_qOrg();
   tau = komo.getPath_tau();
 
+  msg.clear() <<"WAY it " <<steps <<" feasible: " <<(feasible?" good":" FAIL") <<" -- queries: " <<komo.pathConfig.setJointStateCount <<" time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
+  if(!feasible) msg <<komo.getReport(false);
+
   if(verbose>0){
-    msg.clear() <<"WAY it " <<steps <<" feasible: " <<(feasible?" good":" FAIL") <<" -- queries: " <<komo.pathConfig.setJointStateCount <<" time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
     komo.view(false, msg);
   }
 
   if(!feasible){ // || komo.pathConfig.setJointStateCount>50
-    cout <<komo.getReport(false);
     komo.reset();
     komo.initWithConstant(qHome);
   }

@@ -20,7 +20,8 @@ BotSim::BotSim(const rai::Configuration& C,
 
   //do this in bot.cpp!
   if(rai::getParameter<bool>("botsim/bullet", false)){
-    sim=make_shared<rai::Simulation>(emuConfig, rai::Simulation::_bullet);
+    int verbose = rai::getParameter<int>("botsim/view", verbose);
+    sim=make_shared<rai::Simulation>(emuConfig, rai::Simulation::_bullet, verbose);
   }else{
     noise_th = rai::getParameter<double>("botsim/noise_th", -1.);
   }
@@ -149,6 +150,7 @@ void BotSim::step(){
     q_real += .5 * tau * qDot_real;
   }else{
     sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_pdRef);
+//    sim->step({}, tau, sim->_none);
     q_real = emuConfig.getJointState();
     qDot_real = cmd_qDot_ref;
   }

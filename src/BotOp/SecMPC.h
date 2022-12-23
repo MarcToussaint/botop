@@ -30,6 +30,8 @@ struct SecMPC{
   double ctrlTime_atLastUpdate = -1.;
   arr q_ref_atLastUpdate, qDot_ref_atLastUpdate, q_refAdapted;
   bool phaseSwitch=false;
+  int tauStalling=0;
+  int wayInfeasible=0;
 
   rai::SecMPC_Options opt;
 
