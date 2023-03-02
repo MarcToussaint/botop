@@ -1,5 +1,6 @@
-#ifndef REALSENSE_UTILS_H
-#define REALSENSE_UTILS_H
+#pragma once
+
+#ifdef RAI_REALSENSE
 
 #include <librealsense2/rs.hpp>
 #include <librealsense2/rsutil.h>

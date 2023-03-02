@@ -1,5 +1,7 @@
 local.cfg
 
+unity.cxx
+
 %% compile temporaries
 /build
 *.o

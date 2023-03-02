@@ -6,10 +6,12 @@ set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
 
 option(USE_PYBIND "build python bindings" ON)
 option(USE_BULLET "link to bullet" ON)
+option(USE_PHYSX "link to physx" ON)
 option(USE_OPENCV "link to opencv" OFF)
 option(USE_REALSENSE "link to realsense2 driver library" OFF)
 option(USE_LIBFRANKA "link to libfranka" ON)
-#set(PYBIND11_PYTHON_VERSION 3.7 CACHE STRING "python version")
+option(USE_PCL "link to pcl library" OFF)
+set(PYBIND11_PYTHON_VERSION 3.8 CACHE STRING "python version")
 
 add_compile_options(
   -O3 -g -Wall -Wpedantic -fPIC -std=c++14 -Wno-terminate
@@ -45,12 +47,14 @@ file(GLOB SRC_Optim rai/rai/Optim/*.cpp)
 file(GLOB SRC_Geo rai/rai/Geo/*.cpp)
 file(GLOB SRC_GeoGJK rai/rai/Geo/GJK/*.c)
 file(GLOB SRC_GeoPly rai/rai/Geo/ply/*.c)
+file(GLOB SRC_GeoCcd rai/rai/Geo/ccd/*.c)
 file(GLOB SRC_GeoLewiner rai/rai/Geo/Lewiner/*.cpp)
 file(GLOB SRC_Algo rai/rai/Algo/*.cpp)
+file(GLOB SRC_Search rai/rai/Search/*.cpp)
 file(GLOB SRC_PathAlgos rai/rai/PathAlgos/*.cpp)
 file(GLOB SRC_Gui rai/rai/Gui/*.cpp)
 file(GLOB SRC_Kin rai/rai/Kin/*.cpp)
-file(GLOB SRC_KinSwift rai/rai/Kin/SWIFT/*.cpp)
+#file(GLOB SRC_KinSwift rai/rai/Kin/SWIFT/*.cpp)
 file(GLOB SRC_KOMO rai/rai/KOMO/*.cpp)
 file(GLOB SRC_Logic rai/rai/Logic/*.cpp)
 file(GLOB SRC_LGP rai/rai/LGP/*.cpp)
@@ -71,8 +75,10 @@ add_library(rai SHARED
   ${SRC_Geo}
   ${SRC_GeoGJK}
   ${SRC_GeoPly}
+  ${SRC_GeoCcd}
   ${SRC_GeoLewiner}
   ${SRC_Algo}
+  ${SRC_Search}
   ${SRC_PathAlgos}
   ${SRC_Gui}
   ${SRC_Kin}
@@ -102,13 +108,18 @@ target_link_libraries(rai
 #target_link_libraries (rai Eigen3::Eigen)
 
 if(USE_BULLET)
-  find_package(PkgConfig)
-  pkg_check_modules(BULLET bullet REQUIRED)
-
+  find_package(Bullet REQUIRED)
   add_definitions(-DRAI_BULLET)
   include_directories(${BULLET_INCLUDE_DIRS})
   target_link_libraries(rai ${BULLET_LIBRARIES})
   message(STATUS "[rai] using bullet libs:" ${BULLET_LIBRARIES})
+endif()
+
+if(USE_PHYSX)
+  add_definitions(-DRAI_PHYSX -D_DEBUG -DPX_DISABLE_FLUIDS -DCORELIB -DPX32 -DLINUX)
+  include_directories($ENV{HOME}/opt/PhysX5/include)
+  target_link_libraries(rai PhysXExtensions_static_64 PhysX_64 PhysXCooking_64 PhysXCommon_64 PhysXFoundation_64)
+  message(STATUS "[rai] using physx libs from ~/opt:")
 endif()
 
 if(USE_OPENCV)
@@ -133,7 +144,7 @@ endif()
 ################################################################################
 
 if(USE_PYBIND)
-  set(PYTHON_EXECUTABLE "python3")
+  set(PYTHON_EXECUTABLE "python${PYBIND11_PYTHON_VERSION}")
   message(STATUS "[rai] using python executable " ${PYTHON_EXECUTABLE} )
   execute_process(
     COMMAND bash "-c" "${PYTHON_EXECUTABLE} -m pybind11 --cmakedir" 
@@ -143,7 +154,8 @@ if(USE_PYBIND)
   
   find_package(pybind11)
   add_definitions(-DRAI_PYBIND)
-
+  include_directories(${pybind11_INCLUDE_DIRS})
+  
   pybind11_add_module(libry SHARED
     ${SRC_ry}
   )
