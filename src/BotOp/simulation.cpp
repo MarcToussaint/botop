@@ -20,8 +20,8 @@ BotSim::BotSim(const rai::Configuration& C,
 
   //do this in bot.cpp!
   if(rai::getParameter<bool>("botsim/bullet", false)){
-    int verbose = rai::getParameter<int>("botsim/view", verbose);
-    sim=make_shared<rai::Simulation>(emuConfig, rai::Simulation::_physx, 2);
+    int verbose = rai::getParameter<int>("botsim/verbose", 0);
+    sim=make_shared<rai::Simulation>(emuConfig, rai::Simulation::_physx, verbose);
   }else{
     noise_th = rai::getParameter<double>("botsim/noise_th", -1.);
   }
@@ -118,7 +118,7 @@ void BotSim::step(){
     P_compliance = cmdGet->P_compliance;
   }
 
-  if(!sim){
+  if(!sim){ //NOT a physical simulation -> trivial kinematic emulation
     arr qDDot_des = zeros(7);
 
     //-- construct torques from control message depending on the control type
@@ -148,7 +148,9 @@ void BotSim::step(){
     q_real += .5 * tau * qDot_real;
     qDot_real += tau * qDDot_des;
     q_real += .5 * tau * qDot_real;
-  }else{
+
+  }else{ //PHYSICAL simulation
+
     sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
 //    sim->step({}, tau, sim->_none);
     q_real = emuConfig.getJointState();

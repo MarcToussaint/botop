@@ -76,7 +76,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   }
 
   C.view(false, STRING("time: 0"));
-  C.gl()->ensure_gl().setTitle("BotOp Configuration");
+  C.gl().setTitle("BotOp Configuration");
 }
 
 BotOp::~BotOp(){
@@ -131,10 +131,10 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   if(sim) sim->pullDynamicStates(C);
 
   //gui
-  if(rai::getParameter<bool>("bot/raiseWindow",false)) C.gl()->raiseWindow();
+  if(rai::getParameter<bool>("bot/raiseWindow",false)) C.viewer()->raiseWindow();
   double ctrlTime = get_t();
   keypressed = C.view(false, STRING("BotOp - time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
-  if(keypressed) C.gl()->resetPressedKey();
+  if(keypressed) C.viewer()->resetPressedKey();
   if(keypressed==13) return false;
   if(keypressed=='q' || keypressed==27) return false;
   auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
@@ -262,7 +262,7 @@ bool BotOp::isDone(){
 }
 
 void BotOp::home(rai::Configuration& C){
-  C.gl()->raiseWindow();
+  C.viewer()->raiseWindow();
   arr q=get_q();
   if(maxDiff(q,qHome)>1e-3){
     moveLeap(qHome, 1.);

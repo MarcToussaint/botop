@@ -8,7 +8,7 @@
 #include <Kin/viewer.h>
 
 
-bool SecMPC_Stepper::step(rai::Configuration& C, BotOp& bot, SecMPC& mpc){
+bool SecMPC_Stepper::step(rai::Configuration& C, BotOp& bot, SecMPC& mpc, bool doNotExecute){
   stepCount++;
 
   //-- iterate
@@ -38,12 +38,14 @@ bool SecMPC_Stepper::step(rai::Configuration& C, BotOp& bot, SecMPC& mpc){
   }
 
   //-- send spline update
-  ctrlTime = bot.get_t();
-  auto sp = mpc.getShortPath(ctrlTime);
-  if(sp.pts.d0){
-//    if(sp.times.first()<0.) bot.sound(2*(stepCount%12));
-    if(sp.vels.N) HALT("") //bot.move(sp.pts, sp.vels, sp.times, true, ctrlTime);
-    else bot.move(sp.pts, sp.times, true, ctrlTime);
+  if(!doNotExecute){
+    ctrlTime = bot.get_t();
+    auto sp = mpc.getShortPath(ctrlTime);
+    if(sp.pts.d0){
+      //    if(sp.times.first()<0.) bot.sound(2*(stepCount%12));
+      if(sp.vels.N) HALT("") //bot.move(sp.pts, sp.vels, sp.times, true, ctrlTime);
+          else bot.move(sp.pts, sp.times, true, ctrlTime);
+    }
   }
 
   //-- update C
@@ -85,74 +87,89 @@ void setCamera(OpenGL& gl, rai::Frame* camF){
   gl.resize(gl.width, gl.height);
 }
 
+SecMPC_Viewer::SecMPC_Viewer(const rai::Configuration& _C)
+  : C(_C){
+  C.gl().clear();
+  C.gl().add(glStandardLight);
+  C.gl().add(*this);
+  if(C["camera_gl"]) setCamera(C.gl(), C["camera_gl"]);
+}
+
+void SecMPC_Viewer::step(SecMPC& mpc){
+  C.setFrameState(mpc.waypointMPC.komo.world.getFrameState());
+//  stepCount = ex.stepCount;
+  ctrlTime = mpc.ctrlTime_atLastUpdate;
+  phase = mpc.timingMPC.phase;
+  q_real = mpc.q_ref_atLastUpdate;
+  waypoints = mpc.waypointMPC.path;
+  tau = mpc.timingMPC.tau;
+  shortPath = mpc.shortMPC.path;
+
+  C.view();
+}
+
+void SecMPC_Viewer::glDraw(OpenGL& gl){
+  //C itself
+//  gl.drawOptions.drawVisualsOnly=true;
+//  gl.drawOptions.drawColors=true;
+//  C.setJointState(q_real);
+//  //C.setFrameState(poses, logPoses);
+//  C.glDraw(gl);
+
+  //waypoints
+  double a = .6/(waypoints.d0-1);
+  gl.drawOptions.drawColors=false;
+  for(uint t=0;t<waypoints.d0;t++){
+    glColor(1., 1.-a*t, .4+a*t);
+    C.setJointState(waypoints[t]);
+    C.glDraw(gl);
+  }
+
+  //shortPath
+//  glColor(.5, 1., 1., .3);
+//  gl.drawOptions.drawColors=false;
+//  for(uint t=0;t<shortPath.d0;t++){
+//    C.setJointState(shortPath[t]);
+//    C.glDraw(gl);
+//  }
+
+  //text
+  rai::String text;
+  text <<"phase: " <<phase <<" ctrlTime:" <<ctrlTime <<"\ntau: " <<tau;
+  glColor(.2,.2,.2,.5);
+  glMatrixMode(GL_PROJECTION);
+  glLoadIdentity();
+  glMatrixMode(GL_MODELVIEW);
+  glOrtho(0., (double)gl.width, (double)gl.height, .0, -1., 1.);
+  glDrawText(text, 20, +20, 0, true);
+}
+
+//===========================================================================
+
 void playLog(const rai::String& logfile){
   rai::Configuration C;
   C.addFile("pushScenario.g");
 
   FrameL logPoses = C.getFrames({"puck", "target"});
-
-
-  uint stepCount, phase;
-  double ctrlTime;
-  arr q_real, waypoints, tau, shortPath, poses;
-
   OpenGL gl;
-  gl.add(glStandardScene);
 
-  if(C["camera_gl"]) setCamera(gl, C["camera_gl"]);
-
-  gl.add([&](OpenGL& gl){
-    //C itself
-    gl.drawOptions.drawVisualsOnly=true;
-    gl.drawOptions.drawColors=true;
-    C.setJointState(q_real);
-    C.setFrameState(poses, logPoses);
-    C.glDraw(gl);
-
-    //waypoints
-    glColor(1., 1., .5, .3);
-    gl.drawOptions.drawColors=false;
-    for(uint t=0;t<waypoints.d0;t++){
-      C.setJointState(waypoints[t]);
-      C.glDraw(gl);
-    }
-
-    //shortPath
-    glColor(.5, 1., 1., .3);
-    gl.drawOptions.drawColors=false;
-    for(uint t=0;t<shortPath.d0;t++){
-      C.setJointState(shortPath[t]);
-      C.glDraw(gl);
-    }
-
-    //text
-    rai::String text;
-    text <<"phase: " <<phase <<" ctrlTime:" <<ctrlTime <<"\ntau: " <<tau;
-
-    glColor(.2,.2,.2,.5);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glMatrixMode(GL_MODELVIEW);
-    glOrtho(0., (double)gl.width, (double)gl.height, .0, -1., 1.);
-    glDrawText(text, 20, +20, 0, true);
-  });
+  SecMPC_Viewer viewer(C);
+  gl.add(viewer);
 
   ifstream fil(logfile);
   for(uint k=1;;k++){
-
-    fil >>stepCount >>ctrlTime >>phase;
+    fil >>viewer.stepCount >>viewer.ctrlTime >>viewer.phase;
     if(!fil.good()) break;
-    CHECK_EQ(stepCount, k, "");
+    CHECK_EQ(viewer.stepCount, k, "");
 
-    q_real.readTagged(fil, "q_real");
-    waypoints.readTagged(fil, "waypoints");
-    tau.readTagged(fil, "tau");
-    shortPath.readTagged(fil, "shortPath");
-    poses.readTagged(fil, "poses");
-
+    viewer.q_real.readTagged(fil, "q_real");
+    viewer.waypoints.readTagged(fil, "waypoints");
+    viewer.tau.readTagged(fil, "tau");
+    viewer.shortPath.readTagged(fil, "shortPath");
+    viewer.poses.readTagged(fil, "poses");
 
     gl.update();
     rai::wait(.1);
   }
+}
 
-};

@@ -14,10 +14,24 @@ struct SecMPC_Stepper{
   SecMPC_Stepper( double cycleTime=.1)
     : tic(cycleTime){
     fil.open(STRING("z.SecMPC.log"));
-//    fil.open(STRING("z." <<rai::date(true) <<".secMPC.log"));
+    //    fil.open(STRING("z." <<rai::date(true) <<".secMPC.log"));
   }
 
-  bool step(rai::Configuration& C, BotOp& bot, SecMPC& mpc);
+  bool step(rai::Configuration& C, BotOp& bot, SecMPC& mpc, bool doNotExecute=false);
+};
+
+//===========================================================================
+
+struct SecMPC_Viewer : GLDrawer {
+  uint stepCount, phase;
+  double ctrlTime;
+  arr q_real, waypoints, tau, shortPath, poses;
+  rai::Configuration C;
+
+  SecMPC_Viewer(const rai::Configuration& C);
+
+  void step(SecMPC& mpc);
+  void glDraw(OpenGL& gl);
 };
 
 //===========================================================================
