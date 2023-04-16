@@ -29,21 +29,21 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   state.set()->initZero(qHome.N);
   if(useRealRobot){
     if(useArm=="left"){
-      robotL = make_unique<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
-      if(useGripper) gripperL = make_unique<FrankaGripper>(0);
+      robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
+      if(useGripper) gripperL = make_shared<FrankaGripper>(0);
     }else if(useArm=="right"){
-      robotR = make_unique<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
-      if(useGripper) gripperR = make_unique<FrankaGripper>(1);
+      robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
+      if(useGripper) gripperR = make_shared<FrankaGripper>(1);
     }else if(useArm=="both"){
-      robotL = make_unique<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
-      robotR = make_unique<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
+      robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
+      robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
       if(useGripper){
         if(robotiq){
-          gripperL = make_unique<RobotiqGripper>(0);
-          gripperR = make_unique<RobotiqGripper>(1);
+          gripperL = make_shared<RobotiqGripper>(0);
+          gripperR = make_shared<RobotiqGripper>(1);
         }else{
-          gripperL = make_unique<FrankaGripper>(0);
-          gripperR = make_unique<FrankaGripper>(1);
+          gripperL = make_shared<FrankaGripper>(0);
+          gripperR = make_shared<FrankaGripper>(1);
         }
       }
     }else if(useArm=="none"){
@@ -57,32 +57,33 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     }
   }else{
     double hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
-    sim = make_shared<BotSim>(C, cmd, state, StringA(), .001, hyperSpeed); //, StringA(), .001, 10.);
-    robotL = sim;
-    if(useGripper) gripperL = make_unique<GripperSim>(sim);
+    simthread = make_shared<BotThreadedSim>(C, cmd, state, StringA(), .001, hyperSpeed); //, StringA(), .001, 10.);
+    robotL = simthread;
+    if(useGripper) gripperL = make_shared<GripperSim>(simthread);
   }
   C.setJointState(get_q());
 
   //-- launch OptiTrack
   if(rai::getParameter<bool>("bot/useOptitrack", false)){
     if(!useRealRobot) LOG(-1) <<"useOptitrack with real:false -- that's usually wrong!";
-    optitrack = make_unique<rai::OptiTrack>();
+    optitrack = make_shared<rai::OptiTrack>();
     optitrack->pull(C);
   }
 
   //-- launch Audio/Sound
   if(rai::getParameter<bool>("bot/useAudio", false)){
-    audio = make_unique<rai::Sound>();
+    audio = make_shared<rai::Sound>();
   }
 
+  C.gl().setTitle("BotOp associated Configuration");
   C.view(false, STRING("time: 0"));
-  C.gl().setTitle("BotOp Configuration");
 }
 
 BotOp::~BotOp(){
-  if(sim) sim.reset();
-  if(robotL) robotL.reset();
-  if(robotR) robotR.release();
+  LOG(0) <<"shutting down BotOp";
+  simthread.reset();
+  robotL.reset();
+  robotR.reset();
 }
 
 double BotOp::get_t(){
@@ -120,7 +121,7 @@ double BotOp::getTimeToEnd(){
   return sp->getEndTime() - ctrlTime;
 }
 
-bool BotOp::step(rai::Configuration& C, double waitTime){
+bool BotOp::sync(rai::Configuration& C, double waitTime){
   //update q state
   C.setJointState(state.get()->q);
 
@@ -128,12 +129,12 @@ bool BotOp::step(rai::Configuration& C, double waitTime){
   if(optitrack) optitrack->pull(C);
 
   //update sim state
-  if(sim) sim->pullDynamicStates(C);
+  if(simthread) simthread->pullDynamicStates(C);
 
   //gui
   if(rai::getParameter<bool>("bot/raiseWindow",false)) C.viewer()->raiseWindow();
   double ctrlTime = get_t();
-  keypressed = C.view(false, STRING("BotOp - time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
+  keypressed = C.view(false, STRING("BotOp sync'ed at time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
   if(keypressed) C.viewer()->resetPressedKey();
   if(keypressed==13) return false;
   if(keypressed=='q' || keypressed==27) return false;
@@ -153,17 +154,17 @@ std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
   return sp;
 }
 
-void BotOp::move(const arr& path, const arr& vels, const arr& times, bool override, double overrideCtrlTime){
+void BotOp::move(const arr& path, const arr& vels, const arr& times, bool overwrite, double overwriteCtrlTime){
   CHECK_EQ(times.N, path.d0, "");
 //  CHECK_EQ(times.N, vels.d0, "");
 
-  if(override){
-    CHECK(overrideCtrlTime>0., "override -> need to give a cut-time (e.g. start or MPC cycle, or just get_t())");
-    //LOG(1) <<"override: " <<ctrlTime <<" - " <<_times;
+  if(overwrite){
+    CHECK(overwriteCtrlTime>0., "overwrite -> need to give a cut-time (e.g. start or MPC cycle, or just get_t())");
+    //LOG(1) <<"overwrite: " <<ctrlTime <<" - " <<_times;
     if(times.first()>0.){
-      getSplineRef()->overrideSmooth(path, /*vels,*/ times, overrideCtrlTime);
+      getSplineRef()->overwriteSmooth(path, /*vels,*/ times, overwriteCtrlTime);
     }else{
-      getSplineRef()->overrideHard(path, /*vels,*/ times, overrideCtrlTime);
+      getSplineRef()->overwriteHard(path, /*vels,*/ times, overwriteCtrlTime);
     }
   }else{
     //LOG(1) <<"append: " <<ctrlTime <<" - " <<_times;
@@ -171,8 +172,10 @@ void BotOp::move(const arr& path, const arr& vels, const arr& times, bool overri
   }
 }
 
-void BotOp::move(const arr& path, const arr& times, bool override, double overrideCtrlTime){
+void BotOp::move(const arr& path, const arr& times, bool overwrite, double overwriteCtrlTime){
   arr _times=times;
+
+  //-- if times.N != path.d0, fill in times
   if(_times.N==1 && path.d0>1){ //divide total time in grid
     _times = range(0., times.scalar(), path.d0-1);
     _times += _times(1);
@@ -180,21 +183,23 @@ void BotOp::move(const arr& path, const arr& times, bool override, double overri
   if(_times.N){ //times are fully specified
     CHECK_EQ(_times.N, path.d0, "");
   }
+
   if(std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref)){
-    return move(path, {}, _times, override, overrideCtrlTime);
+    return move(path, {}, _times, overwrite, overwriteCtrlTime);
   }
+
   arr vels;
   if(path.d0==1){
     vels = zeros(1, path.d1);
   }else{ //use timing opt to decide on vels and, optionally, on timing
     arr q, qDot;
-    if(!override){
+    if(!overwrite){
       getSplineRef()->eval(q, qDot, NoArr, getSplineRef()->getEndTime());
       q = path[0];
       qDot = zeros(q.N);
-    }else{ //THIS IS STILL BUGGY - need overrideCtrlTime!!
-      CHECK(overrideCtrlTime>0., "override -> need to give a cut-time (e.g. start og MPC cycle, or just get_t())");
-      getSplineRef()->eval(q, qDot, NoArr, overrideCtrlTime);
+    }else{ //THIS IS STILL BUGGY - need overwriteCtrlTime!!
+      CHECK(overwriteCtrlTime>0., "overwrite -> need to give a cut-time (e.g. start og MPC cycle, or just get_t())");
+      getSplineRef()->eval(q, qDot, NoArr, overwriteCtrlTime);
     }
 
     bool optTau = (times.N==0);
@@ -215,7 +220,7 @@ void BotOp::move(const arr& path, const arr& times, bool override, double overri
     if(!_times.N) _times = integral(timingProblem.tau);
   }
 
-  move(path, vels, _times, override, overrideCtrlTime);
+  move(path, vels, _times, overwrite, overwriteCtrlTime);
 }
 
 void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
@@ -226,14 +231,19 @@ void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
   move(path, times);
 }
 
-void BotOp::moveLeap(const arr& q_target, double timeCost){
-  arr q = get_q();
-  arr qDot = get_qDot();
+void BotOp::moveTo(const arr& q_target, double timeCost, bool overwrite){
+  arr q, qDot;
+  double ctrlTime;
+  getState(q, qDot, ctrlTime);
   double dist = length(q-q_target);
   double vel = scalarProduct(qDot, q_target-q)/dist;
   double T = (sqrt(6.*timeCost*dist+vel*vel) - vel)/timeCost;
   if(dist<1e-4 || T<.1) T=.1;
-  move(~q_target, {T}, true, get_t());
+  if(overwrite){
+    move(~q_target, {T}, true, ctrlTime);
+  }else{
+    move(~q_target, {T}, false);
+  }
 }
 
 void BotOp::setControllerWriteData(int _writeData){
@@ -251,25 +261,32 @@ void BotOp::gripperClose(rai::ArgWord leftRight, double force, double width, dou
   if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->close(force, width, speed); }
 }
 
-double BotOp::gripperPos(){
-  if(!gripperL){ LOG(-1) <<"gripper disabled"; return 0.; }
-  return gripperL->pos();
+void BotOp::gripperCloseGrasp(rai::ArgWord leftRight, const char* objName, double force, double width, double speed){
+  if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->closeGrasp(objName, force, width, speed); }
+  if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->closeGrasp(objName, force, width, speed); }
 }
 
-bool BotOp::isDone(){
-  if(!gripperL){ LOG(-1) <<"gripper disabled"; return false; }
-  return gripperL->isDone();
+double BotOp::gripperPos(rai::ArgWord leftRight){
+  if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else return gripperL->pos(); }
+  if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else return gripperR->pos(); }
+  return 0;
+}
+
+bool BotOp::gripperDone(rai::ArgWord leftRight){
+  if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else return gripperL->isDone(); }
+  if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else return gripperR->isDone(); }
+  return false;
 }
 
 void BotOp::home(rai::Configuration& C){
   C.viewer()->raiseWindow();
   arr q=get_q();
   if(maxDiff(q,qHome)>1e-3){
-    moveLeap(qHome, 1.);
+    moveTo(qHome, 1.);
   }else{
     move(~qHome, {.1});
   }
-  while(step(C));
+  while(sync(C));
 }
 
 void BotOp::hold(bool floating, bool damping){

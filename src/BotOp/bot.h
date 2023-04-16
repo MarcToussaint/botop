@@ -9,7 +9,7 @@ namespace rai{
   struct OptiTrack;
   struct Sound;
 }
-struct BotSim;
+struct BotThreadedSim;
 
 //===========================================================================
 
@@ -18,13 +18,13 @@ struct BotOp{
   Var<rai::CtrlStateMsg> state;
   //since each of the following interfaces is already pimpl, we don't have to hide them again
   std::shared_ptr<rai::RobotAbstraction> robotL;
-  std::unique_ptr<rai::RobotAbstraction> robotR;
-  std::unique_ptr<rai::GripperAbstraction> gripperL;
-  std::unique_ptr<rai::GripperAbstraction> gripperR;
+  std::shared_ptr<rai::RobotAbstraction> robotR;
+  std::shared_ptr<rai::GripperAbstraction> gripperL;
+  std::shared_ptr<rai::GripperAbstraction> gripperR;
   std::shared_ptr<rai::ReferenceFeed> ref;
-  std::unique_ptr<rai::OptiTrack> optitrack;
-  std::unique_ptr<rai::Sound> audio;
-  std::shared_ptr<BotSim> sim;
+  std::shared_ptr<rai::OptiTrack> optitrack;
+  std::shared_ptr<rai::Sound> audio;
+  std::shared_ptr<BotThreadedSim> simthread;
 
   arr qHome;
   int keypressed=0;
@@ -42,20 +42,21 @@ struct BotOp{
   double getTimeToEnd(); //negative, if motion spline is done
 
   //-- motion commands
-  void move(const arr& path, const arr& vels, const arr& times, bool override=false, double overrideCtrlTime=-1.);
-  void move(const arr& path, const arr& times, bool override=false, double overrideCtrlTime=-1.);
+  void move(const arr& path, const arr& vels, const arr& times, bool override=false, double overwriteCtrlTime=-1.);
+  void move(const arr& path, const arr& times, bool override=false, double overwriteCtrlTime=-1.);
   void moveAutoTimed(const arr& path, double maxVel=1., double maxAcc=1.); //double timeCost);
-  void moveLeap(const arr& q_target, double timeCost=1.);
+  void moveTo(const arr& q_target, double timeCost=1., bool overwrite=false);
   void setControllerWriteData(int _writeData);
 
   //-- gripper commands - directly calling the gripper abstraction
   void gripperOpen(rai::ArgWord leftRight, double width=.075, double speed=.2);
   void gripperClose(rai::ArgWord leftRight, double force=10, double width=.05, double speed=.1);
-  double gripperPos();
-  bool isDone();
+  void gripperCloseGrasp(rai::ArgWord leftRight, const char* objName, double force=10, double width=.05, double speed=.1);
+  double gripperPos(rai::ArgWord leftRight);
+  bool gripperDone(rai::ArgWord leftRight);
 
   //-- sync the user's C with the robot, update the display, return false if motion spline is done
-  bool step(rai::Configuration& C, double waitTime=.1);
+  bool sync(rai::Configuration& C, double waitTime=.1);
 
   //-- motion macros
   void home(rai::Configuration& C);

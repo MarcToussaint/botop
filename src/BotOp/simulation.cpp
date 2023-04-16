@@ -6,22 +6,22 @@
 
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
-BotSim::BotSim(const rai::Configuration& C,
+BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
                              const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state,
                              const StringA& joints,
                              double _tau, double hyperSpeed)
   : RobotAbstraction(_cmd, _state),
     Thread("FrankaThread_Emulated", _tau/hyperSpeed),
-    emuConfig(C),
+    simConfig(C),
     tau(_tau),
     noise_sig(.001){
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
   //do this in bot.cpp!
-  if(rai::getParameter<bool>("botsim/bullet", false)){
-    int verbose = rai::getParameter<int>("botsim/verbose", 0);
-    sim=make_shared<rai::Simulation>(emuConfig, rai::Simulation::_physx, verbose);
+  if(rai::getParameter<bool>("botsim/physx", true)){
+    int verbose = rai::getParameter<int>("botsim/verbose", 1);
+    sim=make_shared<rai::Simulation>(simConfig, rai::Simulation::_physx, verbose);
   }else{
     noise_th = rai::getParameter<double>("botsim/noise_th", -1.);
   }
@@ -29,7 +29,7 @@ BotSim::BotSim(const rai::Configuration& C,
   {
     q_real = C.getJointState();
     qDot_real.resize(q_real.N).setZero();
-    collisionPairs = emuConfig.getCollisionAllPairs();
+    collisionPairs = simConfig.getCollisionAllPairs();
     //    cout <<" CollisionPairs:" <<endl;
     //    for(uint i=0;i<collisionPairs.d0;i++) cout <<collisionPairs(i,0)->name <<'-' <<collisionPairs(i,1)->name <<endl;
 
@@ -56,21 +56,23 @@ BotSim::BotSim(const rai::Configuration& C,
   state.waitForNextRevision(); //this is enough to ensure the ctrl loop is running
 }
 
-BotSim::~BotSim(){
-  emuConfig.view_close();
+BotThreadedSim::~BotThreadedSim(){
+  LOG(0) <<"shutting down SimThread";
   threadClose();
+  if(sim) sim.reset();
+  simConfig.view_close();
 }
 
-void BotSim::pullDynamicStates(rai::Configuration& C){
+void BotThreadedSim::pullDynamicStates(rai::Configuration& C){
   auto mux = stepMutex(RAI_HERE);
   for(rai::Frame *f:C.frames){
     if(f->inertia && f->inertia->type==rai::BT_dynamic){
-      f->set_X() = emuConfig.frames(f->ID)->ensure_X();
+      f->set_X() = simConfig.frames(f->ID)->ensure_X();
     }
   }
 }
 
-void BotSim::step(){
+void BotThreadedSim::step(){
   //-- get real time
   ctrlTime += tau;
   //  ctrlTime = rai::realTime();
@@ -153,7 +155,7 @@ void BotSim::step(){
 
     sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
 //    sim->step({}, tau, sim->_none);
-    q_real = emuConfig.getJointState();
+    q_real = simConfig.getJointState();
     qDot_real = cmd_qDot_ref;
   }
 
@@ -162,8 +164,8 @@ void BotSim::step(){
 
   //-- display? 20fps
   if(false && !(step_count%int(1./(20.*tau)))){
-    emuConfig.setJointState(q_real);
-    emuConfig.view(false, STRING("EMULATION - time " <<ctrlTime));
+    simConfig.setJointState(q_real);
+    simConfig.view(false, STRING("EMULATION - time " <<ctrlTime));
   }
 
   //-- check for collisions!
@@ -214,7 +216,7 @@ void GripperSim::close(double force, double width, double speed) {
   isOpening=false; isClosing=true;
 }
 
-void GripperSim::close(const char* objName, double force, double width, double speed){
+void GripperSim::closeGrasp(const char* objName, double force, double width, double speed){
   if(sim){
     auto mux = sim->stepMutex(RAI_HERE);
     sim->sim->closeGripperGrasp("l_gripper", objName);

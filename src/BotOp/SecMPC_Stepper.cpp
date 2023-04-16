@@ -49,7 +49,7 @@ bool SecMPC_Stepper::step(rai::Configuration& C, BotOp& bot, SecMPC& mpc, bool d
   }
 
   //-- update C
-  bot.step(C, .0);
+  bot.sync(C, .0);
   if(bot.keypressed=='q' || bot.keypressed==27) return false;
 
   return true;

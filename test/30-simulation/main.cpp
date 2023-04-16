@@ -354,7 +354,7 @@ void testBlockOnMoving(){
 
 void testNoPenetrationImp(){
   rai::Configuration C0;
-  C0.addFile("../../rai-robotModels/scenarios/pandasTable.g");
+  C0.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
   rai::Frame* stick = C0.addFrame("stick");
   stick->setShape(rai::ST_capsule, {0.5, 0.025});
   stick->setPosition({0,0,.63}).set_X()->addRelativeRotationDeg(90.,0,1,0);
