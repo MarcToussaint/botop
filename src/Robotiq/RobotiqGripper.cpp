@@ -1,5 +1,7 @@
 #include "RobotiqGripper.h"
 
+#ifdef RAI_ROBOTIQ
+
 #include <cstdint>
 /* documentation:
 https://assets.robotiq.com/website-assets/support_documents/document/2F-85_2F-140_General_PDF_20210623.pdf
@@ -69,8 +71,6 @@ RobotiqGripper::RobotiqGripper(uint whichRobot) {
 
   boost::asio::io_service io;
   serialPort = std::make_shared<boost::asio::serial_port>(io);
-
-
 
   serialPort->open(robotiqSerialPorts[whichRobot]);
 
@@ -151,3 +151,14 @@ void RobotiqGripper::getStatus(){
 //    cout <<"current:" <<(int)msg[8] <<endl;
 //  }
 }
+
+#else
+
+RobotiqGripper::RobotiqGripper(uint whichRobot){ NICO }
+RobotiqGripper::~RobotiqGripper(){ NICO }
+void RobotiqGripper::goTo(double force, double width, double speed){ NICO }
+double RobotiqGripper::pos(){ NICO }
+bool RobotiqGripper::isDone(){ NICO }
+void RobotiqGripper::getStatus(){ NICO }
+
+#endif

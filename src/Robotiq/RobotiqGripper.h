@@ -1,8 +1,11 @@
 #pragma once
 
 #include <Control/CtrlMsgs.h>
-#include <boost/asio/serial_port.hpp>
-#include <boost/asio.hpp>
+
+#ifdef RAI_ROBOTIQ
+#  include <boost/asio/serial_port.hpp>
+#  include <boost/asio.hpp>
+#endif
 
 struct RobotiqGripper : rai::GripperAbstraction {
   double maxWidth;
@@ -20,7 +23,9 @@ struct RobotiqGripper : rai::GripperAbstraction {
   bool isDone();
 
 private:
+#ifdef RAI_ROBOTIQ
   std::shared_ptr<boost::asio::serial_port> serialPort;
+#endif
 
   void getStatus();
 };
