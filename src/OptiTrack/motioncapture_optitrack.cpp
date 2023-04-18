@@ -3,7 +3,10 @@
  * Aug 26, 2021
  */
 
+#include <Core/util.h>
 #include "motioncapture_optitrack.h"
+
+#ifdef RAI_OPTITRACK
 
 #include <boost/asio.hpp>
 
@@ -680,3 +683,17 @@ namespace libmotioncapture {
 
 }
 
+#else
+
+
+namespace libmotioncapture {
+  MotionCaptureOptitrack::MotionCaptureOptitrack(const std::string& hostname){ NICO }
+
+    MotionCaptureOptitrack::~MotionCaptureOptitrack(){ NICO }
+    const std::string& MotionCaptureOptitrack::version() const { NICO }
+    void MotionCaptureOptitrack::waitForNextFrame(){ NICO }
+    const std::map<std::string, RigidBody>& MotionCaptureOptitrack::rigidBodies() const{ NICO }
+    const PointCloud& MotionCaptureOptitrack::pointCloud() const { NICO }
+}
+
+#endif //RAI_OPTITRACK

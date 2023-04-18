@@ -1,5 +1,7 @@
 #include "optitrack.h"
 
+#ifdef RAI_OPTITRACK
+
 #include "motioncapture_optitrack.h"
 
 #include <Kin/frame.h>
@@ -104,6 +106,14 @@ namespace rai{
         poses.insert({name, rb2pose(item.second)});
       }
     }
-  }
-
+  }  
 } //namespace
+
+#else
+
+rai::OptiTrack::OptiTrack() : Thread("OptitrackThread") { NICO }
+rai::OptiTrack::~OptiTrack(){ NICO }
+void rai::OptiTrack::pull(rai::Configuration& C){ NICO }
+void rai::OptiTrack::step(){ NICO }
+
+#endif

@@ -12,6 +12,6 @@
 
 #include <pybind11/pybind11.h>
 
-void init_PyBot(pybind11::module& m);
+void init_BotOp(pybind11::module& m);
 
 #endif

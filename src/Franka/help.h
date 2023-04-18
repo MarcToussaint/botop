@@ -2,7 +2,14 @@
 
 #include <Kin/kin.h>
 #include <Kin/frame.h>
-#include <FlatVision/helpers.h>
+
+enum PixelLabel : byte { PL_unexplained=0x00, PL_nosignal=0x01, PL_noise=0x02, PL_toofar=0x03,
+                         PL_background=0x10,
+                         PL_robot=0x20,
+                         PL_novelPercepts=0x40,
+                         PL_objects=0x80,
+                         PL_closeToObject=0xc0,
+                         PL_max=0xff};
 
 inline uintA franka_getJointIndices(const rai::Configuration& C, char L_or_R){
   CHECK(C._state_indexedJoints_areGood , "need to ensure_q (indexed joints) before!");

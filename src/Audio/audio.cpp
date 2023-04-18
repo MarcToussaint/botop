@@ -129,8 +129,10 @@ Audio::~Audio(){
 }
 
 #else //PORTAUDIO
+
 Audio::Audio(SineSound& S){ NICO }
 Audio::~Audio(){}
+
 #endif
 
 } //namespace

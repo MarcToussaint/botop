@@ -1,7 +1,7 @@
-BASE = ../../rai
+BASE = ../../../rai
 BASE2 = ../../src
 
-DEPEND = Core Gui Geo Franka Kin Control
+RAI_CMAKE = 1
 
 LIBS = -lpthread -lboost_system
 
