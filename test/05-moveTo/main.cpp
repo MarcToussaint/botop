@@ -51,7 +51,7 @@ void test_withoutBotWrapper() {
   if(rai::getParameter<bool>("real", false)){
     robot = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'));
   }else{
-    robot = make_shared<BotSimulation>(C);
+    robot = make_shared<BotSim>(C);
   }
   robot->writeData = 2;
 

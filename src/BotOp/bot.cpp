@@ -28,6 +28,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   qHome = C.getJointState();
   state.set()->initZero(qHome.N);
   if(useRealRobot){
+    LOG(0) <<"OPENING FRANKAS";
     if(useArm=="left"){
       robotL = make_unique<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
       if(useGripper) gripperL = make_unique<FrankaGripper>(0);
@@ -38,6 +39,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       robotL = make_unique<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
       robotR = make_unique<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
       if(useGripper){
+        LOG(0) <<"OPENING GRIPPERS";
         if(robotiq){
           gripperL = make_unique<RobotiqGripper>(0);
           gripperR = make_unique<RobotiqGripper>(1);
@@ -65,6 +67,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 
   //-- launch OptiTrack
   if(rai::getParameter<bool>("bot/useOptitrack", false)){
+    LOG(0) <<"OPENING OPTITRACK";
     if(!useRealRobot) LOG(-1) <<"useOptitrack with real:false -- that's usually wrong!";
     optitrack = make_unique<rai::OptiTrack>();
     optitrack->pull(C);
@@ -72,6 +75,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 
   //-- launch Audio/Sound
   if(rai::getParameter<bool>("bot/useAudio", false)){
+    LOG(0) <<"OPENING SOUND";
     audio = make_unique<rai::Sound>();
   }
 
@@ -153,17 +157,17 @@ std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
   return sp;
 }
 
-void BotOp::move(const arr& path, const arr& vels, const arr& times, bool override, double overrideCtrlTime){
+void BotOp::move(const arr& path, const arr& vels, const arr& times, bool overwrite, double overwriteCtrlTime){
   CHECK_EQ(times.N, path.d0, "");
 //  CHECK_EQ(times.N, vels.d0, "");
 
-  if(override){
-    CHECK(overrideCtrlTime>0., "override -> need to give a cut-time (e.g. start or MPC cycle, or just get_t())");
-    //LOG(1) <<"override: " <<ctrlTime <<" - " <<_times;
+  if(overwrite){
+    CHECK(overwriteCtrlTime>0., "overwrite -> need to give a cut-time (e.g. start or MPC cycle, or just get_t())");
+    //LOG(1) <<"overwrite: " <<ctrlTime <<" - " <<_times;
     if(times.first()>0.){
-      getSplineRef()->overrideSmooth(path, /*vels,*/ times, overrideCtrlTime);
+      getSplineRef()->overwriteSmooth(path, /*vels,*/ times, overwriteCtrlTime);
     }else{
-      getSplineRef()->overrideHard(path, /*vels,*/ times, overrideCtrlTime);
+      getSplineRef()->overwriteHard(path, /*vels,*/ times, overwriteCtrlTime);
     }
   }else{
     //LOG(1) <<"append: " <<ctrlTime <<" - " <<_times;
@@ -171,7 +175,7 @@ void BotOp::move(const arr& path, const arr& vels, const arr& times, bool overri
   }
 }
 
-void BotOp::move(const arr& path, const arr& times, bool override, double overrideCtrlTime){
+void BotOp::move(const arr& path, const arr& times, bool overwrite, double overwriteCtrlTime){
   arr _times=times;
   if(_times.N==1 && path.d0>1){ //divide total time in grid
     _times = range(0., times.scalar(), path.d0-1);
@@ -181,20 +185,20 @@ void BotOp::move(const arr& path, const arr& times, bool override, double overri
     CHECK_EQ(_times.N, path.d0, "");
   }
   if(std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref)){
-    return move(path, {}, _times, override, overrideCtrlTime);
+    return move(path, {}, _times, overwrite, overwriteCtrlTime);
   }
   arr vels;
   if(path.d0==1){
     vels = zeros(1, path.d1);
   }else{ //use timing opt to decide on vels and, optionally, on timing
     arr q, qDot;
-    if(!override){
+    if(!overwrite){
       getSplineRef()->eval(q, qDot, NoArr, getSplineRef()->getEndTime());
       q = path[0];
       qDot = zeros(q.N);
-    }else{ //THIS IS STILL BUGGY - need overrideCtrlTime!!
-      CHECK(overrideCtrlTime>0., "override -> need to give a cut-time (e.g. start og MPC cycle, or just get_t())");
-      getSplineRef()->eval(q, qDot, NoArr, overrideCtrlTime);
+    }else{ //THIS IS STILL BUGGY - need overwriteCtrlTime!!
+      CHECK(overwriteCtrlTime>0., "overwrite -> need to give a cut-time (e.g. start og MPC cycle, or just get_t())");
+      getSplineRef()->eval(q, qDot, NoArr, overwriteCtrlTime);
     }
 
     bool optTau = (times.N==0);
@@ -215,7 +219,7 @@ void BotOp::move(const arr& path, const arr& times, bool override, double overri
     if(!_times.N) _times = integral(timingProblem.tau);
   }
 
-  move(path, vels, _times, override, overrideCtrlTime);
+  move(path, vels, _times, overwrite, overwriteCtrlTime);
 }
 
 void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){

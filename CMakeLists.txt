@@ -14,7 +14,9 @@ option(USE_PCL "link to pcl library" OFF)
 set(PYBIND11_PYTHON_VERSION 3.8 CACHE STRING "python version")
 
 add_compile_options(
-  -O3 -g -Wall -Wpedantic -fPIC -std=c++14 -Wno-terminate
+  -O3 -g -Wall -Wpedantic -fPIC
+  $<$<COMPILE_LANGUAGE:CXX>:-std=c++14>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wno-terminate>
   )
 
 ################################################################################
@@ -24,7 +26,7 @@ add_definitions(
   -DRAI_X11 -DRAI_LAPACK -DRAI_EIGEN -DRAI_PTHREAD
   -DRAI_GL
   -DRAI_GLFW -DRAI_ANN -DRAI_QHULL -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
-  -DRAI_GJK -DRAI_CCD -DRAI_FCL -DRAI_Lewiner #-DRAI_SWIFT 
+  -DRAI_GJK -DRAI_CCD -DRAI_FCL -DRAI_Lewiner #-DRAI_SWIFT
   -DRAI_PORTAUDIO
   -BOOST_ERROR_CODE_HEADER_ONLY
   )
@@ -32,14 +34,15 @@ add_definitions(
 ################################################################################
 
 include_directories(
-  src/
   rai/rai
+  src/
   /usr/include/eigen3
   $ENV{HOME}/opt/include
   )
 
 link_directories(
   $ENV{HOME}/opt/lib
+  $ENV{HOME}/opt/bin/linux.clang/release
   )
 
 file(GLOB SRC_Core rai/rai/Core/*.cpp)
@@ -62,10 +65,10 @@ file(GLOB SRC_Perception rai/rai/Perception/*.cpp)
 file(GLOB SRC_Control rai/rai/Control/*.cpp)
 file(GLOB SRC_ry rai/rai/ry/*.cpp)
 
+file(GLOB SRC_BotOp src/BotOp/*.cpp)
 file(GLOB SRC_Franka src/Franka/*.cpp)
 file(GLOB SRC_OptiTrack src/OptiTrack/*.cpp)
 file(GLOB SRC_RealSense src/RealSense/*.cpp)
-file(GLOB SRC_BotOp src/BotOp/*.cpp)
 file(GLOB SRC_Robotiq src/Robotiq/*.cpp)
 file(GLOB SRC_Audio src/Audio/*.cpp)
 
@@ -87,11 +90,11 @@ add_library(rai SHARED
   #${SRC_LGP}
   ${SRC_Perception}
   ${SRC_Control}
+  ${SRC_BotOp}
   ${SRC_Franka}
   ${SRC_OptiTrack}
-  ${SRC_Robotiq}
-  ${SRC_BotOp}
   ${SRC_RealSense}
+  ${SRC_Robotiq}
   ${SRC_Audio}
   )
 
@@ -117,8 +120,8 @@ endif()
 
 if(USE_PHYSX)
   add_definitions(-DRAI_PHYSX -D_DEBUG -DPX_DISABLE_FLUIDS -DCORELIB -DPX32 -DLINUX)
-  include_directories($ENV{HOME}/opt/PhysX5/include)
-  target_link_libraries(rai PhysXExtensions_static_64 PhysX_64 PhysXCooking_64 PhysXCommon_64 PhysXFoundation_64)
+  link_directories($ENV{HOME}/opt/bin/linux.clang/release)
+  target_link_libraries(rai PhysXExtensions_static_64 PhysX_static_64 PhysXCooking_static_64 PhysXCommon_static_64 PhysXFoundation_static_64)
   message(STATUS "[rai] using physx libs from ~/opt:")
 endif()
 
@@ -158,18 +161,11 @@ if(USE_PYBIND)
   
   pybind11_add_module(libry SHARED
     ${SRC_ry}
+    src/BotOp/pyBot.cxx
   )
 
   target_link_libraries(libry PRIVATE
     rai
-  )
-
-  pybind11_add_module(libpybot SHARED
-    src/BotOp/pyBot.cxx
-  )
-  target_link_libraries(libpybot PRIVATE
-    rai
-    libry
   )
 endif()
 

@@ -28,38 +28,27 @@ mkdir -p $HOME/opt/include
 
 * Install [libfranka](https://github.com/frankaemika/libfranka)
 ```
-cd $HOME/git
-git clone --recursive https://github.com/frankaemika/libfranka
+cd $HOME/git; git clone --single-branch -b 0.8.0 --recursive https://github.com/frankaemika/libfranka
+cd $HOME/git/libfranka; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt \-DCMAKE_BUILD_TYPE=Release ..; make install
 
-cd libfranka
 #git checkout 0.7.1 --recurse-submodules ##FOR THE OLD ARM!!!
-git checkout 0.8.0 --recurse-submodules
-mkdir build
-cd build
-cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt \-DCMAKE_BUILD_TYPE=Release ..
-
-nice -19 make franka -j $(command nproc)
-
-cp libfranka* $HOME/opt/lib
-cp -r ../include/franka $HOME/opt/include
+#nice -19 make franka -j $(command nproc)
+#cp libfranka* $HOME/opt/lib
+#cp -r ../include/franka $HOME/opt/include
 ```
 
 * OPTIONAL (if enabled with ccmake ..) install [librealsense](https://github.com/IntelRealSense/librealsense)
 ```
 sudo apt install --yes libusb-1.0-0-dev libglfw3-dev libgtk-3-dev
-
-cd $HOME/git
-git clone --recursive https://github.com/IntelRealSense/librealsense.git
-
-cd librealsense
-mkdir build
-cd build
-cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DCMAKE_BUILD_TYPE=Release ..
-
-nice -19 make realsense2 -j $(command nproc)
-
-make install
+cd $HOME/git; git clone --recursive https://github.com/IntelRealSense/librealsense.git
+cd $HOME/git/librealsense; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DCMAKE_BUILD_TYPE=Release ..; make install
 ```
+optional Physx
+```
+cd $HOME/git; git clone --single-branch -b release/104.1 https://github.com/NVIDIA-Omniverse/PhysX.git
+cd $HOME/git/PhysX/physx; ./generate_projects.sh linux; cd compiler/linux-release/; cmake ../../compiler/public -DPX_BUILDPVDRUNTIME=OFF -DPX_BUILDSNIPPETS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/opt; make install
+```
+
 
 * Install python and pybind
 ```
