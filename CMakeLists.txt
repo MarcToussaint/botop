@@ -29,6 +29,7 @@ add_definitions(
   -DRAI_GJK -DRAI_CCD -DRAI_FCL -DRAI_Lewiner #-DRAI_SWIFT
   -DRAI_PORTAUDIO
   -BOOST_ERROR_CODE_HEADER_ONLY
+  -DRAI_ROBOTIQ
   )
 
 ################################################################################

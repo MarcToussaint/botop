@@ -98,7 +98,7 @@ void driveToPoses(rai::Configuration& C, const arr& X, const uint kStart=0) {
     arr path = getStartGoalPath(C, X[k], bot.qHome);
     if(!path.N) continue;
     bot.moveAutoTimed(path);
-//    bot.moveLeap(X[k], 3.);
+//    bot.moveTo(X[k], 3.);
     while(bot.step(C));
     if(bot.keypressed=='q') break;
     bot.robotL->writeData=2;

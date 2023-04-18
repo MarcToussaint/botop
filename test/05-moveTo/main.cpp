@@ -30,7 +30,7 @@ void test_bot() {
 
   while(bot.step(C)){} //just syncs the model config C and updates display until done
 
-  bot.moveLeap(q0, 1.); //using timing cost=1
+  bot.moveTo(q0, 1.); //using timing cost=1
 
   while(bot.step(C)){}
 

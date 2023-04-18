@@ -88,7 +88,7 @@ void testLeapCtrl() {
         times -= ctrlTimeNow - ctrlTime;
         bot.move(path, vels, times, true);
       }else{
-        bot.moveLeap(shortMPC.path[-1]);
+        bot.moveTo(shortMPC.path[-1]);
       }
     }else{
       shortMPC.reinit_taus(1.);
@@ -97,7 +97,7 @@ void testLeapCtrl() {
 
     //send leap target
     if(shortMPC.feasible){
-//      double T = bot.moveLeap(shortMPC.path[-1]);
+//      double T = bot.moveTo(shortMPC.path[-1]);
       //bot.move(shortMPC.path, {}, true);
       double T = bot.getTimeToEnd();
       double ctrlTime = bot.get_t();
