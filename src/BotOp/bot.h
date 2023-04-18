@@ -42,8 +42,8 @@ struct BotOp{
   double getTimeToEnd(); //negative, if motion spline is done
 
   //-- motion commands
-  void move(const arr& path, const arr& vels, const arr& times, bool override=false, double overwriteCtrlTime=-1.);
-  void move(const arr& path, const arr& times, bool override=false, double overwriteCtrlTime=-1.);
+  void move(const arr& path, const arr& vels, const arr& times, bool overwrite=false, double overwriteCtrlTime=-1.);
+  void move(const arr& path, const arr& times, bool overwrite=false, double overwriteCtrlTime=-1.);
   void moveAutoTimed(const arr& path, double maxVel=1., double maxAcc=1.); //double timeCost);
   void moveTo(const arr& q_target, double timeCost=1., bool overwrite=false);
   void setControllerWriteData(int _writeData);

@@ -28,6 +28,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   qHome = C.getJointState();
   state.set()->initZero(qHome.N);
   if(useRealRobot){
+    LOG(0) <<"OPENING FRANKAS";
     if(useArm=="left"){
       robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
       if(useGripper) gripperL = make_shared<FrankaGripper>(0);
@@ -38,6 +39,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
       robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
       if(useGripper){
+        LOG(0) <<"OPENING GRIPPERS";
         if(robotiq){
           gripperL = make_shared<RobotiqGripper>(0);
           gripperR = make_shared<RobotiqGripper>(1);
