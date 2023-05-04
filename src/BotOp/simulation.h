@@ -33,6 +33,7 @@ protected:
   void step();
 
   friend struct GripperSim;
+  friend struct CameraSim;
 };
 
 struct GripperSim : rai::GripperAbstraction, Thread{
@@ -56,4 +57,26 @@ struct GripperSim : rai::GripperAbstraction, Thread{
   double pos(){ return q; }
   bool isDone();
 
+};
+
+struct CameraSim : rai::CameraAbstraction {
+  std::shared_ptr<BotThreadedSim> simthread;
+
+  CameraSim(const std::shared_ptr<BotThreadedSim>& _sim, const char* sensorName) : simthread(_sim) {
+    name = sensorName;
+    simthread->sim->addSensor(name);
+  }
+
+  virtual void getImageAndDepth(byteA& image, floatA& depth){
+    simthread->sim->selectSensor(name);
+    simthread->sim->getImageAndDepth(image, depth);
+  }
+  virtual arr getFxypxy(){
+    simthread->sim->selectSensor(name);
+    return simthread->sim->cameraview().currentSensor->getFxypxy();
+  }
+  virtual rai::Transformation getPose(){
+    simthread->sim->selectSensor(name);
+    return simthread->sim->cameraview().currentSensor->pose();
+  }
 };

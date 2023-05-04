@@ -67,6 +67,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 
   //-- launch OptiTrack
   if(rai::getParameter<bool>("bot/useOptitrack", false)){
+    LOG(0) <<"OPENING OPTITRACK";
     if(!useRealRobot) LOG(-1) <<"useOptitrack with real:false -- that's usually wrong!";
     optitrack = make_shared<rai::OptiTrack>();
     optitrack->pull(C);
@@ -74,6 +75,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 
   //-- launch Audio/Sound
   if(rai::getParameter<bool>("bot/useAudio", false)){
+    LOG(0) <<"OPENING SOUND";
     audio = make_shared<rai::Sound>();
   }
 
@@ -278,6 +280,59 @@ bool BotOp::gripperDone(rai::ArgWord leftRight){
   if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else return gripperL->isDone(); }
   if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else return gripperR->isDone(); }
   return false;
+}
+
+void BotOp::getImageAndDepth(byteA& image, floatA& depth, const char* sensor){
+  for(auto cam:cameras){
+    if(cam->name==sensor){
+      cam->getImageAndDepth(image, depth);
+      return;
+    }
+  }
+  //check if simulated camera can be created
+  if(simthread){
+    LOG(0) <<"creating camera sensor '" <<sensor <<"'";
+    cameras.append( make_shared<CameraSim>(simthread, sensor) );
+    cameras(-1)->getImageAndDepth(image, depth);
+    return;
+  }
+  //failed
+  LOG(0) <<"sensor '" <<sensor <<"' not available";
+}
+
+arr BotOp::getCameraFxypxy(const char* sensor){
+  for(auto cam:cameras){
+    if(cam->name==sensor) return cam->getFxypxy();
+  }
+  //check if simulated camera can be created
+  if(simthread){
+    LOG(0) <<"creating camera sensor '" <<sensor <<"'";
+    cameras.append( make_shared<CameraSim>(simthread, sensor) );
+    return cameras(-1)->getFxypxy();
+  }
+  //failed
+  LOG(0) <<"sensor '" <<sensor <<"' not available";
+  return arr{};
+}
+
+void BotOp::getPointCloud(byteA& image, arr& pts, const char* sensor, bool globalCoordinates){
+    for(auto cam:cameras){
+      if(cam->name==sensor){
+        cam->getPointCloud(image, pts, globalCoordinates);
+        return;
+      }
+    }
+    //check if simulated camera can be created
+    if(simthread){
+      LOG(0) <<"creating camera sensor '" <<sensor <<"'";
+      cameras.append( make_shared<CameraSim>(simthread, sensor) );
+      cameras(-1)->getPointCloud(image, pts, globalCoordinates);
+      return;
+    }
+    //failed
+    LOG(0) <<"sensor '" <<sensor <<"' not available";
+  LOG(0) <<"sensor '" <<sensor <<"' not available";
+
 }
 
 void BotOp::home(rai::Configuration& C){

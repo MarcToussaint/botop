@@ -25,6 +25,7 @@ struct BotOp{
   std::shared_ptr<rai::OptiTrack> optitrack;
   std::shared_ptr<rai::Sound> audio;
   std::shared_ptr<BotThreadedSim> simthread;
+  rai::Array<std::shared_ptr<rai::CameraAbstraction>> cameras;
 
   arr qHome;
   int keypressed=0;
@@ -54,6 +55,11 @@ struct BotOp{
   void gripperCloseGrasp(rai::ArgWord leftRight, const char* objName, double force=10, double width=.05, double speed=.1);
   double gripperPos(rai::ArgWord leftRight);
   bool gripperDone(rai::ArgWord leftRight);
+
+  //-- camera commands
+  void getImageAndDepth(byteA& image, floatA& depth, const char* sensor);
+  arr  getCameraFxypxy(const char* sensor);
+  void getPointCloud(byteA& image, arr& pts, const char* sensor, bool globalCoordinates=false);
 
   //-- sync the user's C with the robot, update the display, return false if motion spline is done
   bool sync(rai::Configuration& C, double waitTime=.1);
