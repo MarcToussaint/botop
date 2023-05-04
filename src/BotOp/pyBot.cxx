@@ -99,6 +99,29 @@ void init_BotOp(pybind11::module& m) {
        "returns if gripper is done",
        pybind11::arg("leftRight"))
 
+  .def("getCameraFxypxy", &BotOp::getCameraFxypxy,
+       "returns camera intrinsics",
+       pybind11::arg("sensorName"))
+
+  .def("getImageAndDepth",  [](std::shared_ptr<BotOp>& self, const char* sensorName) {
+      byteA img;
+      floatA depth;
+      self->getImageAndDepth(img, depth, sensorName);
+      return pybind11::make_tuple(Array2numpy<byte>(img),
+                                  Array2numpy<float>(depth)); },
+       "returns image and depth from a camera sensor",
+       pybind11::arg("sensorName"))
+
+  .def("getPointCloud",  [](std::shared_ptr<BotOp>& self, const char* sensorName, bool globalCoordinates) {
+         byteA img;
+         arr pts;
+         self->getPointCloud(img, pts, sensorName, globalCoordinates);
+         return pybind11::make_tuple(Array2numpy<byte>(img),
+                                     Array2numpy<double>(pts)); },
+       "returns image and point cloud (assuming sensor knows intrinsics) from a camera sensor, optionally in global instead of camera-frame-relative coordinates",
+       pybind11::arg("sensorName"),
+       pybind11::arg("globalCoordinates") = false)
+
   .def("sync", &BotOp::sync,
        "sync your workspace configuration C with the robot state",
        pybind11::arg("C"),

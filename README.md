@@ -10,7 +10,7 @@ No, we don't use ROS at all anymore.
 
 ## Installation
 
-This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker.
+This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When compiling in a docker, perhaps `export APTGETYES="--yes"; alias sudo=""` )
 
 * The following assumes $HOME/git as your git path, and $HOME/opt to
   install 3rd-party libs -- please stick to this (no system-wide

@@ -27,9 +27,9 @@ arr getLoopPath(rai::Configuration& C){
 
   //compute a path
   KOMO komo;
-  komo.setModel(C, false);
+  komo.setConfig(C, false);
   komo.setTiming(5, 10, 2., 2);
-  komo.add_qControlObjective({}, 2, 1.);
+  komo.addControlObjective({}, 2, 1.);
 
   komo.addObjective({1.}, FS_positionDiff, {"r_gripper", "target1"}, OT_eq, {1e2});
   komo.addObjective({2.}, FS_positionDiff, {"r_gripper", "target2"}, OT_eq, {1e2});
@@ -169,9 +169,9 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, 
   arr q0 = C.getJointState();
 
   KOMO komo;
-  komo.setModel(C, true);
+  komo.setConfig(C, true);
   komo.setTiming(2, 1, 3., 1);
-  komo.add_qControlObjective({}, 1, 1e-1);
+  komo.addControlObjective({}, 1, 1e-1);
 
   // homing
   if(qHome.N) komo.addObjective({}, FS_qItself, {}, OT_sos, {.1}, qHome);
