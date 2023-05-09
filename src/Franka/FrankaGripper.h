@@ -22,7 +22,7 @@ struct FrankaGripper : rai::GripperAbstraction, Thread{
   double maxWidth;
 
   FrankaGripper(uint whichRobot=0);
-  ~FrankaGripper(){ threadClose(); }
+  ~FrankaGripper();
 
   void homing();
 

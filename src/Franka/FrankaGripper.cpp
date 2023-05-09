@@ -11,6 +11,7 @@ FrankaGripper::FrankaGripper(uint whichRobot)
   , cmd(this, false){
   //-- choose robot/ipAddress
   CHECK_LE(whichRobot, 1, "");
+  LOG(0) <<"launching FrankaGripper " <<whichRobot <<" at " <<gripperIpAddresses[whichRobot];
   frankaGripper = make_shared<franka::Gripper>(gripperIpAddresses[whichRobot]);
   franka::GripperState gripper_state = frankaGripper->readOnce();
   maxWidth = gripper_state.max_width;
@@ -21,6 +22,11 @@ FrankaGripper::FrankaGripper(uint whichRobot)
   }
 
   threadOpen();
+}
+
+FrankaGripper::~FrankaGripper(){
+  threadClose();
+  LOG(0) <<"shutting down FrankaGripper";
 }
 
 void FrankaGripper::homing(){
@@ -99,6 +105,7 @@ void FrankaGripper::step() {
 FrankaGripper::FrankaGripper(uint whichRobot)
   : Thread(STRING("FrankaGripper_"<<whichRobot))
   , cmd(this, false){ NICO }
+FrankaGripper::~FrankaGripper(){ threadClose(); }
 void FrankaGripper::homing(){ NICO }
 void FrankaGripper::open(double width, double speed){ NICO }
 void FrankaGripper::close(double force, double width, double speed){ NICO }

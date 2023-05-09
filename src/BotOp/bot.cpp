@@ -7,12 +7,14 @@
 #include <Control/timingOpt.h>
 #include <Optim/NLP_Solver.h>
 #include <Gui/opengl.h>
+#include <Geo/depth2PointCloud.h>
 
 #include <Franka/franka.h>
 #include <Franka/FrankaGripper.h>
 #include "simulation.h"
 #include <Robotiq/RobotiqGripper.h>
 #include <OptiTrack/optitrack.h>
+#include <RealSense/RealSenseThread.h>
 
 #include <Audio/audio.h>
 
@@ -27,6 +29,8 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   C.ensure_indexedJoints();
   qHome = C.getJointState();
   state.set()->initZero(qHome.N);
+
+  //-- launch robots & grippers
   if(useRealRobot){
     LOG(0) <<"OPENING FRANKAS";
     if(useArm=="left"){
@@ -84,8 +88,10 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 }
 
 BotOp::~BotOp(){
-  LOG(0) <<"shutting down BotOp";
-  simthread.reset();
+  LOG(0) <<"shutting down BotOp...";
+  if(simthread) simthread.reset();
+  gripperL.reset();
+  gripperR.reset();
   robotL.reset();
   robotR.reset();
 }
@@ -282,57 +288,36 @@ bool BotOp::gripperDone(rai::ArgWord leftRight){
   return false;
 }
 
-void BotOp::getImageAndDepth(byteA& image, floatA& depth, const char* sensor){
-  for(auto cam:cameras){
-    if(cam->name==sensor){
-      cam->getImageAndDepth(image, depth);
-      return;
-    }
+std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
+  for(std::shared_ptr<rai::CameraAbstraction>& cam:cameras){
+    if(cam->name==sensor) return cam;
   }
-  //check if simulated camera can be created
   if(simthread){
-    LOG(0) <<"creating camera sensor '" <<sensor <<"'";
     cameras.append( make_shared<CameraSim>(simthread, sensor) );
-    cameras(-1)->getImageAndDepth(image, depth);
-    return;
+  }else{
+    cameras.append( make_shared<RealSenseThread>(sensor) );
   }
-  //failed
-  LOG(0) <<"sensor '" <<sensor <<"' not available";
+  return cameras(-1);
+}
+
+void BotOp::getImageAndDepth(byteA& image, floatA& depth, const char* sensor){
+  auto cam = getCamera(sensor);
+  cam->getImageAndDepth(image, depth);
 }
 
 arr BotOp::getCameraFxypxy(const char* sensor){
-  for(auto cam:cameras){
-    if(cam->name==sensor) return cam->getFxypxy();
-  }
-  //check if simulated camera can be created
-  if(simthread){
-    LOG(0) <<"creating camera sensor '" <<sensor <<"'";
-    cameras.append( make_shared<CameraSim>(simthread, sensor) );
-    return cameras(-1)->getFxypxy();
-  }
-  //failed
-  LOG(0) <<"sensor '" <<sensor <<"' not available";
-  return arr{};
+  auto cam = getCamera(sensor);
+  return cam->getFxypxy();
 }
 
-void BotOp::getPointCloud(byteA& image, arr& pts, const char* sensor, bool globalCoordinates){
-    for(auto cam:cameras){
-      if(cam->name==sensor){
-        cam->getPointCloud(image, pts, globalCoordinates);
-        return;
-      }
-    }
-    //check if simulated camera can be created
-    if(simthread){
-      LOG(0) <<"creating camera sensor '" <<sensor <<"'";
-      cameras.append( make_shared<CameraSim>(simthread, sensor) );
-      cameras(-1)->getPointCloud(image, pts, globalCoordinates);
-      return;
-    }
-    //failed
-    LOG(0) <<"sensor '" <<sensor <<"' not available";
-  LOG(0) <<"sensor '" <<sensor <<"' not available";
-
+void BotOp::getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates){
+  auto cam = getCamera(sensor);
+  cam->getImageAndDepth(image, depth);
+  depthData2pointCloud(points, depth, cam->getFxypxy());
+  if(globalCoordinates){
+    rai::Transformation pose=cam->getPose();
+    if(!pose.isZero()) pose.applyOnPointArray(points);
+  }
 }
 
 void BotOp::home(rai::Configuration& C){

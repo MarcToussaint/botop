@@ -41,6 +41,7 @@ struct BotOp{
   void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime);
   const arr& get_qHome(){ return qHome; }
   double getTimeToEnd(); //negative, if motion spline is done
+  int getKeyPressed(){ return keypressed; }
 
   //-- motion commands
   void move(const arr& path, const arr& vels, const arr& times, bool overwrite=false, double overwriteCtrlTime=-1.);
@@ -58,8 +59,8 @@ struct BotOp{
 
   //-- camera commands
   void getImageAndDepth(byteA& image, floatA& depth, const char* sensor);
+  void getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates=false);
   arr  getCameraFxypxy(const char* sensor);
-  void getPointCloud(byteA& image, arr& pts, const char* sensor, bool globalCoordinates=false);
 
   //-- sync the user's C with the robot, update the display, return false if motion spline is done
   bool sync(rai::Configuration& C, double waitTime=.1);
@@ -72,6 +73,7 @@ struct BotOp{
   void sound(int noteRelToC=0, float a=.5, float decay=0.0007);
 
 private:
+  std::shared_ptr<rai::CameraAbstraction>& getCamera(const char* sensor);
   template<class T> BotOp& setReference();
   std::shared_ptr<rai::SplineCtrlReference> getSplineRef();
 };

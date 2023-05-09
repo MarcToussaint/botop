@@ -11,7 +11,9 @@ void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio)
 const char *frankaIpAddresses[2] = {"172.16.0.2", "172.17.0.2"};
 
 FrankaThread::~FrankaThread(){
+  LOG(0) <<"shutting down Franka " <<robotID;
   stop = true;
+  waitForIdle();
   threadClose();
 }
 
@@ -40,6 +42,7 @@ void FrankaThread::init(uint _robotID, const uintA& _qIndices) {
   ipAddress = frankaIpAddresses[robotID];
 
   //-- start thread and wait for first state signal
+  LOG(0) <<"launching Franka " <<robotID <<" at " <<ipAddress;
   threadStep();  //this is not looping! The step method passes a callback to robot.control, which is blocking! (that's why we use a thread) until stop becomes true
   while(requiresInitialization) rai::wait(.01);
 }
@@ -323,7 +326,9 @@ void FrankaThread::step(){
     //-- send torques
     std::array<double, 7> u_array = {0., 0., 0., 0., 0., 0., 0.};
     for(uint i=0;i<7;i++) u_array[i]= u.elem(i);
-    if(stop) return franka::MotionFinished(franka::Torques(u_array));
+    if(stop){
+      return franka::MotionFinished(franka::Torques(u_array));
+    }
     return franka::Torques(u_array);
   };
 

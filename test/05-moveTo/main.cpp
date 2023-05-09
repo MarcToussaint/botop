@@ -28,11 +28,11 @@ void test_bot() {
 
   bot.move(~qT, {2.}); //in 2 sec strict
 
-  while(bot.step(C)){} //just syncs the model config C and updates display until done
+  while(bot.sync(C)){} //just syncs the model config C and updates display until done
 
   bot.moveTo(q0, 1.); //using timing cost=1
 
-  while(bot.step(C)){}
+  while(bot.sync(C)){}
 
   rai::wait();
 }
@@ -87,7 +87,7 @@ void test_withoutBotWrapper() {
   sp->report(ctrlTime);
 
   rai::wait(.1);
-  C.gl()->resetPressedKey();
+  C.viewer()->resetPressedKey();
   for(;;){
     if(C.view(false, STRING("time: "<<robot->state.get()->ctrlTime))=='q') break;
     C.setJointState(robot->state.get()->q);
@@ -106,7 +106,7 @@ int main(int argc, char * argv[]){
   test_bot();
   //test_withoutBotWrapper();
 
-  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters() <<'\n';
 
   return 0;
 }
