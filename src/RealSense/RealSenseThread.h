@@ -2,20 +2,30 @@
 
 #include <Core/array.h>
 #include <Core/thread.h>
+#include <Control/CtrlMsgs.h>
 
 namespace rs2 { class pipeline; }
 
-struct RealSenseThread : Thread {
+struct RealSenseThread : Thread, rai::CameraAbstraction {
   struct sRealSenseThread *s=0;
-  Var<byteA> color;
+  Var<byteA> image;
   Var<floatA> depth;
   arr fxypxy, color_fxypxy, depth_fxypxy;
 
-  RealSenseThread(const Var<byteA>& _color, const Var<floatA>& _depth);
+  RealSenseThread(const char *_name);
   ~RealSenseThread();
+
+  virtual void getImageAndDepth(byteA& _image, floatA& _depth){
+    image.waitForRevisionGreaterThan(1);
+    depth.waitForRevisionGreaterThan(1);
+    _image = image.get();
+    _depth = depth.get();
+  }
+  arr getFxypxy(){ return fxypxy; }
+
+protected:
   void open();
   void close();
   void step();
 
-  arr getFxypxy(){ return fxypxy; }
 };

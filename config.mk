@@ -16,6 +16,8 @@
 ## by default we use OpenGL a lot, but can be disabled
 #GL = 0
 
+RAI_CMAKE = 1
+
 ## by default we compile python bindings using the Ubuntu pybind package, but can be disabled
 #PYBIND = 0
 

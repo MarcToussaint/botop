@@ -25,9 +25,9 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
 
       export MAKEFLAGS="-j3"
 
-   * [libfranka](https://github.com/frankaemika/libfranka)
+   * [libfranka](https://github.com/frankaemika/libfranka) (needs 0.7.1 for old pandas, 0.9.2 for new!)
    
-         cd $HOME/git; git clone --single-branch -b 0.9.2 --recursive https://github.com/frankaemika/libfranka
+         cd $HOME/git; git clone --single-branch -b 0.7.1 --recursive https://github.com/frankaemika/libfranka
          cd $HOME/git/libfranka; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF ..; make install
 
    * Physx
@@ -55,19 +55,24 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
 * Clone and compile this repo:
 
       cd $HOME/git; git clone --recursive git@github.com:MarcToussaint/botop.git
-      cd $HOME/git/botop; make -C rai -j1 installUbuntuAll  # calls sudo apt-get install; you can always interrupt
-      cd $HOME/git/botop; mkdir -p build; cd build; cmake -DUSE_BULLET=OFF -DPYBIND11_PYTHON_VERSION=3.10 ..; make
+      cd $HOME/git/botop; APTGETYES=1 make -C rai -j1 installUbuntuAll  # calls sudo apt-get install
+      export PYTHONVERSION=`python3 -c "import sys; print(str(sys.version_info[0])+'.'+str(sys.version_info[1]))"`
+      cd $HOME/git/botop; mkdir -p build; cd build; cmake -DUSE_BULLET=OFF -DPYBIND11_PYTHON_VERSION=$PYTHONVERSION ..; make
 
 * Optionally add binaries to your $PATH; or add symbolic links to your user bin 
 
       echo 'export PATH="$HOME/git/botop/build:$PATH"' >> ~/.bashrc
       OR SOMETHING LIKE:
+      mkdir -p $HOME/bin
       ln -s $HOME/git/botop/build/bot $HOME/bin/
       ln -s $HOME/git/botop/build/kinEdit $HOME/bin/
 
 * Test the things in test/
 
       bot -sim -loop
+
+* Hacky: If you need to, overwrite the python pip-wheel with the locally compiled lib:
+      ln -f -s $HOME/git/botop/build/libry.cpython-??-x86_64-linux-gnu.so $HOME/.local/lib/python3.8/site-packages/robotic/libry.so
 
 
 ## Panda robot operation

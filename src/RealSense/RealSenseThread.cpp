@@ -19,10 +19,11 @@ struct sRealSenseThread{
   rs2::hole_filling_filter hole_filter;
 };
 
-RealSenseThread::RealSenseThread(const Var<byteA>& _color, const Var<floatA>& _depth)
+RealSenseThread::RealSenseThread(const char *_name)
   : Thread("RealSenseThread"),
-    color(this, _color),
-    depth(this, _depth){
+    image(this),
+    depth(this){
+  if(_name) CameraAbstraction::name=_name;
   threadOpen(true);
   threadLoop();
 }
@@ -186,7 +187,7 @@ void RealSenseThread::step(){
   }
 
   {
-    auto colorSet = color.set();
+    auto colorSet = image.set();
     colorSet->resize(rs_color.get_height(), rs_color.get_width(), 3);
     CHECK(rs_color.get_bytes_per_pixel()==3,"");
     memmove(colorSet->p, rs_color.get_data(), colorSet->N);
@@ -199,7 +200,7 @@ void rs2_get_motion_intrinsics(const rs2_stream_profile* mode, rs2_motion_device
 
 #else //REALSENSE
 
-RealSenseThread::RealSenseThread(const Var<byteA>& _color, const Var<floatA>& _depth) : Thread("RealSenseThread") { NICO }
+RealSenseThread::RealSenseThread(const char *_name) : Thread("RealSenseThread") { NICO }
 RealSenseThread::~RealSenseThread(){ NICO }
 void RealSenseThread::open(){ NICO }
 void RealSenseThread::close(){ NICO }

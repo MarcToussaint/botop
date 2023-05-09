@@ -26,7 +26,11 @@ void init_BotOp(pybind11::module& m) {
   
   pybind11::class_<BotOp, shared_ptr<BotOp>>(m, "BotOp", "")
 
-  .def(pybind11::init<rai::Configuration&, bool>(), "")
+  .def(pybind11::init<rai::Configuration&, bool>(),
+       "",
+       pybind11::arg("C"),
+       pybind11::arg("useRealRobot")
+       )
 
   .def("get_t", &BotOp::get_t,
        "returns the control time (absolute time managed by the high freq tracking controller)")
@@ -42,6 +46,9 @@ void init_BotOp(pybind11::module& m) {
 
   .def("getTimeToEnd", &BotOp::getTimeToEnd,
        "get time-to-go of the current spline reference that is tracked (use getTimeToEnd()<=0. to check if motion execution is done)")
+
+   .def("getKeyPressed", &BotOp::getKeyPressed, "",
+        "get key pressed in window at last sync")
 
   //.def("move", pybind11::overload_cast<const arr&, const arr&, const arr&, bool, double>(&BotOp::move))
   .def("move", pybind11::overload_cast<const arr&, const arr&, bool, double>(&BotOp::move),
@@ -112,13 +119,15 @@ void init_BotOp(pybind11::module& m) {
        "returns image and depth from a camera sensor",
        pybind11::arg("sensorName"))
 
-  .def("getPointCloud",  [](std::shared_ptr<BotOp>& self, const char* sensorName, bool globalCoordinates) {
+  .def("getImageDepthPcl",  [](std::shared_ptr<BotOp>& self, const char* sensorName, bool globalCoordinates) {
          byteA img;
+         floatA depth;
          arr pts;
-         self->getPointCloud(img, pts, sensorName, globalCoordinates);
+         self->getImageDepthPcl(img, depth, pts, sensorName, globalCoordinates);
          return pybind11::make_tuple(Array2numpy<byte>(img),
+                                     Array2numpy<float>(depth),
                                      Array2numpy<double>(pts)); },
-       "returns image and point cloud (assuming sensor knows intrinsics) from a camera sensor, optionally in global instead of camera-frame-relative coordinates",
+       "returns image, depth and point cloud (assuming sensor knows intrinsics) from a camera sensor, optionally in global instead of camera-frame-relative coordinates",
        pybind11::arg("sensorName"),
        pybind11::arg("globalCoordinates") = false)
 
