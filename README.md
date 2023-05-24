@@ -72,7 +72,9 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
       bot -sim -loop
 
 * Hacky: If you need to, overwrite the python pip-wheel with the locally compiled lib:
+
       ln -f -s $HOME/git/botop/build/libry.cpython-??-x86_64-linux-gnu.so $HOME/.local/lib/python3.8/site-packages/robotic/libry.so
+
 
 
 ## Panda robot operation

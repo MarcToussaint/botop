@@ -19,7 +19,7 @@ void test_bot() {
   C.view(false);
 
   //-- start a robot thread
-  BotOp bot(C, rai::checkParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
 
   //-- create 2 simple reference configurations
   arr q0 = bot.get_qHome();
@@ -51,7 +51,7 @@ void test_withoutBotWrapper() {
   if(rai::getParameter<bool>("real", false)){
     robot = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'));
   }else{
-    robot = make_shared<BotSim>(C);
+    robot = make_shared<BotThreadedSim>(C);
   }
   robot->writeData = 2;
 
@@ -106,7 +106,7 @@ int main(int argc, char * argv[]){
   test_bot();
   //test_withoutBotWrapper();
 
-  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters() <<'\n';
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
 
   return 0;
 }

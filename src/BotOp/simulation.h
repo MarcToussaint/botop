@@ -38,10 +38,12 @@ protected:
 
 struct GripperSim : rai::GripperAbstraction, Thread{
   std::shared_ptr<BotThreadedSim> sim;
+  rai::String gripperName;
   double q;
   bool isClosing=false, isOpening=false;
 
-  GripperSim(const std::shared_ptr<BotThreadedSim>& _sim) : Thread("GripperSimulation"), sim(_sim), q(.02) {}
+  GripperSim(const std::shared_ptr<BotThreadedSim>& _sim, const char* _gripperName)
+    : Thread("GripperSimulation"), sim(_sim), gripperName(_gripperName), q(.02) {}
 
   //gripper virtual methods
   void calibrate() {}
@@ -54,7 +56,7 @@ struct GripperSim : rai::GripperAbstraction, Thread{
              double speed=.1);
   void closeGrasp(const char* objName, double force=.0, double width=.2, double speed=.2);
 
-  double pos(){ return q; }
+  double pos();
   bool isDone();
 
 };

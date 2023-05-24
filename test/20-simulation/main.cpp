@@ -14,7 +14,7 @@ void testPushes(){
   rai::Configuration C;
   C.addFile("model.g");
 
-  rai::Simulation S(C, S._bullet);
+  rai::Simulation S(C, S._physx, 2);
 
   double tau=.01;
   Metronome tic(tau);
@@ -59,7 +59,7 @@ void testGrasp(){
   rai::Configuration C;
   C.addFile("model.g");
 
-  rai::Simulation S(C, S._bullet);
+  rai::Simulation S(C, S._physx, 2);
 
   byteA rgb;
   floatA depth;
@@ -112,7 +112,7 @@ void testGrasp2(){
   C.addFrame("box")->setShape(rai::ST_ssBox, {.8, .05, .05, .01})\
       .setPosition({0,0,1.}).setMass(1).setContact(1);
 
-  rai::Simulation S(C, S._bullet);
+  rai::Simulation S(C, S._physx, 2);
 
   byteA rgb;
   floatA depth;
@@ -159,7 +159,7 @@ void testGrasp2(){
 void testOpenClose(){
   rai::Configuration RealWorld;
   RealWorld.addFile("../../rai-robotModels/scenarios/pandasTable.g");
-  rai::Simulation S(RealWorld, S._bullet);
+  rai::Simulation S(RealWorld, S._physx, 2);
 
   rai::Configuration C;
   C.addFile("../../rai-robotModels/scenarios/pandasTable.g");
@@ -216,7 +216,7 @@ void makeRndScene(){
 
   C.addFile("../../rai-robotModels/scenarios/pandasTable.g");
 
-  rai::Simulation S(C, S._bullet);
+  rai::Simulation S(C, S._physx, 2);
 //  rai::Simulation S(C, S._physx);
   S.cameraview().addSensor("camera");
 
@@ -249,7 +249,7 @@ void testFriction(){
     obj->setShape(rai::ST_ssBox, size);
     obj->setPosition({(i-5)*.2,0.,1.});
     obj->setMass(.2);
-    obj->addAttribute("friction", .02*i);
+    obj->addAttribute("friction", .01*i);
   }
 
   for(int i=0;i<10;i++){
@@ -258,15 +258,18 @@ void testFriction(){
     obj->setShape(rai::ST_sphere, size);
     obj->setPosition({(i-5)*.2,.5,2.});
     obj->setMass(.2);
-    obj->addAttribute("restitution", .1*i);
+//    obj->addAttribute("restitution", 10.);
+//    obj->addAttribute("friction", .0*i);
+    obj->addAttribute("angularDamping", 1.*i);
   }
 
   C.addFile("../../rai-robotModels/scenarios/pandasTable.g");
 
   C["table"]->setQuaternion({1.,-.1,0.,0.}); //tilt the table!!
-  C["table"]->addAttribute("restitution", .5);
+  C["table"]->addAttribute("friction", .5);
+//  C["table"]->addAttribute("restitution", 10.);
 
-  rai::Simulation S(C, S._bullet);
+  rai::Simulation S(C, S._physx, 2);
   S.cameraview().addSensor("camera");
 
   double tau=.01;
@@ -302,7 +305,7 @@ void testStackOfBlocks(){
 
   C.addFile("../../rai-robotModels/scenarios/pandasTable.g");
 
-  rai::Simulation S(C, S._bullet);
+  rai::Simulation S(C, S._physx, 2);
 //  rai::Simulation S(C, S._physx);
 
   double tau=.01;  //jumps a bit for tau=.01
@@ -366,7 +369,7 @@ void testNoPenetrationImp(){
   tip->setRelativePosition({0,0,-0.25});
 
   KOMO komo;                     //create a solver
-  komo.setModel(C0);        //tell it use C as the basic configuration (internally, it will create copies of C on which the actual optimization runs)
+  komo.setConfig(C0);        //tell it use C as the basic configuration (internally, it will create copies of C on which the actual optimization runs)
   komo.setTiming(1., 1, 1., 1);  //we want to optimize a single step (1 phase, 1 step/phase, duration=1, k_order=1)
   komo.addObjective({}, FS_positionRel, {"r_gripper", "stick"}, OT_eq, {1e2}, {0, 0, 0.2});
   komo.addObjective({}, FS_scalarProductXZ, {"r_gripper", "stick"}, OT_eq, {1e2});
@@ -380,7 +383,7 @@ void testNoPenetrationImp(){
   for(bool activate: {false, true}){
     rai::Configuration C;
     C.copy(C0);
-    rai::Simulation S(C, S._bullet);
+    rai::Simulation S(C, S._physx, 2);
     if(activate) S.addImp(S._noPenetrations, {}, {});
     double tau=.01;
     Metronome tic(tau);
@@ -422,11 +425,11 @@ int main(int argc,char **argv){
 //  testPushes();
 //  testGrasp();
 //  testGrasp2();
-//  testOpenClose();
+  testOpenClose();
 //  makeRndScene();
 //  testFriction();
 //  testBlockOnMoving();
-  testNoPenetrationImp();
+//  testNoPenetrationImp();
 
   return 0;
 }

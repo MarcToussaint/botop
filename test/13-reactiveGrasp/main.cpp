@@ -36,7 +36,7 @@ struct SecMPC_Experiments{
 
     //-- start a robot thread
     if(!bot){
-      bot = make_unique<BotOp>(C, rai::checkParameter<bool>("real"));
+      bot = make_unique<BotOp>(C, rai::getParameter<bool>("real", false));
       bot->home(C);
       bot->setControllerWriteData(1);
       if(bot->optitrack) bot->optitrack->pull(C);
@@ -104,7 +104,7 @@ void testBallFollowing() {
       .setRelativePosition(arr{-.4,.4,.4});
 
   KOMO komo;
-  komo.setModel(C, false);
+  komo.setConfig(C, false);
   komo.setTiming(1., 1, 5., 1);
   komo.add_qControlObjective({}, 1, 1e-1);
   komo.addQuaternionNorms();
@@ -145,7 +145,7 @@ void testBallReaching() {
 
   //-- define constraints
   KOMO komo;
-  komo.setModel(C, false);
+  komo.setConfig(C, false);
   komo.setTiming(2., 1, 5., 1);
   komo.add_qControlObjective({}, 1, 1e-1);
   komo.addQuaternionNorms();
@@ -183,7 +183,7 @@ void testPnp() {
   arr qHome = C.getJointState();
 
   KOMO komo;
-  komo.setModel(C, true);
+  komo.setConfig(C, true);
   komo.setTiming(3, 1, 3., 1);
   komo.add_qControlObjective({}, 1, 1e-1);
 
@@ -278,7 +278,7 @@ void testDroneRace(){
 
   //-- define constraints
   KOMO komo;
-  komo.setModel(C, false);
+  komo.setConfig(C, false);
   komo.setTiming(7., 1, 5., 1);
   komo.add_qControlObjective({}, 1, 1e-1);
   komo.addQuaternionNorms();
@@ -379,7 +379,7 @@ int main(int argc, char *argv[]){
   //testDroneRace();
 
 
-  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
 
   return 0;
 }

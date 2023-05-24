@@ -65,9 +65,12 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     double hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
     simthread = make_shared<BotThreadedSim>(C, cmd, state, StringA(), .001, hyperSpeed); //, StringA(), .001, 10.);
     robotL = simthread;
-    if(useGripper) gripperL = make_shared<GripperSim>(simthread);
+    if(useGripper) gripperL = make_shared<GripperSim>(simthread, "l_gripper");
   }
   C.setJointState(get_q());
+
+  //-- initialize the control reference
+  hold(false, true);
 
   //-- launch OptiTrack
   if(rai::getParameter<bool>("bot/useOptitrack", false)){

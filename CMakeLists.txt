@@ -11,6 +11,7 @@ option(USE_OPENCV "link to opencv" OFF)
 option(USE_REALSENSE "link to realsense2 driver library" OFF)
 option(USE_LIBFRANKA "link to libfranka" ON)
 option(USE_PCL "link to pcl library" OFF)
+option(CMAKE_INSTALL_PREFIX "install directory" "/tmp")
 set(PYBIND11_PYTHON_VERSION 3.10 CACHE STRING "python version")
 
 add_compile_options(
@@ -169,6 +170,14 @@ if(USE_PYBIND)
     rai
   )
 endif()
+
+################################################################################
+
+install(DIRECTORY rai/rai DESTINATION ${CMAKE_INSTALL_PREFIX}/include
+  FILES_MATCHING PATTERN "*.h" PATTERN "*.hxx" PATTERN "*.ipp"
+)
+
+install(TARGETS rai libry DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/ COMPONENT pkgconfig)
 
 ################################################################################
 
