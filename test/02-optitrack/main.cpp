@@ -20,7 +20,7 @@ int main(int argc,char **argv){
     if(C.view(false)=='q') break;
   }
 
-  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
 
   return 0;
 }

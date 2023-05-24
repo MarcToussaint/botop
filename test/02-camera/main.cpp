@@ -65,7 +65,7 @@ int testDirect(){
 
 //===========================================================================
 
-void testWithBotop(){
+void testBotop(){
   //-- setup a configuration
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
@@ -114,6 +114,6 @@ int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
 //  testDirect();
-  testWithBotop();
+  testBotop();
 
 }

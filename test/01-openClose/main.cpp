@@ -1,13 +1,15 @@
-#include <Franka/gripper.h>
+#include <Franka/FrankaGripper.h>
 #include <Robotiq/RobotiqGripper.h>
+
+#include <BotOp/bot.h>
 
 const char *USAGE =
     "\nTest of low-level (without bot interface) RobotiqGripper and FrankaGripper interfaces"
     "\n";
 
-int main(int argc,char **argv){
-  rai::initCmdLine(argc, argv);
+//===========================================================================
 
+void testDirect(){
   cout <<USAGE <<endl;
 
   {
@@ -37,7 +39,7 @@ int main(int argc,char **argv){
     G_ri->open();
     while(!G_ri->isDone()) rai::wait(.1);
 
-    cout <<"=========== slow & weak ..." <<flush;
+    cout <<"=========== slow & weak ..." <<std::flush;
     G_ri->close(0, .2, .02);
     while(!G_ri->isDone()) rai::wait(.1);
     cout <<"done" <<endl;
@@ -45,7 +47,7 @@ int main(int argc,char **argv){
     G_ri->open();
     while(!G_ri->isDone()) rai::wait(.1);
 
-    cout <<"=========== fast & strong..." <<flush;
+    cout <<"=========== fast & strong..." <<std::flush;
     G_ri->close(1., .2, 1.);
     while(!G_ri->isDone()) rai::wait(.1);
     cout <<"done" <<endl;
@@ -60,7 +62,46 @@ int main(int argc,char **argv){
 
   }
 
-  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
+
+}
+
+//===========================================================================
+
+void testBotop(){
+  //-- setup a configuration
+  rai::Configuration C;
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+
+  //-- start a robot thread
+  BotOp bot(C, rai::getParameter<bool>("BotOp/real", false));
+
+  C.view(true);
+
+  bot.gripperClose(rai::_left);
+  while(!bot.gripperDone(rai::_left)){
+    bot.sync(C);
+    cout <<"gripper pos: " <<bot.gripperPos(rai::_left) <<endl;
+  }
+
+  C.view(true);
+
+  bot.gripperOpen(rai::_left);
+  while(!bot.gripperDone(rai::_left)){
+    bot.sync(C);
+    cout <<"gripper pos: " <<bot.gripperPos(rai::_left) <<endl;
+  }
+
+  C.view(true);
+}
+
+//===========================================================================
+
+int main(int argc,char **argv){
+  rai::initCmdLine(argc, argv);
+
+  //testDirect();
+  testBotop();
 
   return 0;
 }

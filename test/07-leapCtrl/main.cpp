@@ -1,17 +1,17 @@
 #include <BotOp/bot.h>
 //#include <Control/ShortPathMPC.h>
-#include <BotOp/ShortPathMPC.h>
+#include <Control/ShortPathMPC.h>
 #include <Control/timingOpt.h>
-#include <Optim/MP_Solver.h>
+#include <Optim/NLP_Solver.h>
 
 //===========================================================================
 
 void testLeapCtrl() {
   //-- setup a configuration
   rai::Configuration C;
-//  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
 //  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
-  C.addFile("model.g");
+//  C.addFile("model.g");
 
   //add a target in position space
   arr center = C["l_gripper"]->getPosition();
@@ -22,7 +22,7 @@ void testLeapCtrl() {
   C.view();
 
   //-- start a robot thread
-  BotOp bot(C, rai::checkParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
   bot.home(C);
 
   //-- create a leap controller (essentially receeding horizon KOMO solver)
@@ -59,17 +59,17 @@ void testLeapCtrl() {
     //solve the leap problem
     shortMPC.reinit(C); //adopt all frames in C as prefix (also positions of objects)
     shortMPC.reinit(q, qDot);
-    shortMPC.solve();
+    shortMPC.solve(true, 0);
 //    rai::Graph R = shortMPC.komo.getReport();
 
 
     if(shortMPC.feasible){
       arr path = shortMPC.getPath();
       TimingProblem timingProblem(path, {}, q, qDot, 1e1, 1.); //, {}, tauInitial, optTau);
-      MP_Solver solver;
+      NLP_Solver solver;
       solver
           .setProblem(timingProblem.ptr())
-          .setSolver(MPS_newton);
+          .setSolver(NLPS_newton);
       solver.opt
           .set_stopTolerance(1e-4)
           .set_maxStep(1e0)
@@ -86,7 +86,7 @@ void testLeapCtrl() {
 
         double ctrlTimeNow = bot.get_t();
         times -= ctrlTimeNow - ctrlTime;
-        bot.move(path, vels, times, true);
+        bot.move(path, vels, times, true, ctrlTime);
       }else{
         bot.moveTo(shortMPC.path[-1]);
       }
@@ -106,7 +106,7 @@ void testLeapCtrl() {
     }
 
     //update C
-    bot.step(C);
+    bot.sync(C);
     if(bot.keypressed==13){ t=9; continue; }
     if(bot.keypressed=='q' || bot.keypressed==27) return;
   }
@@ -119,7 +119,7 @@ int main(int argc, char * argv[]){
 
   testLeapCtrl();
 
-  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
 
   return 0;
 }

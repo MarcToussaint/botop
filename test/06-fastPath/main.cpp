@@ -14,7 +14,7 @@ int main(int argc, char * argv[]){
   arr path = getLoopPath(C);
 
   //-- start a robot thread
-  BotOp bot(C, rai::checkParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
   bot.home(C);
   bot.setControllerWriteData(1);
 
@@ -32,7 +32,7 @@ int main(int argc, char * argv[]){
     bot.move(path, arr{10.}/speed);
 
     Metronome tic(.01);
-    while(bot.step(C, -1.)){
+    while(bot.sync(C, -1.)){
       if(bot.optitrack){
         tic.waitForTic();
         arr q = bot.get_q();
@@ -44,7 +44,7 @@ int main(int argc, char * argv[]){
   }
   fil.close();
 
-  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
 
   return 0;
 }

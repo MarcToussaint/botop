@@ -14,7 +14,7 @@ void collectJointData(){
   CHECK_LE(jointID, qHome.N, "");
 
 
-  BotOp bot(C, rai::checkParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
   bot.home(C);
 
   double q0 = qHome(jointID);
@@ -89,7 +89,7 @@ void collectJointData(){
 
   bot.robotL->writeData=2;
   bot.move(path, times);
-  while(bot.step(C)){}
+  while(bot.sync(C)){}
   bot.robotL->writeData=0;
 
 

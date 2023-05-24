@@ -10,8 +10,8 @@ void testPnp() {
 
   C.addFrame("box", "table")
       ->setJoint(rai::JT_rigid)
-      .setShape(rai::ST_ssBox, {.06,.15,.09,.01})
-      .setRelativePosition(arr{-.0,-.0,.195})
+      .setShape(rai::ST_ssBox, {.06,.15,.09,.005})
+      .setRelativePosition(arr{-.0,-.0,.15})
       .setMass(.1);
 
   C.addFrame("target", "table")
@@ -22,7 +22,7 @@ void testPnp() {
   arr qHome = C.getJointState();
 
   //-- start a robot thread
-  BotOp bot(C, rai::checkParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
   bot.home(C);
 
   const char* gripperName="l_gripper";
@@ -78,15 +78,15 @@ void testPnp() {
       }
 
       if(bot.gripperL){
-        if(k==0){ bot.gripperL->open(); while(!bot.gripperL->isDone()) rai::wait(.1); }
-        else if(k==1){ bot.gripperL->close(boxName); while(!bot.gripperL->isDone()) rai::wait(.1); }
-        else if(k==2){ bot.gripperL->open(); while(!bot.gripperL->isDone()) rai::wait(.1); }
+        if(k==0){ bot.gripperOpen(rai::_left); rai::wait(1.); } // while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
+        else if(k==1){ bot.gripperCloseGrasp(rai::_left, boxName); rai::wait(1.); } //while(!bot.gripperDone(rai::_left) ) rai::wait(.1); }
+        else if(k==2){ bot.gripperOpen(rai::_left); rai::wait(1.); } //while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
       }
 
       //send komo as spline:
       bot.moveAutoTimed(path);
 
-      while(bot.step(C));
+      while(bot.sync(C));
       if(bot.keypressed=='q' || bot.keypressed==27) return;
     }
   }
@@ -103,7 +103,7 @@ int main(int argc, char * argv[]){
 
   testPnp();
 
-  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
 
   return 0;
 }

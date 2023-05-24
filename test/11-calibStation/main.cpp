@@ -18,7 +18,7 @@ void collectData(){
   points.reshape(-1,2,3);
 
   //-- start a robot thread
-  BotOp bot(C, rai::checkParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
   bot.home(C);
 
   //-- prepare storing optitrack data ?
@@ -38,7 +38,7 @@ void collectData(){
     //compute pose
     if(l<L){
       KOMO komo;
-      komo.setModel(C, true);
+      komo.setConfig(C, true);
       komo.setTiming(1, 1, 3., 1);
       komo.add_qControlObjective({}, 1, 1e-1);
       komo.addObjective({}, FS_qItself, {}, OT_sos, {.1}, bot.qHome);
@@ -90,15 +90,15 @@ void collectData(){
 
     if(bot.optitrack){
       Metronome tic(.01);
-      bot.step(C, -1.);
-      while(bot.step(C, -1.)){
+      bot.sync(C, -1.);
+      while(bot.sync(C, -1.)){
         tic.waitForTic();
         arr q = bot.get_q();
         bot.optitrack->pull(C);
         fil <<rai::realTime() <<" q " <<q <<" poseL " <<optiFrameL->ensure_X() <<" poseR " <<optiFrameR->ensure_X() <<endl; // <<" poseTable " <<optiTable->ensure_X() <<endl;
       }
     }else{
-      while(bot.step(C));
+      while(bot.sync(C));
     }
     if(bot.keypressed=='q' || bot.keypressed==27) break;
   }
@@ -155,7 +155,7 @@ void computeCalibration(){
 
   //-- create komo
   KOMO komo;
-  komo.setModel(C, false);
+  komo.setConfig(C, false);
   komo.setTiming(1., T, 1., 1);
   komo.setupPathConfig();
 
@@ -247,7 +247,7 @@ void demoCalibration(){
   points.reshape(-1,3);
 
   //-- start a robot thread
-  BotOp bot(C, rai::checkParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
   bot.home(C);
 
   arr q_last=bot.get_q();
@@ -258,7 +258,7 @@ void demoCalibration(){
     //compute pose
     if(l<L){
       KOMO komo;
-      komo.setModel(C, true);
+      komo.setConfig(C, true);
       komo.setTiming(1, 1, 3., 1);
       komo.add_qControlObjective({}, 1, 1e-1);
       komo.addObjective({}, FS_qItself, {}, OT_sos, {.1}, bot.qHome);
@@ -301,7 +301,7 @@ void demoCalibration(){
     cout <<" === -> executing === " <<endl;
     bot.moveAutoTimed(path, .5, .5);
 
-    while(bot.step(C));
+    while(bot.sync(C));
     if(bot.keypressed=='q' || bot.keypressed==27) break;
 
     rai::wait();
@@ -319,7 +319,7 @@ int main(int argc, char * argv[]){
 
   demoCalibration();
 
-  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::getParameters()() <<'\n';
+  LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
 
   return 0;
 }

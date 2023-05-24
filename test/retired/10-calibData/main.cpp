@@ -21,7 +21,7 @@ arr getStartGoalPath(rai::Configuration& C, const arr& target_q, const arr& qHom
   arr q0 = C.getJointState();
 
   KOMO komo;
-  komo.setModel(C, true);
+  komo.setConfig(C, true);
   komo.setTiming(1., 32, 5., 2);
   komo.add_qControlObjective({}, 2, 1.);
 
@@ -87,7 +87,7 @@ void driveToPoses(rai::Configuration& C, const arr& X, const uint kStart=0) {
   uint Kend=X.d0, Kmax=5000;
   if(Kend>Kmax) Kend=Kmax;
 
-  BotOp bot(C, rai::checkParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
   bot.robotL->writeData=0;
 
   bot.home(C);
@@ -99,7 +99,7 @@ void driveToPoses(rai::Configuration& C, const arr& X, const uint kStart=0) {
     if(!path.N) continue;
     bot.moveAutoTimed(path);
 //    bot.moveTo(X[k], 3.);
-    while(bot.step(C));
+    while(bot.sync(C));
     if(bot.keypressed=='q') break;
     bot.robotL->writeData=2;
     rai::wait(.1);
@@ -141,7 +141,7 @@ void rndPoses(){
     cout <<"PAIR: " <<collisionPairs(i,0)->name <<' ' <<collisionPairs(i,1)->name <<endl;
   }
 
-  BotOp bot(C, rai::checkParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
   bot.home(C);
   arr bounds = ~C.getLimits();
 
@@ -164,7 +164,7 @@ void rndPoses(){
         continue;
       }
       bot.moveAutoTimed(path);
-      while(bot.step(C));
+      while(bot.sync(C));
       if(bot.keypressed=='q') break;
     }
   }

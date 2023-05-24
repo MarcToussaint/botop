@@ -24,7 +24,7 @@ void rndPoses(){
   FrameL collisionPairs = C.getCollisionAllPairs();
   //for(uint i=0;i<collisionPairs.d0;i++) cout <<"PAIR: " <<collisionPairs(i,0)->name <<' ' <<collisionPairs(i,1)->name <<endl;
 
-  BotOp bot(C, rai::checkParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
   bot.home(C);
   arr bounds = ~C.getLimits();
 
@@ -53,7 +53,7 @@ void rndPoses(){
       cout <<" === path feasible  === " <<endl;
 
       //wait til finished and update gui
-      while(bot.step(C));
+      while(bot.sync(C));
       if(bot.keypressed=='q') break;
 
       //write data

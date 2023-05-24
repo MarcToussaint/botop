@@ -69,6 +69,10 @@ void BotThreadedSim::pullDynamicStates(rai::Configuration& C){
     if(f->inertia && f->inertia->type==rai::BT_dynamic){
       f->set_X() = simConfig.frames(f->ID)->ensure_X();
     }
+    if(f->joint && !f->joint->active){
+      CHECK_EQ(f->joint->qIndex, simConfig.frames(f->ID)->joint->qIndex, "");
+      f->joint->setDofs(simConfig.qInactive, f->joint->qIndex);
+    }
   }
 }
 
@@ -201,7 +205,8 @@ void BotThreadedSim::step(){
 void GripperSim::open(double width, double speed) {
   if(sim){
     auto mux = sim->stepMutex(RAI_HERE);
-    sim->sim->openGripper("l_gripper");
+    if(sim->sim) sim->sim->openGripper(gripperName);
+    else LOG(0) <<"skipping in fake sim";
   }
   else q=width;
   isClosing=false; isOpening=true;
@@ -210,7 +215,8 @@ void GripperSim::open(double width, double speed) {
 void GripperSim::close(double force, double width, double speed) {
   if(sim){
     auto mux = sim->stepMutex(RAI_HERE);
-    sim->sim->closeGripper("l_gripper");
+    if(sim->sim) sim->sim->closeGripper(gripperName);
+    else LOG(0) <<"skipping in fake sim";
   }
   else q=width;
   isOpening=false; isClosing=true;
@@ -219,17 +225,30 @@ void GripperSim::close(double force, double width, double speed) {
 void GripperSim::closeGrasp(const char* objName, double force, double width, double speed){
   if(sim){
     auto mux = sim->stepMutex(RAI_HERE);
-    sim->sim->closeGripperGrasp("l_gripper", objName);
+    if(sim->sim) sim->sim->closeGripperGrasp(gripperName, objName);
+    else LOG(0) <<"skipping in fake sim";
+      //sim->simConfig.attach(gripperName, objName);
   }
   else q=width;
   isOpening=false; isClosing=true;
 }
 
+double GripperSim::pos(){
+  if(sim && sim->sim){
+    return sim->sim->getGripperWidth(gripperName);
+  }
+  return q;
+}
+
 bool GripperSim::isDone(){
   if(sim){
     auto mux = sim->stepMutex(RAI_HERE);
-    if(isClosing) return sim->sim->getGripperIsGrasping("l_gripper") || sim->sim->getGripperIsClose("l_gripper");
-    if(isOpening) return sim->sim->getGripperIsOpen("l_gripper");
+    if(sim->sim){
+      if(isClosing) return sim->sim->getGripperIsGrasping(gripperName) || sim->sim->getGripperIsClose(gripperName);
+      if(isOpening) return sim->sim->getGripperIsOpen(gripperName);
+    } else {
+      return true;
+    }
   }
   return true;
 }
