@@ -32,11 +32,11 @@ arr getHsvBlobPosition(cv::Mat& rgb, cv::Mat& depth, const arr& hsvFilter, const
   //get largest contour
   arr sizes(contours.size());
   for(uint i=0; i<contours.size(); i++) sizes(i) = cv::contourArea(cv::Mat(contours[i]));
-  uint largest = sizes.argmax();
+  uint largest = argmax(sizes);
 
   //draw the contour interior into the mask
   mask = cv::Scalar(0);
-  cv::drawContours(mask, contours, largest, cv::Scalar(128), CV_FILLED);
+  cv::drawContours(mask, contours, largest, cv::Scalar(128), cv::FILLED);
 
   // grab the depth values and mean x,y coordinates
   floatA depthValues;
@@ -100,7 +100,7 @@ void tracking2(){
   C.view();
 
   // launch camera
-  RealSenseThread RS({}, {});
+  RealSenseThread RS("cam");
 
   // grab the camera intrinsics
   arr Fxypxy = RS.fxypxy;
@@ -113,7 +113,7 @@ void tracking2(){
     RS.depth.waitForNextRevision();
 
     // grap copies of rgb and depth
-    cv::Mat rgb = CV(RS.color.get()).clone();
+    cv::Mat rgb = CV(RS.image.get()).clone();
     cv::Mat depth = CV(RS.depth.get()).clone();
 
     if(rgb.rows != depth.rows) continue;

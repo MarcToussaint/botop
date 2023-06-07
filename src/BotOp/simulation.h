@@ -27,8 +27,6 @@ private:
   //two options: trivial double integrator model, or physical simulation
 protected:
   std::shared_ptr<rai::Simulation> sim;
-  arr noise;
-  double noise_th, noise_sig;
 
   void step();
 
@@ -37,13 +35,13 @@ protected:
 };
 
 struct GripperSim : rai::GripperAbstraction, Thread{
-  std::shared_ptr<BotThreadedSim> sim;
+  std::shared_ptr<BotThreadedSim> simthread;
   rai::String gripperName;
   double q;
   bool isClosing=false, isOpening=false;
 
-  GripperSim(const std::shared_ptr<BotThreadedSim>& _sim, const char* _gripperName)
-    : Thread("GripperSimulation"), sim(_sim), gripperName(_gripperName), q(.02) {}
+  GripperSim(const std::shared_ptr<BotThreadedSim>& _simthread, const char* _gripperName)
+    : Thread("GripperSimulation"), simthread(_simthread), gripperName(_gripperName), q(.02) {}
 
   //gripper virtual methods
   void calibrate() {}

@@ -47,7 +47,6 @@ void FrankaGripper::open(double width, double speed){
   threadStep();
 }
 
-
 void FrankaGripper::close(double force, double width, double speed){
   {
     auto cmdSet = cmd.set();

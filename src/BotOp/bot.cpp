@@ -264,6 +264,27 @@ void BotOp::setControllerWriteData(int _writeData){
   if(robotR) robotR->writeData=_writeData;
 }
 
+void BotOp::setCompliance(const arr& J, double compliance){
+  CHECK_LE(compliance, 1., "");
+  CHECK_GE(compliance, 0., "");
+  if(!J.N || !compliance){
+    LOG(0) <<"clearing compliance";
+    cmd.set()->P_compliance.clear();
+    return;
+  }
+
+
+  arr U, d, V;
+  svd(U, d, V, J, false);
+  CHECK_EQ(d.N, J.d0, "");
+  for(uint i=0;i<d.N;i++) CHECK_GE(fabs(d(i)), 1e-3, "singular Jacobian?");
+
+  arr P = eye(J.d1);
+  P -= compliance * (V*~V);
+
+  cmd.set()->P_compliance = P;
+}
+
 void BotOp::gripperOpen(rai::ArgWord leftRight, double width, double speed){
   if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->open(width, speed); }
   if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->open(width, speed); }

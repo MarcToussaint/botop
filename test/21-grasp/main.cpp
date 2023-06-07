@@ -12,7 +12,8 @@ void testGrasp() {
 
   C.addFrame("obj")
       ->setPosition({-.25,.1,.675})
-      .setShape(rai::ST_ssBox, {.05,.05,.05,.005})
+//      .setShape(rai::ST_ssBox, {.05,.05,.05,.005})
+      .setShape(rai::ST_cylinder, {.05,.025})
 //      .setShape(rai::ST_sphere, {.025})
       .setColor({1,.5,0})
       .setMass(.1)
@@ -79,6 +80,8 @@ void testGrasp() {
   while(!bot.gripperDone(rai::_left)){
     bot.sync(C, .1);
   }
+
+  for(uint k=0;k<30;k++) bot.sync(C, .1);
 }
 
 //===========================================================================
