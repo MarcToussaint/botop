@@ -7,24 +7,20 @@
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
 BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
-                             const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state,
-                             const StringA& joints,
-                             double _tau, double hyperSpeed)
+                               const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state,
+                               const StringA& joints,
+                               double _tau, double hyperSpeed)
   : RobotAbstraction(_cmd, _state),
     Thread("FrankaThread_Emulated", _tau/hyperSpeed),
     simConfig(C),
-    tau(_tau),
-    noise_sig(.001){
+    tau(_tau){
   //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
   //        K["panda_finger_joint1"]->joint->makeRigid();
 
-  //do this in bot.cpp!
-  if(rai::getParameter<bool>("botsim/physx", true)){
-    int verbose = rai::getParameter<int>("botsim/verbose", 1);
-    sim=make_shared<rai::Simulation>(simConfig, rai::Simulation::_physx, verbose);
-  }else{
-    noise_th = rai::getParameter<double>("botsim/noise_th", -1.);
-  }
+  //create a rai Simulator!
+  int verbose = rai::getParameter<int>("botsim/verbose", 1);
+  rai::String engine = rai::getParameter<rai::String>("botsim/engine", "physx");
+  sim=make_shared<rai::Simulation>(simConfig, rai::Enum<rai::Simulation::Engine>(engine), verbose);
 
   {
     q_real = C.getJointState();
@@ -59,7 +55,7 @@ BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
 BotThreadedSim::~BotThreadedSim(){
   LOG(0) <<"shutting down SimThread";
   threadClose();
-  if(sim) sim.reset();
+  sim.reset();
   simConfig.view_close();
 }
 
@@ -104,11 +100,8 @@ void BotThreadedSim::step(){
 
   //-- get current ctrl
   arr cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, KpRef, KdRef, P_compliance; // TODO Kp, Kd, u_b and also read out the correct indices
-  rai::ControlType controlType;
   {
     auto cmdGet = cmd.get();
-
-    controlType = cmdGet->controlType;
 
     if(!cmdGet->ref){
       cmd_q_ref = q_real;
@@ -124,44 +117,10 @@ void BotThreadedSim::step(){
     P_compliance = cmdGet->P_compliance;
   }
 
-  if(!sim){ //NOT a physical simulation -> trivial kinematic emulation
-    arr qDDot_des = zeros(7);
-
-    //-- construct torques from control message depending on the control type
-    if(controlType == rai::ControlType::configRefs) { // plain qRef, qDotRef references
-      if(cmd_q_ref.N == 0) return;
-
-      double k_p, k_d;
-      naturalGains(k_p, k_d, .05, 1.);
-      qDDot_des = k_p * (cmd_q_ref - q_real) + k_d * (cmd_qDot_ref - qDot_real);
-      qDDot_des += cmd_qDDot_ref;
-      //    q = q_ref;
-      //    qdot = qdot_ref;
-
-    } else if(controlType == rai::ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
-      qDDot_des = cmd_qDDot_ref - KpRef*q_real - KdRef*qDot_real;
-    }
-
-    //-- add noise (to controls, vel, pos?)
-    if(noise_th>0.){
-      if(!noise.N) noise = zeros(q_real.N);
-      rndGauss(noise, noise_sig, true);
-      noise *= noise_th;
-      qDot_real += noise;
-    }
-
-    //-- directly integrate
-    q_real += .5 * tau * qDot_real;
-    qDot_real += tau * qDDot_des;
-    q_real += .5 * tau * qDot_real;
-
-  }else{ //PHYSICAL simulation
-
-    sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
+  sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
 //    sim->step({}, tau, sim->_none);
-    q_real = simConfig.getJointState();
-    qDot_real = cmd_qDot_ref;
-  }
+  q_real = simConfig.getJointState();
+  qDot_real = cmd_qDot_ref;
 
   //-- add other crazy perturbations?
 //  if((step_count%1000)<100) q_real(0) = .1;
@@ -203,52 +162,34 @@ void BotThreadedSim::step(){
 }
 
 void GripperSim::open(double width, double speed) {
-  if(sim){
-    auto mux = sim->stepMutex(RAI_HERE);
-    if(sim->sim) sim->sim->openGripper(gripperName);
-    else LOG(0) <<"skipping in fake sim";
-  }
-  else q=width;
+  auto mux = simthread->stepMutex(RAI_HERE);
+  simthread->sim->openGripper(gripperName);
+  q=width;
   isClosing=false; isOpening=true;
 }
 
 void GripperSim::close(double force, double width, double speed) {
-  if(sim){
-    auto mux = sim->stepMutex(RAI_HERE);
-    if(sim->sim) sim->sim->closeGripper(gripperName);
-    else LOG(0) <<"skipping in fake sim";
-  }
-  else q=width;
+  auto mux = simthread->stepMutex(RAI_HERE);
+  simthread->sim->closeGripper(gripperName);
+  q=width;
   isOpening=false; isClosing=true;
 }
 
 void GripperSim::closeGrasp(const char* objName, double force, double width, double speed){
-  if(sim){
-    auto mux = sim->stepMutex(RAI_HERE);
-    if(sim->sim) sim->sim->closeGripperGrasp(gripperName, objName);
-    else LOG(0) <<"skipping in fake sim";
-      //sim->simConfig.attach(gripperName, objName);
-  }
-  else q=width;
+  auto mux = simthread->stepMutex(RAI_HERE);
+  simthread->sim->closeGripperGrasp(gripperName, objName);
+  //sim->simConfig.attach(gripperName, objName);
+  q=width;
   isOpening=false; isClosing=true;
 }
 
 double GripperSim::pos(){
-  if(sim && sim->sim){
-    return sim->sim->getGripperWidth(gripperName);
-  }
-  return q;
+  return simthread->sim->getGripperWidth(gripperName);
 }
 
 bool GripperSim::isDone(){
-  if(sim){
-    auto mux = sim->stepMutex(RAI_HERE);
-    if(sim->sim){
-      if(isClosing) return sim->sim->getGripperIsGrasping(gripperName) || sim->sim->getGripperIsClose(gripperName);
-      if(isOpening) return sim->sim->getGripperIsOpen(gripperName);
-    } else {
-      return true;
-    }
-  }
+  auto mux = simthread->stepMutex(RAI_HERE);
+  if(isClosing) return simthread->sim->getGripperIsGrasping(gripperName) || simthread->sim->getGripperIsClose(gripperName);
+  if(isOpening) return simthread->sim->getGripperIsOpen(gripperName);
   return true;
 }

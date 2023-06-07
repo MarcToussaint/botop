@@ -49,6 +49,7 @@ struct BotOp{
   void moveAutoTimed(const arr& path, double maxVel=1., double maxAcc=1.); //double timeCost);
   void moveTo(const arr& q_target, double timeCost=1., bool overwrite=false);
   void setControllerWriteData(int _writeData);
+  void setCompliance(const arr& J, double compliance=.5);
 
   //-- gripper commands - directly calling the gripper abstraction
   void gripperOpen(rai::ArgWord leftRight, double width=.075, double speed=.2);

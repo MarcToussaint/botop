@@ -3,6 +3,6 @@ BASE2 = ../../src
 
 DEPEND = Core Gui RealSense Perception
 
-OPENCV = 1
+OPENCV4 = 1
 
 include $(BASE)/makeutils/generic.mk
