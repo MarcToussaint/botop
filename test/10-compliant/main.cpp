@@ -30,7 +30,7 @@ void test_bot() {
 
   while(bot.sync(C)){
     arr y = C.eval(FS_position, {"l_gripper"}, {{1,3},{1,0,0}});
-    bot.setCompliance(y.J(), 1.);
+    bot.setCompliance(y.J(), .5);
   } //just syncs the model config C and updates display until done
   bot.setCompliance({}, 0.);
 
@@ -41,14 +41,13 @@ void test_bot() {
   bot.hold(false, true);
 
   for(;;){
-    bot.sync(C);
+    bot.sync(C, .1);
     if(bot.keypressed=='q') break;
     arr y = C.eval(FS_position, {"l_gripper"}, {{1,3},{1,0,0}});
     bot.setCompliance(y.J(), 1.);
+    cout <<y.J() * bot.get_tauExternal() <<endl;
   } //just syncs the model config C and updates display until done
   bot.setCompliance({}, 0.);
-
-  rai::wait();
 }
 
 //===========================================================================

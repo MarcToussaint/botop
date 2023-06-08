@@ -44,6 +44,9 @@ void init_BotOp(pybind11::module& m) {
   .def("get_qDot", &BotOp::get_qDot,
        "get the current (real) robot joint velocities")
 
+  .def("get_tauExternal", &BotOp::get_tauExternal,
+       "get the current (real) robot joint torques (external: gravity & acceleration removed)")
+
   .def("getTimeToEnd", &BotOp::getTimeToEnd,
        "get time-to-go of the current spline reference that is tracked (use getTimeToEnd()<=0. to check if motion execution is done)")
 
@@ -73,6 +76,11 @@ void init_BotOp(pybind11::module& m) {
        pybind11::arg("q_target"),
        pybind11::arg("timeCost") = 1.,
        pybind11::arg("overwrite") = false)
+
+  .def("setCompliance", &BotOp::setCompliance,
+       "set a task space compliant, where J defines the task space Jacobian, and compliance goes from 0 (no compliance) to 1 (full compliance, but still some damping)",
+       pybind11::arg("J"),
+       pybind11::arg("compliance") = .5)
 
   .def("setControllerWriteData", &BotOp::setControllerWriteData,
        "[for internal debugging only] triggers writing control data into a file")

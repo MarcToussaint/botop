@@ -135,7 +135,15 @@ double BotOp::getTimeToEnd(){
 }
 
 arr BotOp::get_tauExternal(){
-  return state.get()->tauExternal;
+  arr tau;
+  {
+    auto stateSet = state.set();
+    tau = stateSet->tauExternalIntegral;
+    tau /= double(stateSet->tauExternalCount);
+    stateSet->tauExternalIntegral.setZero();
+    stateSet->tauExternalCount=0;
+  }
+  return tau;
 }
 
 bool BotOp::sync(rai::Configuration& C, double waitTime){

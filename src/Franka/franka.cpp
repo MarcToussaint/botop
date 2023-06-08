@@ -29,7 +29,8 @@ void FrankaThread::init(uint _robotID, const uintA& _qIndices) {
   //-- basic Kp Kd settings for reference control mode
   Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", arr{20., 20., 20., 20., 10., 15., 10.}); //18., 18., 18., 13., 8., 8., 6.));
   Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", arr{.6, .6, .4, .4, .1, .5, .1}); //.8, .8, .7, .7, .1, .1, .1));
-  friction = rai::getParameter<arr>("Franka/friction", zeros(7));  //Franka/friction: [0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4]
+  friction = rai::getParameter<arr>("Franka/friction", zeros(7));  //Franka/friction: arr{0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4}
+  //friction = rai::getParameter<arr>("Franka/friction", arr{0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4});
   LOG(0) << "FRANKA: Kp_freq:" << Kp_freq << " Kd_ratio:" << Kd_ratio <<" friction:" <<friction;
 
   /* hand tuning result of friction calib:
@@ -77,12 +78,13 @@ void FrankaThread::step(){
     //ensure state variables have sufficient size
     while(stateSet->q.N<=qIndices_max) stateSet->q.append(0.);
     while(stateSet->qDot.N<=qIndices_max) stateSet->qDot.append(0.);
-    while(stateSet->tauExternal.N<=qIndices_max) stateSet->tauExternal.append(0.);
+    while(stateSet->tauExternalIntegral.N<=qIndices_max) stateSet->tauExternalIntegral.append(0.);
 
     for(uint i=0; i<7; i++){
       stateSet->q.elem(qIndices(i)) = q_real(i);
       stateSet->qDot.elem(qIndices(i)) = qDot_real(i);
-      stateSet->tauExternal.elem(qIndices(i)) = 0.;
+      stateSet->tauExternalIntegral.elem(qIndices(i)) = 0.;
+      stateSet->tauExternalCount=0;
     }
   }
 
@@ -123,8 +125,9 @@ void FrankaThread::step(){
       for(uint i=0;i<7;i++){
         stateSet->q.elem(qIndices(i)) = q_real.elem(i);
         stateSet->qDot.elem(qIndices(i)) = qDot_real.elem(i);
-        stateSet->tauExternal.elem(qIndices(i)) = torquesExternal_real.elem(i);
+        stateSet->tauExternalIntegral.elem(qIndices(i)) += torquesExternal_real.elem(i);
       }
+      stateSet->tauExternalCount++;
       state_q_real = stateSet->q;
       state_qDot_real = stateSet->qDot;
     }
@@ -164,12 +167,12 @@ void FrankaThread::step(){
         for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) Kp_ref(i, j) = cmdGet->Kp(qIndices(i), qIndices(j));
       }
       if(cmdGet->Kd.d0 >= 7 && cmdGet->Kd.d1 >=7 && cmdGet->Kd.d0 == cmdGet->Kd.d1){
+        Kd_ref.resize(7, 7);
         for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) Kd_ref(i, j) = cmdGet->Kd(qIndices(i), qIndices(j));
       }
-
       if(cmdGet->P_compliance.N) {
-        HALT("NOT IMPLEMENTED YET (at least properly)")
-        P_compliance = cmdGet->P_compliance;
+        P_compliance.resize(7,7);
+        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) P_compliance(i,j) = cmdGet->P_compliance(qIndices(i), qIndices(j));
       }
 
     }
@@ -179,6 +182,10 @@ void FrankaThread::step(){
     //-- cap the reference difference
     if(q_ref.N==7){
       double err = length(q_ref - q_real);
+      if(P_compliance.N){
+        arr del = q_ref - q_real;
+        err = ::sqrt(scalarProduct(del, P_compliance*del));
+      }
       if(err>.05){ //if(err>.02){ //stall!
         state.set()->stall = 2; //no progress in reference time! for at least 2 iterations (to ensure continuous stall with multiple threads)
         cout <<"STALLING - step:" <<steps <<" err: " <<err <<endl;

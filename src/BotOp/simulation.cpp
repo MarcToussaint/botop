@@ -85,11 +85,11 @@ void BotThreadedSim::step(){
     stateSet->ctrlTime=ctrlTime;
     stateSet->q.resize(q_real.N).setZero();
     stateSet->qDot.resize(qDot_real.N).setZero();
-    stateSet->tauExternal.resize(q_real.N).setZero();
+    stateSet->tauExternalIntegral.resize(q_real.N).setZero();
     for(uint i:q_indices){
       stateSet->q(i) = q_real(i);
       stateSet->qDot(i) = qDot_real(i);
-      stateSet->tauExternal(i) = tauExternal(i);
+      stateSet->tauExternalIntegral(i) = tauExternal(i);
     }
   }
 
