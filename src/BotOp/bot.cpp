@@ -134,6 +134,10 @@ double BotOp::getTimeToEnd(){
   return sp->getEndTime() - ctrlTime;
 }
 
+arr BotOp::get_tauExternal(){
+  return state.get()->tauExternal;
+}
+
 bool BotOp::sync(rai::Configuration& C, double waitTime){
   //update q state
   C.setJointState(state.get()->q);
