@@ -41,6 +41,7 @@ struct BotOp{
   void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime);
   const arr& get_qHome(){ return qHome; }
   double getTimeToEnd(); //negative, if motion spline is done
+  arr get_tauExternal();
   int getKeyPressed(){ return keypressed; }
 
   //-- motion commands
