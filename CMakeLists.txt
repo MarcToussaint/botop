@@ -74,6 +74,7 @@ file(GLOB SRC_OptiTrack src/OptiTrack/*.cpp)
 file(GLOB SRC_RealSense src/RealSense/*.cpp)
 file(GLOB SRC_Robotiq src/Robotiq/*.cpp)
 file(GLOB SRC_Audio src/Audio/*.cpp)
+file(GLOB SRC_MarkerVision src/MarkerVision/*.cpp)
 
 add_library(rai SHARED
   ${SRC_Core}
@@ -99,6 +100,7 @@ add_library(rai SHARED
   ${SRC_RealSense}
   ${SRC_Robotiq}
   ${SRC_Audio}
+  ${SRC_MarkerVision}
   )
 
 target_link_libraries(rai

@@ -3,7 +3,7 @@ BASE2 = ../../src
 NAME   = $(shell basename `pwd`)
 OUTPUT = lib$(NAME).so
 
-DEPEND = Core Gui Perception opencv_reg KOMO
+DEPEND = Core Gui Perception KOMO
 
 OPENCV = 1
 

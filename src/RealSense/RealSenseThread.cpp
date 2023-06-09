@@ -87,7 +87,7 @@ void RealSenseThread::open(){
           if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
             sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
             sensor.set_option(RS2_OPTION_EXPOSURE, 5000.);
-            LOG(1) <<"  I disabled auto exposure";
+            LOG(1) <<"  I disabled auto depth exposure";
           }
         }
       }

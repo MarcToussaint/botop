@@ -10,10 +10,9 @@
 
 #include <Gui/opengl.h>
 
-#include <Perception/opencv.h>
 #include <Geo/depth2PointCloud.h>
 
-#include <opencv2/opencv.hpp>
+#include <MarkerVision/cvTools.h>
 
 //===========================================================================
 
@@ -97,89 +96,28 @@ void collectData(){
 
 //===========================================================================
 
-arr getHsvBlobImageCoords(cv::Mat& rgb, cv::Mat& depth, const arr& hsvFilter){
-  //blur
-  cv::blur(rgb, rgb, cv::Size(3,3));
+void selectHSV(){
+  rai::Configuration C;
+  C.addFile("station.g");
+  rai::Frame* cam = C["cameraWrist"];
+  BotOp bot(C, rai::getParameter<bool>("real"));
 
-  //convert to BGR -> RGBPYBIND11_PYTHON_VERSION -> HSV
-  cv::Mat hsv, mask;
-  cv::cvtColor(rgb, rgb, cv::COLOR_RGB2BGR);
-  cv::cvtColor(rgb, hsv, cv::COLOR_BGR2HSV);
+  arr hsvFilter = rai::getParameter<arr>("hsvFilter");
 
-  //find red areas
-  cv::inRange(hsv,
-              cv::Scalar(hsvFilter(0,0), hsvFilter(0,1), hsvFilter(0,2)),
-              cv::Scalar(hsvFilter(1,0), hsvFilter(1,1), hsvFilter(1,2)), mask);
-
-  if(rgb.total()>0 && depth.total()>0){
-    cv::imshow("rgb", rgb);
-    //cv::imshow("depth", depth); //white=1meters
-    cv::imshow("mask", mask);
-    cv::waitKey(1);
+  CameraCalibrationHSVGui gui;
+  OpenGL disp;
+  byteA img;
+  floatA depth;
+  for(;;){
+    bot.getImageAndDepth(img, depth, cam->name);
+    hsvFilter = gui.getHSV();
+    arr u = getHsvBlobImageCoords(img, depth, hsvFilter);
+    disp.watchImage(img, false);
+    bot.sync(C);
+    if(bot.getKeyPressed()=='q') break;
   }
 
-
-  //find contours
-  std::vector<std::vector<cv::Point> > contours;
-  cv::findContours(mask, contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
-
-  if(!contours.size()) return {};
-
-  //get largest contour
-  arr sizes(contours.size());
-  for(uint i=0; i<contours.size(); i++) sizes(i) = cv::contourArea(cv::Mat(contours[i]));
-  uint largest = argmax(sizes);
-
-  //draw the contour interior into the mask
-  mask = cv::Scalar(0);
-  cv::drawContours(mask, contours, largest, cv::Scalar(128), cv::FILLED);
-
-  // grab the depth values and mean x,y coordinates
-  floatA depthValues;
-  double objX=0.,objY=0.;
-  for(int y=0;y<mask.rows;y++) for(int x=0;x<mask.cols;x++){
-    if(mask.at<byte>(y,x)){
-      float d = depth.at<float>(y,x);
-      if(d>.1 && d<1.){
-        depthValues.append(d);
-        objX += x;
-        objY += y;
-      }
-    }
-  }
-
-  arr blobPosition;
-  if(depthValues.N>100.){
-    objX /= double(depthValues.N);
-    objY /= double(depthValues.N);
-
-    // median
-    double objDepth = depthValues.median_nonConst();
-    // mean
-//    double objDepth = sum(depthValues)/double(depthValues.N);
-
-    if(objDepth>.1 && objDepth < 1.){ //accept new position only when object is in reasonable range
-      // image coordinates
-      blobPosition= {objX, objY, objDepth};
-
-
-      // world coordinates
-      //cameraFrame->X.applyOnPoint(objCoords); //transforms into world coordinates
-    }
-  }
-
-  if(rgb.total()>0 && depth.total()>0){
-    if(contours.size()){
-      cv::drawContours( rgb, contours, largest, cv::Scalar(0,0,255), 1, 8);
-      cv::drawContours( depth, contours, largest, cv::Scalar(0), 1, 8);
-    }
-    cv::imshow("rgb", rgb);
-    //cv::imshow("depth", depth); //white=1meters
-    cv::imshow("mask", mask);
-    cv::waitKey(1);
-  }
-
-  return blobPosition;
+  cout <<"SELECTED:" <<hsvFilter <<endl;
 }
 
 //===========================================================================
@@ -198,19 +136,20 @@ void computeCalibration(){
     rai::Graph& dat = n->graph();
 
     // grap copies of rgb and depth
-    cv::Mat rgb = CV(dat.get<byteA>("img"));
-    cv::Mat depth = CV(dat.get<floatA>("depth"));
 
-    if(rgb.rows != depth.rows) continue;
-
-    // blur
-    arr u = getHsvBlobImageCoords(rgb, depth, hsvFilter);
-    if(!u.N){ rai::wait(); continue; }
-
+    byteA img(dat.get<byteA>("img"));
+    floatA depth(dat.get<floatA>("depth"));
     rai::Transformation mountPose(dat.get<arr>("mountPose"));
     rai::Transformation camPose(dat.get<arr>("camPose"));
     rai::Vector dotWorld(dat.get<arr>("dotPosition"));
     arr Fxypxy = dat.get<arr>("camFxypxy");
+
+    if(img.d0 != depth.d0) continue;
+
+    // blur
+    arr u = getHsvBlobImageCoords(img, depth, hsvFilter);
+    if(!u.N){ rai::wait(); continue; }
+
 
     // camera coordinates
     arr xCam=u;
@@ -223,14 +162,10 @@ void computeCalibration(){
 
     cout <<"blob position: " <<xCam <<' ' <<dotCam <<' ' <<xCam-dotCam <<' ' <<Fxypxy <<endl;
 
-    disp.watchImage(dat.get<byteA>("img"), false, 1.);
+    disp.watchImage(img, true, 1.);
 
     //collect data
-    u(1) = double(rgb.rows-1)-u(1);
-    u(2) *= -1.;
-    u(0) *= u(2);
-    u(1) *= u(2);
-    u.append(1.);
+    makeHomogeneousImageCoordinate(u, img.d0);
     U.append(u);
     X.append(x);
   }
@@ -266,14 +201,146 @@ void computeCalibration(){
 
 //===========================================================================
 
+void demoCalibration(){
+  //-- setup a configuration
+  rai::Configuration C;
+  C.addFile("station.g");
+  rai::Frame* target = C.addFrame("target");
+  target->setShape(rai::ST_marker, {.1});
+  target->setColor({1.,.5,0.});
+
+  C["bellybutton"]->name = "dot0";
+  rai::Frame* cam = C["cameraWrist"];
+  rai::Frame* mount = C["l_panda_joint7"];
+  arr hsvFilter = rai::getParameter<arr>("hsvFilter");
+  arr Pinv = rai::getParameter<arr>("Pinv");
+
+  BotOp bot(C, rai::getParameter<bool>("real"));
+
+  bot.gripperOpen(rai::_left);
+
+  //initialize camera
+  OpenGL disp;
+  byteA img;
+  floatA depth;
+  for(uint t=0;t<30;t++){
+    bot.getImageAndDepth(img, depth, cam->name);
+    disp.watchImage(img, false);
+    bot.sync(C);
+  }
+
+  bot.getImageAndDepth(img, depth, cam->name);
+//  disp.watchImage(img, false);
+  arr u = getHsvBlobImageCoords(img, depth, hsvFilter);
+  cout <<"dot in image coords: " <<u <<endl;
+
+  if(!u.N) return;
+
+#if 1
+  makeHomogeneousImageCoordinate(u, img.d0);
+  arr x = Pinv*u;
+  cout <<"dot in wrist coords: " <<x <<endl;
+  mount->get_X().applyOnPoint(x);
+#else
+  depthData2point(u, bot.getCameraFxypxy(cam->name));
+  arr x = u;
+  cout <<"dot in wrist coords: " <<x <<endl;
+  cam->get_X().applyOnPoint(x);
+#endif
+  cout <<"dot in world coords: " <<x <<endl;
+  target->setPosition(x);
+
+  arr qT;
+  {
+    KOMO komo;
+    komo.setConfig(C, false);
+    komo.setTiming(1., 1, 1., 0);
+    komo.addControlObjective({}, 0, 1e-1);
+    komo.addObjective({}, FS_positionRel, {"target", cam->name}, OT_eq, {1e0}, {0.,0.,-.2});
+    auto ret = NLP_Solver().setProblem(komo.nlp()).solve();
+    cout <<*ret <<endl;
+    komo.view();
+    if(!ret->feasible) return;
+    qT = komo.getPath_qOrg()[-1];
+  }
+
+  for(;;){
+    bot.sync(C);
+    if(bot.getKeyPressed()=='q') return;
+    if(bot.getKeyPressed()==' ') break;
+  }
+
+  bot.moveTo(qT, 5.);
+  for(;bot.getTimeToEnd()>0.;) bot.sync(C);
+
+  bot.hold(false, true);
+  for(uint t=0;t<2;t++) bot.sync(C);
+
+  for(;;){
+    bot.sync(C);
+    if(bot.getKeyPressed()=='q') return;
+    if(bot.getKeyPressed()==' ') break;
+  }
+
+  bot.gripperClose(rai::_left);
+
+  bot.getImageAndDepth(img, depth, cam->name);
+//  disp.watchImage(img, false);
+  u = getHsvBlobImageCoords(img, depth, hsvFilter);
+  cout <<"dot in image coords: " <<u <<endl;
+
+  if(!u.N) return;
+
+#if 1
+  makeHomogeneousImageCoordinate(u, img.d0);
+  x = Pinv*u;
+  cout <<"dot in wrist coords: " <<x <<endl;
+  mount->get_X().applyOnPoint(x);
+#else
+  depthData2point(u, bot.getCameraFxypxy(cam->name));
+  x = u;
+  cout <<"dot in wrist coords: " <<x <<endl;
+  cam->get_X().applyOnPoint(x);
+#endif
+  cout <<"dot in world coords: " <<x <<endl;
+  target->setPosition(x);
+
+  {
+    KOMO komo;
+    komo.setConfig(C, false);
+    komo.setTiming(1., 1, 1., 0);
+    komo.addControlObjective({}, 0, 1e-1);
+    komo.addObjective({}, FS_vectorZ, {"l_gripper"}, OT_eq, {1e0}, {0.,0.,1.});
+    komo.addObjective({}, FS_positionRel, {"target", "l_gripper"}, OT_eq, {1e0}, {0.,0.,-.01});
+    auto ret = NLP_Solver().setProblem(komo.nlp()).solve();
+    cout <<*ret <<endl;
+    komo.view();
+    if(!ret->feasible) return;
+    qT = komo.getPath_qOrg()[-1];
+  }
+
+  for(;;){
+    bot.sync(C);
+    if(bot.getKeyPressed()=='q') return;
+    if(bot.getKeyPressed()==' ') break;
+  }
+
+  bot.moveTo(qT, 5.);
+  for(;bot.getTimeToEnd()>0.;) bot.sync(C);
+}
+
+//===========================================================================
+
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
 //  collectData();
 
-  computeCalibration();
+//  computeCalibration();
 
-//  demoCalibration();
+//    selectHSV();
+
+  demoCalibration();
 
   LOG(0) <<" === bye bye ===\n";
 

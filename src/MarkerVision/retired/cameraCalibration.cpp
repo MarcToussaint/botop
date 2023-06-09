@@ -5,7 +5,7 @@
 
 #include <Kin/frame.h>
 #include <KOMO/komo.h>
-#include <Kin/TM_qItself.h>
+#include <Kin/F_qFeatures.h>
 
 
 CameraCalibration::CameraCalibration() {
