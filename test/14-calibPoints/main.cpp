@@ -13,6 +13,8 @@
 #include <Perception/opencv.h>
 #include <Geo/depth2PointCloud.h>
 
+#include <opencv2/opencv.hpp>
+
 //===========================================================================
 
 void decomposeInvProjectionMatrix(arr& K, arr& R, arr& t, const arr& P){
@@ -33,13 +35,20 @@ void collectData(){
   rai::Frame* cam = C["cameraWrist"];
   rai::Frame* mount = C["l_panda_joint7"];
 
-  BotOp bot(C, false);
+  BotOp bot(C, rai::getParameter<bool>("real"));
+
+  //initialize, also camera
+  bot.home(C);
+  byteA img;
+  floatA depth;
+  bot.getImageAndDepth(img, depth, cam->name);
+
 
   rai::Graph data;
 
-  uint nDots=5;
+  uint nDots=1;
   for(uint d=0;d<nDots;d++){
-    for(uint k=0;k<5; k++){
+    for(uint k=0;k<50; k++){
       rai::Frame* dot = C[STRING("dot" <<d)];
 
       KOMO komo;
@@ -47,7 +56,7 @@ void collectData(){
       komo.setTiming(1., 1, 1., 0);
       komo.addControlObjective({}, 0, 1e-1);
 
-      arr dotPos = .2*(rand(3)-.5);
+      arr dotPos = .15*(rand(3)-.5);
       dotPos(2) -= .35;
       komo.addObjective({}, FS_positionRel, {dot->name, cam->name}, OT_eq, {1e0}, dotPos);
       komo.addObjective({}, FS_positionRel, {"l_gripper", dot->name}, OT_ineq, {{1,3},{0.,0.,-1.}}, {0.,0.,.1});
@@ -64,15 +73,13 @@ void collectData(){
         continue;
       }
 
-      bot.move(komo.getPath_qOrg(), {1.});
+      bot.moveTo(komo.getPath_qOrg()[-1], 2.);
       for(;bot.getTimeToEnd()>0.;) bot.sync(C);
 
       bot.hold(false, true);
       for(uint t=0;t<2;t++) bot.sync(C);
 
-      rai::Graph& dat = data.addSubgraph(dot->name+k);
-      byteA img;
-      floatA depth;
+      rai::Graph& dat = data.addSubgraph(STRING(dot->name<<k));
       bot.getImageAndDepth(img, depth, cam->name);
       dat.add("mountPose", mount->getPose());
       dat.add("camPose", cam->getPose());
@@ -84,6 +91,8 @@ void collectData(){
   }
 
   data.write(FILE("dat.g"), "\n", 0, -1, false, true);
+
+  bot.home(C);
 }
 
 //===========================================================================
@@ -101,6 +110,14 @@ arr getHsvBlobImageCoords(cv::Mat& rgb, cv::Mat& depth, const arr& hsvFilter){
   cv::inRange(hsv,
               cv::Scalar(hsvFilter(0,0), hsvFilter(0,1), hsvFilter(0,2)),
               cv::Scalar(hsvFilter(1,0), hsvFilter(1,1), hsvFilter(1,2)), mask);
+
+  if(rgb.total()>0 && depth.total()>0){
+    cv::imshow("rgb", rgb);
+    //cv::imshow("depth", depth); //white=1meters
+    cv::imshow("mask", mask);
+    cv::waitKey(1);
+  }
+
 
   //find contours
   std::vector<std::vector<cv::Point> > contours;
@@ -132,7 +149,7 @@ arr getHsvBlobImageCoords(cv::Mat& rgb, cv::Mat& depth, const arr& hsvFilter){
   }
 
   arr blobPosition;
-  if(depthValues.N>200.){
+  if(depthValues.N>100.){
     objX /= double(depthValues.N);
     objY /= double(depthValues.N);
 
@@ -157,9 +174,9 @@ arr getHsvBlobImageCoords(cv::Mat& rgb, cv::Mat& depth, const arr& hsvFilter){
       cv::drawContours( depth, contours, largest, cv::Scalar(0), 1, 8);
     }
     cv::imshow("rgb", rgb);
-    cv::imshow("depth", depth); //white=1meters
+    //cv::imshow("depth", depth); //white=1meters
     cv::imshow("mask", mask);
-    int key = cv::waitKey(1);
+    cv::waitKey(1);
   }
 
   return blobPosition;
@@ -177,6 +194,7 @@ void computeCalibration(){
 
   OpenGL disp;
   for(rai::Node *n:data){
+    LOG(0) <<"===========" <<n->key;
     rai::Graph& dat = n->graph();
 
     // grap copies of rgb and depth
@@ -187,6 +205,7 @@ void computeCalibration(){
 
     // blur
     arr u = getHsvBlobImageCoords(rgb, depth, hsvFilter);
+    if(!u.N){ rai::wait(); continue; }
 
     rai::Transformation mountPose(dat.get<arr>("mountPose"));
     rai::Transformation camPose(dat.get<arr>("camPose"));
@@ -243,8 +262,6 @@ void computeCalibration(){
   cout <<"*** camera world pose: " <<T <<endl;
   cout <<"*** camera world pos: " <<T.pos <<endl;
   cout <<"*** camera world rot: " <<T.rot <<endl;
-
-
 }
 
 //===========================================================================
