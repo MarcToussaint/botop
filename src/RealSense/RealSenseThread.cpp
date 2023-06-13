@@ -82,7 +82,7 @@ void RealSenseThread::open(){
           LOG(1) <<"  I disabled auto white balance";
         }
       }
-      if(!longCable){ //crashes with long cable
+      if(false && !longCable){ //auto exposure works pretty bad for depth module //crashes with long cable
         if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")){
           if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
             sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);

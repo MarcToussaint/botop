@@ -16,8 +16,12 @@ struct RealSenseThread : Thread, rai::CameraAbstraction {
   ~RealSenseThread();
 
   virtual void getImageAndDepth(byteA& _image, floatA& _depth){
-    image.waitForRevisionGreaterThan(10);
-    depth.waitForRevisionGreaterThan(10);
+    uint n=100;
+    if(image.getRevision()<n){
+      LOG(0) <<"waiting to get " <<n <<" images from RealSense for autoexposure settling";
+      image.waitForRevisionGreaterThan(n); //need many starting images for autoexposure to get settled!!
+      depth.waitForRevisionGreaterThan(n);
+    }
     _image = image.get();
     _depth = depth.get();
   }

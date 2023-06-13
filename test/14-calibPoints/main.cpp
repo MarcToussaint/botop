@@ -34,15 +34,16 @@ void collectData(){
 
   uint nDots=1;
   for(uint d=0;d<nDots;d++){
-    for(uint k=0;k<20; k++){
+    for(uint k=0;k<50; k++){
       rai::Frame* dot = C[STRING("dot" <<d)];
 
-      arr dotPos = .15*(rand(3)-.5);
+      arr dotPos = arr{.2, .15, .2}%(rand(3)-.5);
       dotPos(2) -= .35;
       double wristAngle = rnd.uni(-2.3, 2.3);
 
       {
         Move_IK move(bot, C, false);
+        move().add_collision();
         move().addObjective({}, FS_positionRel, {dot->name, cam->name}, OT_eq, {1e0}, dotPos);
         move().addObjective({}, FS_positionRel, {"l_gripper", dot->name}, OT_ineq, {{1,3},{0.,0.,-1.}}, {0.,0.,.1});
         move().addObjective({}, FS_positionRel, {"l_gripper", dot->name}, OT_eq, {{2,3},{1.,0.,0.,0.,1.,0.}}, {});
@@ -55,7 +56,7 @@ void collectData(){
       }
 
 //      bot.hold(false, true);
-      for(uint t=0;t<2;t++) bot.sync(C);
+      for(uint t=0;t<10;t++) bot.sync(C);
 
       rai::Graph& dat = data.addSubgraph(STRING(dot->name<<k));
       bot.getImageAndDepth(img, depth, cam->name);
@@ -191,32 +192,52 @@ void demoCalibration(){
   rai::Frame* cam = C["cameraWrist"];
   arr hsvFilter = rai::getParameter<arr>("hsvFilter");
   arr Pinv = rai::getParameter<arr>("Pinv");
+  int checks = rai::getParameter<int>("checks", 1);
 
   BotOp bot(C, rai::getParameter<bool>("real"));
 
+  //pre motion
   bot.gripperOpen(rai::_left);
-
-  if(!sense_HsvBlob(bot, C, cam->name, "target", hsvFilter, Pinv, 1)) return;
-
   {
-    Move_IK move(bot, C, true);
-    move().addObjective({}, FS_positionRel, {"target", cam->name}, OT_eq, {1e0}, {0.,0.,-.3});
+    Move_IK move(bot, C, checks);
+    move().addObjective({}, FS_positionRel, {"dot1", cam->name}, OT_eq, {1e0}, {0.,0.,-.3});
     if(!move.go()) return;
   }
 
-  bot.hold(false, true);
-  for(uint t=0;t<2;t++) bot.sync(C);
-
+  //fine motion
   bot.gripperCloseGrasp(rai::_left, 0);
-
-  if(!sense_HsvBlob(bot, C, cam->name, "target", hsvFilter, Pinv, 1)) return;
-
+  for(uint t=0;t<5;t++) bot.sync(C);
+  if(!sense_HsvBlob(bot, C, cam->name, "target", hsvFilter, Pinv, checks)) return;
   {
-    Move_IK move(bot, C, true);
+    Move_IK move(bot, C, checks);
     move().addObjective({}, FS_vectorZ, {"l_gripper"}, OT_eq, {1e0}, {0.,0.,1.});
     move().addObjective({}, FS_positionRel, {"target", "l_gripper"}, OT_eq, {1e0}, {0.,0.,-.01});
     if(!move.go()) return;
   }
+
+  //pre motion
+  if(!bot.wait(C)) return;
+  bot.gripperOpen(rai::_left);
+  {
+    Move_IK move(bot, C, checks);
+    move().addObjective({}, FS_positionRel, {"dot2", cam->name}, OT_eq, {1e0}, {0.,0.,-.3});
+    if(!move.go()) return;
+  }
+
+  //fine motion
+  bot.gripperCloseGrasp(rai::_left, 0);
+  for(uint t=0;t<5;t++) bot.sync(C);
+  if(!sense_HsvBlob(bot, C, cam->name, "target", hsvFilter, Pinv, checks)) return;
+  {
+    Move_IK move(bot, C, checks);
+    move().addObjective({}, FS_vectorZ, {"l_gripper"}, OT_eq, {1e0}, {0.,0.,1.});
+    move().addObjective({}, FS_positionRel, {"target", "l_gripper"}, OT_eq, {1e0}, {0.,0.,-.01});
+    if(!move.go()) return;
+  }
+
+  if(!bot.wait(C)) return;
+  bot.gripperOpen(rai::_left);
+  bot.home(C);
 }
 
 //===========================================================================

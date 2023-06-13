@@ -175,6 +175,14 @@ bool BotOp::sync(rai::Configuration& C, double waitTime){
   return true;
 }
 
+bool BotOp::wait(rai::Configuration& C){
+  for(;;){
+    sync(C, .1);
+    if(keypressed=='q') return false;
+    if(keypressed) return true;
+  }
+}
+
 std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
   auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
   if(!sp){
@@ -369,12 +377,7 @@ void BotOp::getImageDepthPcl(byteA& image, floatA& depth, arr& points, const cha
 
 void BotOp::home(rai::Configuration& C){
   C.viewer()->raiseWindow();
-  arr q=get_q();
-  if(maxDiff(q,qHome)>1e-3){
-    moveTo(qHome, 1.);
-  }else{
-    move(~qHome, {.1});
-  }
+  moveTo(qHome, 1.);
   while(sync(C));
 }
 

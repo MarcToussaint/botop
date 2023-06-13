@@ -67,6 +67,7 @@ struct BotOp{
 
   //-- sync the user's C with the robot, update the display, return false if motion spline is done
   bool sync(rai::Configuration& C, double waitTime=.1);
+  bool wait(rai::Configuration& C);
 
   //-- motion macros
   void home(rai::Configuration& C);

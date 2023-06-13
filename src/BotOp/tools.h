@@ -4,15 +4,11 @@
 struct Move_IK{
   BotOp& bot;
   rai::Configuration& C;
-  bool askForOK;
+  int askForOK;
   KOMO komo;
   arr qT;
 
-  Move_IK(BotOp& _bot, rai::Configuration& _C, bool _askForOK=true) : bot(_bot), C(_C), askForOK(_askForOK){
-    komo.setConfig(C, false);
-    komo.setTiming(1., 1, 1., 0);
-    komo.addControlObjective({}, 0, 1e-1);
-  }
+  Move_IK(BotOp& _bot, rai::Configuration& _C, int _askForOK=true);
 
   KOMO& operator()(){ return komo; }
 

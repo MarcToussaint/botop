@@ -16,10 +16,12 @@ const char *USAGE =
 void test_bot() {
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
 
   //-- start a robot thread
   BotOp bot(C, rai::getParameter<bool>("real", false));
+
+  bot.gripperClose(rai::_left);
 
   //-- create 2 simple reference configurations
   arr q0 = bot.get_qHome();
@@ -27,13 +29,7 @@ void test_bot() {
   qT(1) -= .5;
 
   bot.move(~qT, {2.}); //in 2 sec strict
-
-  while(bot.sync(C)){
-    arr y = C.eval(FS_position, {"l_gripper"}, {{1,3},{1,0,0}});
-    bot.setCompliance(y.J(), .5);
-  } //just syncs the model config C and updates display until done
-  bot.setCompliance({}, 0.);
-
+  while(bot.sync(C)){}
   bot.moveTo(q0, 1.); //using timing cost=1
 
   while(bot.sync(C)){}
@@ -48,6 +44,9 @@ void test_bot() {
     cout <<y.J() * bot.get_tauExternal() <<endl;
   } //just syncs the model config C and updates display until done
   bot.setCompliance({}, 0.);
+
+  bot.gripperOpen(rai::_left);
+  bot.home(C);
 }
 
 //===========================================================================

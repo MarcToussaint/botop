@@ -46,7 +46,10 @@ arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int
   std::vector<std::vector<cv::Point> > contours;
   cv::findContours(mask, contours, cv::RETR_LIST, cv::CHAIN_APPROX_SIMPLE);
 
-  if(!contours.size()) return {};
+  if(!contours.size()){
+    if(verbose>0) cv::waitKey();
+    return {};
+  }
 
   //get largest contour
   arr sizes(contours.size());
@@ -103,6 +106,7 @@ arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int
       //cv::imshow("depth", depth); //white=1meters
       cv::imshow("mask", mask);
       cv::waitKey(1);
+      if(!blobPosition.N) cv::waitKey();
     }
   }
 
@@ -158,6 +162,7 @@ CameraCalibrationHSVGui::CameraCalibrationHSVGui() {
 
 
 arr CameraCalibrationHSVGui::getHSV() {
+  cv::waitKey(1);
   arr hsv = arr{(double)low_H, (double)low_S, (double)low_V, (double)high_H, (double)high_S, (double)high_V};
   return hsv.reshape(2,3);
 }
