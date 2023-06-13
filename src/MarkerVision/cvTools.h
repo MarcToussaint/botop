@@ -1,14 +1,10 @@
 #include <Core/array.h>
 
-arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter);
+void makeHomogeneousImageCoordinate(arr& u, uint imgHeight);
 
-void makeHomogeneousImageCoordinate(arr& u, uint imgHeight){
-  u(1) = double(imgHeight-1)-u(1);
-  u(2) *= -1.;
-  u(0) *= u(2);
-  u(1) *= u(2);
-  u.append(1.);
-}
+void decomposeInvProjectionMatrix(arr& K, arr& R, arr& t, const arr& P);
+
+arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int verbose=0);
 
 struct CameraCalibrationHSVGui {
   static const char* window_detection_name;

@@ -16,8 +16,8 @@ struct RealSenseThread : Thread, rai::CameraAbstraction {
   ~RealSenseThread();
 
   virtual void getImageAndDepth(byteA& _image, floatA& _depth){
-    image.waitForRevisionGreaterThan(1);
-    depth.waitForRevisionGreaterThan(1);
+    image.waitForRevisionGreaterThan(10);
+    depth.waitForRevisionGreaterThan(10);
     _image = image.get();
     _depth = depth.get();
   }

@@ -2,7 +2,22 @@
 
 #include <Perception/opencv.h>
 
-arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter){
+void makeHomogeneousImageCoordinate(arr& u, uint imgHeight){
+//  u(1) = double(imgHeight-1)-u(1);
+//  u(2) *= -1.;
+  u(0) *= u(2);
+  u(1) *= u(2);
+  u.append(1.);
+}
+
+void decomposeInvProjectionMatrix(arr& K, arr& R, arr& t, const arr& P){
+  arr KR = P.sub(0,2,0,2);
+  t = ~P.col(3);
+  KR = inverse(KR);
+  lapack_RQ(K, R, KR);
+}
+
+arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int verbose){
   cv::Mat rgb = CV(_rgb);
   cv::Mat depth = CV(_depth);
 
@@ -19,7 +34,7 @@ arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter){
               cv::Scalar(hsvFilter(0,0), hsvFilter(0,1), hsvFilter(0,2)),
               cv::Scalar(hsvFilter(1,0), hsvFilter(1,1), hsvFilter(1,2)), mask);
 
-  if(rgb.total()>0 && depth.total()>0){
+  if(verbose>0 && rgb.total()>0 && depth.total()>0){
     cv::imshow("rgb", rgb);
     //cv::imshow("depth", depth); //white=1meters
     cv::imshow("mask", mask);
@@ -83,10 +98,12 @@ arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter){
       cv::drawContours( rgb, contours, largest, cv::Scalar(0,0,255), 1, 8);
       cv::drawContours( depth, contours, largest, cv::Scalar(0), 1, 8);
     }
-    cv::imshow("rgb", rgb);
-    //cv::imshow("depth", depth); //white=1meters
-    cv::imshow("mask", mask);
-    cv::waitKey(1);
+    if(verbose>0){
+      cv::imshow("rgb", rgb);
+      //cv::imshow("depth", depth); //white=1meters
+      cv::imshow("mask", mask);
+      cv::waitKey(1);
+    }
   }
 
   return blobPosition;
