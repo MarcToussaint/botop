@@ -18,7 +18,7 @@ void collectData(){
   rai::Configuration C;
   C.addFile("station.g");
 
-  C["bellybutton"]->name = "dot0";
+//  C["bellybutton"]->name = "dot0";
   rai::Frame* cam = C["cameraWrist"];
   rai::Frame* mount = C["l_panda_joint7"];
 
@@ -34,7 +34,7 @@ void collectData(){
 
   uint nDots=1;
   for(uint d=0;d<nDots;d++){
-    for(uint k=0;k<50; k++){
+    for(uint k=0;k<20; k++){
       rai::Frame* dot = C[STRING("dot" <<d)];
 
       arr dotPos = arr{.2, .15, .2}%(rand(3)-.5);
@@ -55,8 +55,9 @@ void collectData(){
         }
       }
 
+      rai::wait(1.);
 //      bot.hold(false, true);
-      for(uint t=0;t<10;t++) bot.sync(C);
+      for(uint t=0;t<20;t++) bot.sync(C);
 
       rai::Graph& dat = data.addSubgraph(STRING(dot->name<<k));
       bot.getImageAndDepth(img, depth, cam->name);
@@ -242,6 +243,32 @@ void demoCalibration(){
 
 //===========================================================================
 
+void checkTip(){
+  //-- setup a configuration
+  rai::Configuration C;
+  C.addFile("station.g");
+
+  BotOp bot(C, rai::getParameter<bool>("real"));
+
+  rai::Frame* tip = C["l_gripper"];
+
+  //pre motion
+  bot.gripperClose(rai::_left);
+  bot.hold(true, false);
+  for(;;){
+    bot.sync(C, .1);
+    cout <<"tip: " <<tip->getPosition() <<endl;
+    if(bot.getKeyPressed()) break;
+  }
+
+  if(!bot.wait(C)) return;
+  bot.gripperOpen(rai::_left);
+  bot.home(C);
+
+}
+
+//===========================================================================
+
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
@@ -252,6 +279,8 @@ int main(int argc, char * argv[]){
 //  selectHSV();
 
   demoCalibration();
+
+//  checkTip();
 
   LOG(0) <<" === bye bye ===\n";
 

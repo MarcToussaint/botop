@@ -35,7 +35,7 @@ RealSenseThread::~RealSenseThread(){
 
 void RealSenseThread::open(){
   bool longCable = rai::getParameter<bool>("RealSense/longCable", false);
-  bool lowResolution = rai::getParameter<bool>("RealSense/lowResolution", true);
+  int resolution = rai::getParameter<int>("RealSense/resolution", 640);
   bool alignToDepth = rai::getParameter<bool>("RealSense/alignToDepth", true);
   bool autoExposure = rai::getParameter<bool>("RealSense/autoExposure", true);
   double exposure = rai::getParameter<double>("RealSense/exposure", 500);
@@ -44,12 +44,17 @@ void RealSenseThread::open(){
   s = new sRealSenseThread;
 
   s->cfg = std::make_shared<rs2::config>();
-  if(lowResolution){
+  if(resolution==480){
     s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 424, 240, rs2_format::RS2_FORMAT_RGB8, 0);
     s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 480, 270, rs2_format::RS2_FORMAT_Z16, 15);
-  }else{
+  }else if(resolution==640){
     s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 640, 360, rs2_format::RS2_FORMAT_RGB8, 30);
     s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 30);
+  }else if(resolution==1280){
+    s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 1280, 720, rs2_format::RS2_FORMAT_RGB8, 30);
+    s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 1280, 720, rs2_format::RS2_FORMAT_Z16, 30);
+  }else{
+    LOG(-2) <<"RealSense Driver: resolution=" <<resolution <<" option not available (avaiable: 480, 640, 1280)";
   }
 
   rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);

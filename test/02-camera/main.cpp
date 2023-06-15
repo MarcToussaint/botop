@@ -22,7 +22,7 @@ int testDirect(){
     Depth2PointCloud cvt2pcl(RS.depth, RS.fxypxy(0), RS.fxypxy(1), RS.fxypxy(2), RS.fxypxy(3));
     PointCloudViewer pcview(cvt2pcl.points, RS.image);
 
-    cout <<RS.fxypxy <<endl;
+    cout <<"Camera Fxypxy: " <<RS.fxypxy <<endl;
 
     {
       auto depthGet = RS.depth.get();
@@ -56,7 +56,6 @@ int testDirect(){
     cout <<"DISPLAY timer:   " <<tim.report() <<endl;
     cout <<"RealSense timer: " <<RS.timer.report() <<endl;
   }
-
 
   LOG(0) <<"bye bye";
 
@@ -113,7 +112,7 @@ void testBotop(){
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
-//  testDirect();
-  testBotop();
+  testDirect();
+//  testBotop();
 
 }
