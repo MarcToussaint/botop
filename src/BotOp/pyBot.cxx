@@ -45,7 +45,7 @@ void init_BotOp(pybind11::module& m) {
        "get the current (real) robot joint velocities")
 
   .def("get_tauExternal", &BotOp::get_tauExternal,
-       "get the current (real) robot joint torques (external: gravity & acceleration removed)")
+       "get the current (real) robot joint torques (external: gravity & acceleration removed) -- each call averages from last call; first call might return nonsense!")
 
   .def("getTimeToEnd", &BotOp::getTimeToEnd,
        "get time-to-go of the current spline reference that is tracked (use getTimeToEnd()<=0. to check if motion execution is done)")

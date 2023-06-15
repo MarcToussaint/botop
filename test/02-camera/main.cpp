@@ -77,9 +77,6 @@ void testBotop(){
 
   bot.hold(true, false);
 
-  rai::wait(.1);
-  return;
-
   rai::Frame *pcl = C.addFrame("wristPcl", "cameraWrist");
   pcl->setPointCloud({}, {});
 
@@ -89,11 +86,11 @@ void testBotop(){
   arr points;
   for(;;){
     bot.sync(C);
-    if(bot.keypressed=='q') break;
+    if(bot.keypressed=='q'){ LOG(0) <<"HERE"; break; }
 
     bot.getImageDepthPcl(image, depth, points, "cameraWrist", false);
     {
-      C.gl().dataLock(RAI_HERE);
+      auto mux = C.gl().dataLock(RAI_HERE);
       pcl->setPointCloud(points, image);
     }
 
@@ -112,7 +109,7 @@ void testBotop(){
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
-  testDirect();
-//  testBotop();
+//  testDirect();
+  testBotop();
 
 }

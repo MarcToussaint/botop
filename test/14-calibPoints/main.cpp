@@ -24,6 +24,14 @@ void collectData(){
 
   BotOp bot(C, rai::getParameter<bool>("real"));
 
+#if 0
+  bot.gripperClose(rai::_left);
+  bot.hold(true, false);
+  while(bot.sync(C)) cout <<C["l_gripper"]->getPosition() <<endl;
+  bot.gripperOpen(rai::_left);
+  return;
+#endif
+
   //initialize, also camera
   bot.home(C);
   byteA img;
@@ -32,7 +40,7 @@ void collectData(){
 
   rai::Graph data;
 
-  uint nDots=1;
+  uint nDots=2;
   for(uint d=0;d<nDots;d++){
     for(uint k=0;k<20; k++){
       rai::Frame* dot = C[STRING("dot" <<d)];
@@ -55,9 +63,7 @@ void collectData(){
         }
       }
 
-      rai::wait(1.);
-//      bot.hold(false, true);
-      for(uint t=0;t<20;t++) bot.sync(C);
+      for(uint t=0;t<3;t++){ bot.sync(C); rai::wait(.1); }
 
       rai::Graph& dat = data.addSubgraph(STRING(dot->name<<k));
       bot.getImageAndDepth(img, depth, cam->name);
@@ -152,13 +158,13 @@ void computeCalibration(){
 
   //-- multiple iterations
   arr Pinv, K, R, t;
-  for(uint k=0;k<1;k++){
+  for(uint k=0;k<5;k++){
     Pinv = ~X * U * inverse_SymPosDef(~U*U);
     decomposeInvProjectionMatrix(K, R, t, Pinv);
     for(uint i=0;i<X.d0;i++){
       double ei = sqrt(sumOfSqr(X[i] - Pinv*U[i]));
       cout <<"   error on data " <<i <<": " <<ei;
-      if(ei>.05){ X[i]=0.; U[i]=0.; cout <<" -- removed"; }
+      if(ei>.007){ X[i]=0.; U[i]=0.; cout <<" -- removed"; }
       cout <<endl;
     }
     double err = sqrt(sumOfSqr(U*~Pinv - X)/double(X.d0));
@@ -189,7 +195,6 @@ void demoCalibration(){
   target->setShape(rai::ST_marker, {.1});
   target->setColor({1.,.5,0.});
 
-  C["bellybutton"]->name = "dot0";
   rai::Frame* cam = C["cameraWrist"];
   arr hsvFilter = rai::getParameter<arr>("hsvFilter");
   arr Pinv = rai::getParameter<arr>("Pinv");
@@ -201,7 +206,7 @@ void demoCalibration(){
   bot.gripperOpen(rai::_left);
   {
     Move_IK move(bot, C, checks);
-    move().addObjective({}, FS_positionRel, {"dot1", cam->name}, OT_eq, {1e0}, {0.,0.,-.3});
+    move().addObjective({}, FS_positionRel, {"dot0", cam->name}, OT_eq, {1e0}, {0.,0.,-.3});
     if(!move.go()) return;
   }
 
@@ -221,7 +226,7 @@ void demoCalibration(){
   bot.gripperOpen(rai::_left);
   {
     Move_IK move(bot, C, checks);
-    move().addObjective({}, FS_positionRel, {"dot2", cam->name}, OT_eq, {1e0}, {0.,0.,-.3});
+    move().addObjective({}, FS_positionRel, {"dot1", cam->name}, OT_eq, {1e0}, {0.,0.,-.3});
     if(!move.go()) return;
   }
 

@@ -33,6 +33,17 @@ RealSenseThread::~RealSenseThread(){
   threadClose();
 }
 
+void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){
+  uint n=60;
+  if(image.getRevision()<n){
+    LOG(0) <<"waiting to get " <<n <<" images from RealSense for autoexposure settling";
+    image.waitForRevisionGreaterThan(n); //need many starting images for autoexposure to get settled!!
+    depth.waitForRevisionGreaterThan(n);
+  }
+  _image = image.get();
+  _depth = depth.get();
+}
+
 void RealSenseThread::open(){
   bool longCable = rai::getParameter<bool>("RealSense/longCable", false);
   int resolution = rai::getParameter<int>("RealSense/resolution", 640);
