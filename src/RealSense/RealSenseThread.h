@@ -15,12 +15,7 @@ struct RealSenseThread : Thread, rai::CameraAbstraction {
   RealSenseThread(const char *_name);
   ~RealSenseThread();
 
-  virtual void getImageAndDepth(byteA& _image, floatA& _depth){
-    image.waitForRevisionGreaterThan(1);
-    depth.waitForRevisionGreaterThan(1);
-    _image = image.get();
-    _depth = depth.get();
-  }
+  virtual void getImageAndDepth(byteA& _image, floatA& _depth);
   arr getFxypxy(){ return fxypxy; }
 
 protected:

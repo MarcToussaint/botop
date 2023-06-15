@@ -22,7 +22,7 @@ int testDirect(){
     Depth2PointCloud cvt2pcl(RS.depth, RS.fxypxy(0), RS.fxypxy(1), RS.fxypxy(2), RS.fxypxy(3));
     PointCloudViewer pcview(cvt2pcl.points, RS.image);
 
-    cout <<RS.fxypxy <<endl;
+    cout <<"Camera Fxypxy: " <<RS.fxypxy <<endl;
 
     {
       auto depthGet = RS.depth.get();
@@ -57,7 +57,6 @@ int testDirect(){
     cout <<"RealSense timer: " <<RS.timer.report() <<endl;
   }
 
-
   LOG(0) <<"bye bye";
 
   return EXIT_SUCCESS;
@@ -78,9 +77,6 @@ void testBotop(){
 
   bot.hold(true, false);
 
-  rai::wait(.1);
-  return;
-
   rai::Frame *pcl = C.addFrame("wristPcl", "cameraWrist");
   pcl->setPointCloud({}, {});
 
@@ -90,11 +86,11 @@ void testBotop(){
   arr points;
   for(;;){
     bot.sync(C);
-    if(bot.keypressed=='q') break;
+    if(bot.keypressed=='q'){ LOG(0) <<"HERE"; break; }
 
     bot.getImageDepthPcl(image, depth, points, "cameraWrist", false);
     {
-      C.gl().dataLock(RAI_HERE);
+      auto mux = C.gl().dataLock(RAI_HERE);
       pcl->setPointCloud(points, image);
     }
 

@@ -134,6 +134,12 @@ double BotOp::getTimeToEnd(){
   return sp->getEndTime() - ctrlTime;
 }
 
+arr BotOp::getEndPoint(){
+  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  if(!sp) return get_q();
+  return sp->getEndPoint();
+}
+
 arr BotOp::get_tauExternal(){
   arr tau;
   {
@@ -167,6 +173,14 @@ bool BotOp::sync(rai::Configuration& C, double waitTime){
   if(sp && ctrlTime>sp->getEndTime()) return false;
   if(waitTime>0.) rai::wait(waitTime);
   return true;
+}
+
+bool BotOp::wait(rai::Configuration& C){
+  for(;;){
+    sync(C, .1);
+    if(keypressed=='q') return false;
+    if(keypressed) return true;
+  }
 }
 
 std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
@@ -259,7 +273,12 @@ void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
 void BotOp::moveTo(const arr& q_target, double timeCost, bool overwrite){
   arr q, qDot;
   double ctrlTime;
-  getState(q, qDot, ctrlTime);
+  if(overwrite){
+    getState(q, qDot, ctrlTime);
+  }else{
+    q = getEndPoint();
+    qDot.resize(q.N).setZero();
+  }
   double dist = length(q-q_target);
   double vel = scalarProduct(qDot, q_target-q)/dist;
   double T = (sqrt(6.*timeCost*dist+vel*vel) - vel)/timeCost;
@@ -358,12 +377,7 @@ void BotOp::getImageDepthPcl(byteA& image, floatA& depth, arr& points, const cha
 
 void BotOp::home(rai::Configuration& C){
   C.viewer()->raiseWindow();
-  arr q=get_q();
-  if(maxDiff(q,qHome)>1e-3){
-    moveTo(qHome, 1.);
-  }else{
-    move(~qHome, {.1});
-  }
+  moveTo(qHome, 1.);
   while(sync(C));
 }
 

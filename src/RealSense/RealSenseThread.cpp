@@ -33,9 +33,20 @@ RealSenseThread::~RealSenseThread(){
   threadClose();
 }
 
+void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){
+  uint n=60;
+  if(image.getRevision()<n){
+    LOG(0) <<"waiting to get " <<n <<" images from RealSense for autoexposure settling";
+    image.waitForRevisionGreaterThan(n); //need many starting images for autoexposure to get settled!!
+    depth.waitForRevisionGreaterThan(n);
+  }
+  _image = image.get();
+  _depth = depth.get();
+}
+
 void RealSenseThread::open(){
   bool longCable = rai::getParameter<bool>("RealSense/longCable", false);
-  bool lowResolution = rai::getParameter<bool>("RealSense/lowResolution", true);
+  int resolution = rai::getParameter<int>("RealSense/resolution", 640);
   bool alignToDepth = rai::getParameter<bool>("RealSense/alignToDepth", true);
   bool autoExposure = rai::getParameter<bool>("RealSense/autoExposure", true);
   double exposure = rai::getParameter<double>("RealSense/exposure", 500);
@@ -44,12 +55,17 @@ void RealSenseThread::open(){
   s = new sRealSenseThread;
 
   s->cfg = std::make_shared<rs2::config>();
-  if(lowResolution){
+  if(resolution==480){
     s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 424, 240, rs2_format::RS2_FORMAT_RGB8, 0);
     s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 480, 270, rs2_format::RS2_FORMAT_Z16, 15);
-  }else{
+  }else if(resolution==640){
     s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 640, 360, rs2_format::RS2_FORMAT_RGB8, 30);
     s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 30);
+  }else if(resolution==1280){
+    s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 1280, 720, rs2_format::RS2_FORMAT_RGB8, 30);
+    s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 1280, 720, rs2_format::RS2_FORMAT_Z16, 30);
+  }else{
+    LOG(-2) <<"RealSense Driver: resolution=" <<resolution <<" option not available (avaiable: 480, 640, 1280)";
   }
 
   rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
@@ -82,12 +98,12 @@ void RealSenseThread::open(){
           LOG(1) <<"  I disabled auto white balance";
         }
       }
-      if(!longCable){ //crashes with long cable
+      if(false && !longCable){ //auto exposure works pretty bad for depth module //crashes with long cable
         if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")){
           if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
             sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
             sensor.set_option(RS2_OPTION_EXPOSURE, 5000.);
-            LOG(1) <<"  I disabled auto exposure";
+            LOG(1) <<"  I disabled auto depth exposure";
           }
         }
       }
@@ -202,6 +218,7 @@ void rs2_get_motion_intrinsics(const rs2_stream_profile* mode, rs2_motion_device
 
 RealSenseThread::RealSenseThread(const char *_name) : Thread("RealSenseThread") { NICO }
 RealSenseThread::~RealSenseThread(){ NICO }
+void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){ NICO }
 void RealSenseThread::open(){ NICO }
 void RealSenseThread::close(){ NICO }
 void RealSenseThread::step(){ NICO }

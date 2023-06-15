@@ -41,6 +41,7 @@ struct BotOp{
   void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime);
   const arr& get_qHome(){ return qHome; }
   double getTimeToEnd(); //negative, if motion spline is done
+  arr getEndPoint(); //negative, if motion spline is done
   arr get_tauExternal();
   int getKeyPressed(){ return keypressed; }
 
@@ -66,6 +67,7 @@ struct BotOp{
 
   //-- sync the user's C with the robot, update the display, return false if motion spline is done
   bool sync(rai::Configuration& C, double waitTime=.1);
+  bool wait(rai::Configuration& C);
 
   //-- motion macros
   void home(rai::Configuration& C);
