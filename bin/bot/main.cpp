@@ -12,7 +12,11 @@ int main(int argc, char * argv[]){
   if(rai::checkParameter<rai::String>("confFile")){
     C.addFile(rai::getParameter<rai::String>("confFile"));
   }else{
-    C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable-calibrated.g"));
+    if(rai::getParameter<rai::String>("bot/useArm", "both")=="left"){
+      C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+    }else{
+      C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable-calibrated.g"));
+    }
   }
 
   BotOp bot(C, !rai::checkParameter<bool>("sim"));

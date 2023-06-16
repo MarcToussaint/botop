@@ -17,6 +17,8 @@ void decomposeInvProjectionMatrix(arr& K, arr& R, arr& t, const arr& P){
   lapack_RQ(K, R, KR);
 }
 
+#ifdef RAI_OPENCV
+
 arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int verbose){
   cv::Mat rgb = CV(_rgb);
   cv::Mat depth = CV(_depth);
@@ -166,3 +168,17 @@ arr CameraCalibrationHSVGui::getHSV() {
   arr hsv = arr{(double)low_H, (double)low_S, (double)low_V, (double)high_H, (double)high_S, (double)high_V};
   return hsv.reshape(2,3);
 }
+
+#else
+
+arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int verbose){ NICO }
+void CameraCalibrationHSVGui::on_low_H_thresh_trackbar(int, void* self) { NICO }
+void CameraCalibrationHSVGui::on_high_H_thresh_trackbar(int, void* self) { NICO }
+void CameraCalibrationHSVGui::on_low_S_thresh_trackbar(int, void* self) { NICO }
+void CameraCalibrationHSVGui::on_high_S_thresh_trackbar(int, void* self) { NICO }
+void CameraCalibrationHSVGui::on_low_V_thresh_trackbar(int, void* self) { NICO }
+void CameraCalibrationHSVGui::on_high_V_thresh_trackbar(int, void* self) { NICO }
+CameraCalibrationHSVGui::CameraCalibrationHSVGui() { NICO }
+arr CameraCalibrationHSVGui::getHSV() { NICO }
+
+#endif //RAI_OPENCV

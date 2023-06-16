@@ -210,14 +210,13 @@ void RealSenseThread::step(){
   }
 }
 
-
-
 void rs2_get_motion_intrinsics(const rs2_stream_profile* mode, rs2_motion_device_intrinsic * intrinsics, rs2_error ** error);
 
 #else //REALSENSE
 
 RealSenseThread::RealSenseThread(const char *_name) : Thread("RealSenseThread") { NICO }
 RealSenseThread::~RealSenseThread(){ NICO }
+void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){ NICO }
 void RealSenseThread::open(){ NICO }
 void RealSenseThread::close(){ NICO }
 void RealSenseThread::step(){ NICO }

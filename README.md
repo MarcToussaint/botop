@@ -17,7 +17,7 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
   installs). Setup basics:
 
       sudo apt update
-      sudo apt install --yes build-essential clang cmake curl git libpoco-dev libeigen3-dev libccd-dev libboost-system-dev portaudio19-dev
+      sudo apt install --yes build-essential clang cmake curl git libpoco-dev libeigen3-dev libccd-dev libboost-system-dev portaudio19-dev libglu1-mesa-dev
 
       mkdir -p $HOME/git $HOME/opt
 
@@ -25,9 +25,9 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
 
       export MAKEFLAGS="-j3"
 
-   * [libfranka](https://github.com/frankaemika/libfranka) (needs 0.7.1 for old pandas, 0.9.2 for new!)
+   * [libfranka](https://github.com/frankaemika/libfranka) (needs 0.7.1 for old pandas, 0.9.2 or 0.10.0 for new!)
    
-         cd $HOME/git; git clone --single-branch -b 0.7.1 --recursive https://github.com/frankaemika/libfranka
+         cd $HOME/git; git clone --single-branch -b 0.7.1 --recurse-submodules https://github.com/frankaemika/libfranka
          cd $HOME/git/libfranka; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF ..; make install
 
    * Physx
@@ -43,18 +43,19 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
    * optional (if enabled with ccmake ..) [librealsense](https://github.com/IntelRealSense/librealsense)
 
          sudo apt install --yes libusb-1.0-0-dev libglfw3-dev libgtk-3-dev
-         cd $HOME/git; git clone --recursive https://github.com/IntelRealSense/librealsense.git
+         cd $HOME/git; git clone --recurse-submodules https://github.com/IntelRealSense/librealsense.git
          cd $HOME/git/librealsense; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DCMAKE_BUILD_TYPE=Release ..; make install
 
 * Install python and pybind
 
       sudo apt install --yes python3 python3-dev python3-numpy python3-pip python3-distutils
       echo 'export PATH="${PATH}:$HOME/.local/bin"' >> ~/.bashrc   #add this to your .bashrc, if not done already
+      source ~/.bashrc
       python3 -m pip install --user jupyter nbconvert matplotlib pybind11
 
 * Clone and compile this repo:
 
-      cd $HOME/git; git clone --recursive git@github.com:MarcToussaint/botop.git
+      cd $HOME/git; git clone --recurse-submodules git@github.com:MarcToussaint/botop.git
       cd $HOME/git/botop; APTGETYES=1 make -C rai -j1 installUbuntuAll  # calls sudo apt-get install
       export PYTHONVERSION=`python3 -c "import sys; print(str(sys.version_info[0])+'.'+str(sys.version_info[1]))"`
       cd $HOME/git/botop; mkdir -p build; cd build; cmake -DUSE_BULLET=OFF -DPYBIND11_PYTHON_VERSION=$PYTHONVERSION ..; make
