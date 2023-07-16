@@ -3,17 +3,19 @@ cmake_minimum_required(VERSION 3.4)
 project(LISRobotOperation)
 
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
+set(PYBIND11_PYTHON_VERSION 3.8 CACHE STRING "python version")
 
+option(CMAKE_INSTALL_PREFIX "install directory" "/tmp")
 option(USE_PYBIND "build python bindings" ON)
 option(USE_BULLET "link to bullet" OFF)
 option(USE_PHYSX "link to physx" ON)
 option(USE_OPENCV "link to opencv" OFF)
+option(USE_OPENVR "link to openvr" OFF)
 option(USE_OPENCV_LOCAL "link to opencv" ON)
 option(USE_REALSENSE "link to realsense2 driver library" OFF)
 option(USE_LIBFRANKA "link to libfranka" ON)
 option(USE_PCL "link to pcl library" OFF)
-option(CMAKE_INSTALL_PREFIX "install directory" "/tmp")
-set(PYBIND11_PYTHON_VERSION 3.10 CACHE STRING "python version")
+option(MODULE_Vive "compile the ViveController module" OFF)
 
 add_compile_options(
   -O3 -g -Wall -Wpedantic -fPIC
@@ -48,25 +50,25 @@ link_directories(
   $ENV{HOME}/opt/bin/linux.clang/release
   )
 
-file(GLOB SRC_Core rai/rai/Core/*.cpp)
-file(GLOB SRC_Optim rai/rai/Optim/*.cpp)
-file(GLOB SRC_Geo rai/rai/Geo/*.cpp)
+file(GLOB SRC_Core rai/rai/Core/unity.cxx)
+file(GLOB SRC_Optim rai/rai/Optim/unity.cxx)
+file(GLOB SRC_Geo rai/rai/Geo/unity.cxx)
 file(GLOB SRC_GeoGJK rai/rai/Geo/GJK/*.c)
 file(GLOB SRC_GeoPly rai/rai/Geo/ply/*.c)
 file(GLOB SRC_GeoCcd rai/rai/Geo/ccd_rai/*.c)
 file(GLOB SRC_GeoLewiner rai/rai/Geo/Lewiner/*.cpp)
-file(GLOB SRC_Algo rai/rai/Algo/*.cpp)
-file(GLOB SRC_Search rai/rai/Search/*.cpp)
-file(GLOB SRC_PathAlgos rai/rai/PathAlgos/*.cpp)
-file(GLOB SRC_Gui rai/rai/Gui/*.cpp)
-file(GLOB SRC_Kin rai/rai/Kin/*.cpp)
-#file(GLOB SRC_KinSwift rai/rai/Kin/SWIFT/*.cpp)
-file(GLOB SRC_KOMO rai/rai/KOMO/*.cpp)
-file(GLOB SRC_Logic rai/rai/Logic/*.cpp)
-file(GLOB SRC_LGP rai/rai/LGP/*.cpp)
-file(GLOB SRC_Perception rai/rai/Perception/*.cpp)
-file(GLOB SRC_Control rai/rai/Control/*.cpp)
-file(GLOB SRC_ry rai/rai/ry/*.cpp)
+file(GLOB SRC_Algo rai/rai/Algo/unity.cxx)
+file(GLOB SRC_Search rai/rai/Search/unity.cxx)
+file(GLOB SRC_PathAlgos rai/rai/PathAlgos/unity.cxx)
+file(GLOB SRC_Gui rai/rai/Gui/unity.cxx)
+file(GLOB SRC_Kin rai/rai/Kin/unity.cxx)
+#file(GLOB SRC_KinSwift rai/rai/Kin/SWIFT/unity.cxx)
+file(GLOB SRC_KOMO rai/rai/KOMO/unity.cxx)
+file(GLOB SRC_Logic rai/rai/Logic/unity.cxx)
+file(GLOB SRC_LGP rai/rai/LGP/unity.cxx)
+file(GLOB SRC_Perception rai/rai/Perception/unity.cxx)
+file(GLOB SRC_Control rai/rai/Control/unity.cxx)
+file(GLOB SRC_ry rai/rai/ry/unity.cxx)
 
 file(GLOB SRC_BotOp src/BotOp/*.cpp)
 file(GLOB SRC_Franka src/Franka/*.cpp)
@@ -111,23 +113,37 @@ target_link_libraries(rai
   )
 
 ################################################################################
+#
+# compile extra modules
+
+if(MODULE_Vive)
+  add_definitions(-DRAI_Vive)
+  target_sources(rai PRIVATE src/ViveController/vivecontroller.cpp)
+  message(STATUS "[rai] compiling module Vive")
+endif()
+
+  
+################################################################################
+#
+# include external libraries
 
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 #target_link_libraries (rai Eigen3::Eigen)
+find_package(PkgConfig REQUIRED)
 
 if(USE_BULLET)
   find_package(Bullet REQUIRED)
   add_definitions(-DRAI_BULLET)
   include_directories(${BULLET_INCLUDE_DIRS})
   target_link_libraries(rai ${BULLET_LIBRARIES})
-  message(STATUS "[rai] using bullet libs:" ${BULLET_LIBRARIES})
+  message(STATUS "[rai] using bullet libs: " ${BULLET_LIBRARIES})
 endif()
 
 if(USE_PHYSX)
   add_definitions(-DRAI_PHYSX -D_DEBUG -DPX_DISABLE_FLUIDS -DCORELIB -DPX32 -DLINUX)
   link_directories($ENV{HOME}/opt/bin/linux.clang/release)
   target_link_libraries(rai PhysXExtensions_static_64 PhysX_static_64 PhysXCooking_static_64 PhysXCommon_static_64 PhysXFoundation_static_64)
-  message(STATUS "[rai] using physx libs from ~/opt:")
+  message(STATUS "[rai] using physx libs from ~/opt")
 endif()
 
 if(USE_OPENCV)
@@ -141,7 +157,21 @@ if(USE_OPENCV_LOCAL)
   add_definitions(-DRAI_OPENCV)
   include_directories($ENV{HOME}/opt/include/opencv4)
   target_link_libraries(rai opencv_core opencv_highgui opencv_imgproc opencv_videoio)
-  message(STATUS "[rai] using OpenCV libs from ~/opt:")
+  message(STATUS "[rai] using OpenCV libs from ~/opt")
+endif()
+
+if(USE_OPENVR)
+  pkg_check_modules(OpenVR REQUIRED openvr)
+  add_definitions(-DRAI_OPENVR)
+  target_compile_options(rai PUBLIC ${OpenVR_CFLAGS_OTHER})
+  target_include_directories(rai PUBLIC ${OpenVR_INCLUDE_DIRS})
+  target_link_libraries(rai ${OpenVR_LIBRARIES})
+  message(STATUS "[rai] using OpenVR libs: " ${OpenVR_LIBRARIES})
+  # -I/usr/include/openvr -L/usr/lib/openvr -lopenvr_apis
+  #target_link_libraries(rai openvr_api)
+  #link_directories(
+  #$ENV{HOME}/opt/lib/vrqtlibs
+  #)
 endif()
 
 if(USE_REALSENSE)
@@ -152,7 +182,7 @@ endif()
 
 if(USE_LIBFRANKA)
   add_definitions(-DRAI_FRANKA)
-  target_link_libraries(rai franka)
+  target_link_libraries(rai franka PocoNet PocoFoundation)
   message(STATUS "[rai] using libfranka")
 endif()
 
@@ -180,6 +210,11 @@ if(USE_PYBIND)
     rai
   )
 endif()
+
+################################################################################
+
+get_property(_defs DIRECTORY PROPERTY COMPILE_DEFINITIONS)
+message(STATUS "[rai] compiler flags: " "${_defs}")
 
 ################################################################################
 
