@@ -24,7 +24,7 @@
 
 void init_BotOp(pybind11::module& m) {
   
-  pybind11::class_<BotOp, shared_ptr<BotOp>>(m, "BotOp", "")
+  pybind11::class_<BotOp, shared_ptr<BotOp>>(m, "BotOp", "needs some docu!")
 
   .def(pybind11::init<rai::Configuration&, bool>(),
        "",

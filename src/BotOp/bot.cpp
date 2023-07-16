@@ -15,6 +15,9 @@
 #include <Robotiq/RobotiqGripper.h>
 #include <OptiTrack/optitrack.h>
 #include <RealSense/RealSenseThread.h>
+#ifdef RAI_VIVE
+#  include <ViveController/vivecontroller.h>
+#endif
 
 #include <Audio/audio.h>
 
@@ -79,6 +82,15 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     optitrack = make_shared<rai::OptiTrack>();
     optitrack->pull(C);
   }
+
+#ifdef RAI_VIVE
+  //-- launch ViveController
+  if(rai::getParameter<bool>("bot/useViveController", false)){
+    LOG(0) <<"OPENING ViveController";
+    vivecontroller = make_shared<rai::ViveController>();
+    vivecontroller->pull(C);
+  }
+#endif
 
   //-- launch Audio/Sound
   if(rai::getParameter<bool>("bot/useAudio", false)){
@@ -152,12 +164,17 @@ arr BotOp::get_tauExternal(){
   return tau;
 }
 
-bool BotOp::sync(rai::Configuration& C, double waitTime){
+int BotOp::sync(rai::Configuration& C, double waitTime){
   //update q state
   C.setJointState(state.get()->q);
 
   //update optitrack state
   if(optitrack) optitrack->pull(C);
+
+#ifdef RAI_VIVE
+  //update vivecontroller state
+  if(vivecontroller) vivecontroller->pull(C);
+#endif
 
   //update sim state
   if(simthread) simthread->pullDynamicStates(C);
@@ -167,12 +184,12 @@ bool BotOp::sync(rai::Configuration& C, double waitTime){
   double ctrlTime = get_t();
   keypressed = C.view(false, STRING("BotOp sync'ed at time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
   if(keypressed) C.viewer()->resetPressedKey();
-  if(keypressed==13) return false;
-  if(keypressed=='q' || keypressed==27) return false;
-  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
-  if(sp && ctrlTime>sp->getEndTime()) return false;
-  if(waitTime>0.) rai::wait(waitTime);
-  return true;
+//  if(keypressed==13) return false;
+//  if(keypressed=='q' || keypressed==27) return false;
+//  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+//  if(sp && ctrlTime>sp->getEndTime()) return false;
+  if(!keypressed && waitTime>0.) rai::wait(waitTime);
+  return keypressed;
 }
 
 bool BotOp::wait(rai::Configuration& C){
@@ -272,16 +289,17 @@ void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
 
 void BotOp::moveTo(const arr& q_target, double timeCost, bool overwrite){
   arr q, qDot;
-  double ctrlTime;
+  double ctrlTime=0.;
   if(overwrite){
     getState(q, qDot, ctrlTime);
   }else{
     q = getEndPoint();
     qDot.resize(q.N).setZero();
   }
-  double dist = length(q-q_target);
+  double dist = length(q-q_target) +1e-4; //plus eps for numerical robustness
   double vel = scalarProduct(qDot, q_target-q)/dist;
   double T = (sqrt(6.*timeCost*dist+vel*vel) - vel)/timeCost;
+  //cout <<q <<qDot <<q_target <<dist <<' ' <<vel <<' ' <<T <<' ' <<ctrlTime <<endl;
   if(dist<1e-4 || T<.1) T=.1;
   if(overwrite){
     move(~q_target, {T}, true, ctrlTime);
@@ -378,7 +396,10 @@ void BotOp::getImageDepthPcl(byteA& image, floatA& depth, arr& points, const cha
 void BotOp::home(rai::Configuration& C){
   C.viewer()->raiseWindow();
   moveTo(qHome, 1.);
-  while(sync(C));
+  while(getTimeToEnd()>0.){
+    sync(C);
+    if(keypressed=='q') break;
+  }
 }
 
 void BotOp::hold(bool floating, bool damping){

@@ -7,6 +7,7 @@
 namespace rai{
   struct GripperAbstraction;
   struct OptiTrack;
+  struct ViveController;
   struct Sound;
 }
 struct BotThreadedSim;
@@ -23,6 +24,7 @@ struct BotOp{
   std::shared_ptr<rai::GripperAbstraction> gripperR;
   std::shared_ptr<rai::ReferenceFeed> ref;
   std::shared_ptr<rai::OptiTrack> optitrack;
+  std::shared_ptr<rai::ViveController> vivecontroller;
   std::shared_ptr<rai::Sound> audio;
   std::shared_ptr<BotThreadedSim> simthread;
   rai::Array<std::shared_ptr<rai::CameraAbstraction>> cameras;
@@ -65,8 +67,8 @@ struct BotOp{
   void getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates=false);
   arr  getCameraFxypxy(const char* sensor);
 
-  //-- sync the user's C with the robot, update the display, return false if motion spline is done
-  bool sync(rai::Configuration& C, double waitTime=.1);
+  //-- sync the user's C with the robot, update the display, return pressed key
+  int sync(rai::Configuration& C, double waitTime=.1);
   bool wait(rai::Configuration& C);
 
   //-- motion macros
