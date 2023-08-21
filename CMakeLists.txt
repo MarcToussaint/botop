@@ -5,14 +5,15 @@ project(LISRobotOperation)
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
 set(PYBIND11_PYTHON_VERSION 3.8 CACHE STRING "python version")
 
-option(CMAKE_INSTALL_PREFIX "install directory" "/tmp")
+option(CMAKE_INSTALL_PREFIX "install directory" "$ENV{HOME}/opt")
+set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
 option(USE_PYBIND "build python bindings" ON)
 option(USE_BULLET "link to bullet" OFF)
 option(USE_PHYSX "link to physx" ON)
 option(USE_OPENCV "link to opencv" OFF)
 option(USE_OPENVR "link to openvr" OFF)
 option(USE_OPENCV_LOCAL "link to opencv" ON)
-option(USE_REALSENSE "link to realsense2 driver library" OFF)
+option(USE_REALSENSE "link to realsense2 driver library" ON)
 option(USE_LIBFRANKA "link to libfranka" ON)
 option(USE_PCL "link to pcl library" OFF)
 option(MODULE_Vive "compile the ViveController module" OFF)
@@ -30,9 +31,10 @@ add_definitions(
   -DRAI_X11 -DRAI_LAPACK -DRAI_EIGEN -DRAI_PTHREAD
   -DRAI_GL
   -DRAI_GLFW -DRAI_ANN -DRAI_QHULL -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
-  -DRAI_GJK -DRAI_CCD -DRAI_FCL -DRAI_Lewiner #-DRAI_SWIFT
+  -DRAI_GJK -DRAI_CCD -DRAI_FCL -DRAI_Lewiner
   -DRAI_PORTAUDIO
   -BOOST_ERROR_CODE_HEADER_ONLY
+  -DRAI_BotOp
   -DRAI_ROBOTIQ
   )
 
@@ -218,18 +220,28 @@ message(STATUS "[rai] compiler flags: " "${_defs}")
 
 ################################################################################
 
-install(DIRECTORY rai/rai DESTINATION ${CMAKE_INSTALL_PREFIX}/include
-  FILES_MATCHING PATTERN "*.h" PATTERN "*.hxx" PATTERN "*.ipp"
-)
-
-install(TARGETS rai libry DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/ COMPONENT pkgconfig)
-
-################################################################################
-
 add_executable(kinEdit rai/bin/src_kinEdit/main.cpp)
 target_link_libraries(kinEdit rai)
 
 add_executable(bot bin/bot/main.cpp)
 target_link_libraries(bot rai)
 
+################################################################################
+
+install(
+  DIRECTORY rai/rai
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/include
+  FILES_MATCHING
+  PATTERN "*.h" PATTERN "*.hxx" PATTERN "*.ipp"
+  PATTERN "retired" EXCLUDE
+  )
+
+install(
+  TARGETS rai libry
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
+  COMPONENT pkgconfig)
+
+install(
+  TARGETS kinEdit
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
