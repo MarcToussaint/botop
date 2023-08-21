@@ -39,23 +39,17 @@ int main(int argc, char * argv[]){
 
   if(rai::checkParameter<bool>("float")){
     bot.hold(true, false);
-    while(bot.sync(C));
+    bot.wait(C);
   }
 
   if(rai::checkParameter<bool>("damp")){
     bot.hold(true, true);
-    while(bot.sync(C));
+    bot.wait(C);
   }
 
   if(rai::checkParameter<bool>("hold")){
     bot.hold(false, true);
-    while(bot.sync(C));
-  }
-
-  if(rai::checkParameter<bool>("home")){
-    arr q=bot.qHome;
-    bot.moveTo(q, 1.);
-    while(bot.sync(C));
+    bot.wait(C);
   }
 
   if(rai::checkParameter<bool>("up")){
@@ -63,19 +57,25 @@ int main(int argc, char * argv[]){
     q(1) -= .5;
     if(q.N>7) q(8) -=.5;
     bot.moveTo(q, 1.);
-    while(bot.sync(C));
+    bot.wait(C, true, true);
   }
 
   if(rai::checkParameter<bool>("loop")){
     arr q=bot.qHome;
     bot.moveTo(q, 1.);
-    while(bot.sync(C));
+    bot.wait(C, true, true);
 
     C.setJointState(bot.qHome);
     arr path = getLoopPath(C);
     bot.move(path, {5.});
 
-    while(bot.sync(C));
+    bot.wait(C, true, true);
+  }
+
+  if(rai::checkParameter<bool>("home")){
+    arr q=bot.qHome;
+    bot.moveTo(q, 1.);
+    bot.wait(C, true, true);
   }
 
   cout <<"bye bye" <<endl;

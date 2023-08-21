@@ -18,7 +18,6 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
 
       sudo apt update
       sudo apt install --yes build-essential clang cmake curl git libpoco-dev libeigen3-dev libccd-dev libboost-system-dev portaudio19-dev libglu1-mesa-dev
-
       mkdir -p $HOME/git $HOME/opt
 
 * Install several external libraries from source. Perhaps first choose # kernels for compile:
@@ -30,21 +29,21 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
          cd $HOME/git; git clone --single-branch -b 0.7.1 --recurse-submodules https://github.com/frankaemika/libfranka
          cd $HOME/git/libfranka; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF ..; make install
 
-   * Physx
+   * PhysX (physical simulator, enabled by default, could be disabled with ccmake)
    
          cd $HOME/git; git clone --single-branch -b release/104.1 https://github.com/NVIDIA-Omniverse/PhysX.git
          cd $HOME/git/PhysX/physx; ./generate_projects.sh linux; cd compiler/linux-release/; cmake ../../compiler/public -DPX_BUILDPVDRUNTIME=OFF -DPX_BUILDSNIPPETS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/opt; make install
 
-   * FCL
+   * FCL 0.5 (version important)
 
          cd $HOME/git; git clone --single-branch -b fcl-0.5 https://github.com/flexible-collision-library/fcl.git
          cd $HOME/git/fcl; mkdir -p build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFCL_STATIC_LIBRARY=ON -DFCL_BUILD_TESTS=OFF ..; make install
 
-   * optional (if enabled with ccmake ..) [librealsense](https://github.com/IntelRealSense/librealsense)
+   * [librealsense](https://github.com/IntelRealSense/librealsense) (enabled by default, could be disabled with ccmake)
 
          sudo apt install --yes libusb-1.0-0-dev libglfw3-dev libgtk-3-dev
          cd $HOME/git; git clone --recurse-submodules https://github.com/IntelRealSense/librealsense.git
-         cd $HOME/git/librealsense; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DCMAKE_BUILD_TYPE=Release ..; make install
+         cd $HOME/git/librealsense; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DCMAKE_BUILD_TYPE=Release -DBUILD_EXAMPLES=OFF -DBUILD_GRAPHICAL_EXAMPLES=OFF ..; make install
 
 * Install python and pybind
 

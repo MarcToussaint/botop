@@ -24,7 +24,7 @@ jobs:
       run: |
         sudo apt-get install build-essential clang cmake curl git libpoco-dev libeigen3-dev libccd-dev libboost-system-dev portaudio19-dev libglu1-mesa-dev
         APTGETYES=1 make -C rai -j1 installUbuntuAll
-        mkdir -p $HOME/git $HOME/opt/include/rai $HOME/opt/lib
+        mkdir -p $HOME/git $HOME/opt
 
     - name: install libfranka
       run: |
@@ -41,11 +41,11 @@ jobs:
         cd $HOME/git; git clone --single-branch -b fcl-0.5 https://github.com/flexible-collision-library/fcl.git
         cd $HOME/git/fcl; mkdir -p build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFCL_STATIC_LIBRARY=ON -DFCL_BUILD_TESTS=OFF ..; make install
 
-    - name: install realsense
-      run: |
-        sudo apt install --yes libusb-1.0-0-dev libglfw3-dev libgtk-3-dev
-        cd $HOME/git; git clone --recurse-submodules https://github.com/IntelRealSense/librealsense.git
-        cd $HOME/git/librealsense; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DCMAKE_BUILD_TYPE=Release ..; make install
+#    - name: install realsense
+#      run: |
+#        sudo apt install --yes libusb-1.0-0-dev libglfw3-dev libgtk-3-dev
+#        cd $HOME/git; git clone --recurse-submodules https://github.com/IntelRealSense/librealsense.git
+#        cd $HOME/git/librealsense; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DCMAKE_BUILD_TYPE=Release ..; make install
 
     - name: install python and pybind
       run: |
@@ -58,7 +58,7 @@ jobs:
       run: |
         make -C rai -j1 unityAll
         export PYTHONVERSION=`python3 -c "import sys; print(str(sys.version_info[0])+'.'+str(sys.version_info[1]))"`
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DUSE_PHYSX=ON -DPYBIND11_PYTHON_VERSION=$PYTHONVERSION
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=$HOME/opt -DUSE_PHYSX=ON -DUSE_REALSENSE=OFF -DUSE_OPENCV_LOCAL=OFF -DPYBIND11_PYTHON_VERSION=$PYTHONVERSION -DUSE_QHULL8=ON
 
     - name: Build
       run: |
@@ -66,4 +66,4 @@ jobs:
 
     - name: install
       run: |
-        make install
+        cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}

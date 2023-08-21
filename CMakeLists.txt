@@ -16,6 +16,7 @@ option(USE_OPENCV_LOCAL "link to opencv" ON)
 option(USE_REALSENSE "link to realsense2 driver library" ON)
 option(USE_LIBFRANKA "link to libfranka" ON)
 option(USE_PCL "link to pcl library" OFF)
+option(USE_QHULL8 "use (newer) version 8 of qhull" OFF)
 option(MODULE_Vive "compile the ViveController module" OFF)
 
 add_compile_options(
@@ -37,6 +38,10 @@ add_definitions(
   -DRAI_BotOp
   -DRAI_ROBOTIQ
   )
+
+if(USE_QHULL8)
+  add_definitions( -DRAI_QHULL8 )
+endif()
 
 ################################################################################
 
@@ -142,7 +147,7 @@ if(USE_BULLET)
 endif()
 
 if(USE_PHYSX)
-  add_definitions(-DRAI_PHYSX -D_DEBUG -DPX_DISABLE_FLUIDS -DCORELIB -DPX32 -DLINUX)
+  add_definitions(-DRAI_PHYSX -DNDEBUG -DPX_DISABLE_FLUIDS -DCORELIB -DPX32 -DLINUX)
   link_directories($ENV{HOME}/opt/bin/linux.clang/release)
   target_link_libraries(rai PhysXExtensions_static_64 PhysX_static_64 PhysXCooking_static_64 PhysXCommon_static_64 PhysXFoundation_static_64)
   message(STATUS "[rai] using physx libs from ~/opt")
@@ -243,5 +248,9 @@ install(
 
 install(
   TARGETS kinEdit
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+
+install(
+  TARGETS bot
   DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 

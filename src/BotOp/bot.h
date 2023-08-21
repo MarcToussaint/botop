@@ -69,7 +69,7 @@ struct BotOp{
 
   //-- sync the user's C with the robot, update the display, return pressed key
   int sync(rai::Configuration& C, double waitTime=.1);
-  bool wait(rai::Configuration& C);
+  bool wait(rai::Configuration& C, bool forKeyPressed=true, bool forTimeToEnd=false);
 
   //-- motion macros
   void home(rai::Configuration& C);
