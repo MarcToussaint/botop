@@ -12,13 +12,13 @@ No, we don't use ROS at all anymore.
 
 This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When compiling in a docker, perhaps `export APTGETYES="--yes"; alias sudo=""` )
 
-* The following assumes $HOME/git as your git path, and $HOME/opt to
+* The following assumes $HOME/git as your git path, and $HOME/.local to
   install 3rd-party libs -- please stick to this (no system-wide
   installs). Setup basics:
 
       sudo apt update
       sudo apt install --yes build-essential clang cmake curl git libpoco-dev libeigen3-dev libccd-dev libboost-system-dev portaudio19-dev libglu1-mesa-dev
-      mkdir -p $HOME/git $HOME/opt
+      mkdir -p $HOME/git $HOME/.local
 
 * Install several external libraries from source. Perhaps first choose # kernels for compile:
 
@@ -27,45 +27,42 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
    * [libfranka](https://github.com/frankaemika/libfranka) (needs 0.7.1 for old pandas, 0.9.2 or 0.10.0 for new!)
    
          cd $HOME/git; git clone --single-branch -b 0.7.1 --recurse-submodules https://github.com/frankaemika/libfranka
-         cd $HOME/git/libfranka; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF ..; make install
+         cd $HOME/git/libfranka; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF ..; make install
 
    * PhysX (physical simulator, enabled by default, could be disabled with ccmake)
    
          cd $HOME/git; git clone --single-branch -b release/104.1 https://github.com/NVIDIA-Omniverse/PhysX.git
-         cd $HOME/git/PhysX/physx; ./generate_projects.sh linux; cd compiler/linux-release/; cmake ../../compiler/public -DPX_BUILDPVDRUNTIME=OFF -DPX_BUILDSNIPPETS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/opt; make install
+         cd $HOME/git/PhysX/physx; ./generate_projects.sh linux; cd compiler/linux-release/; cmake ../../compiler/public -DPX_BUILDPVDRUNTIME=OFF -DPX_BUILDSNIPPETS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/.local; make install
 
    * FCL 0.5 (version important)
 
          cd $HOME/git; git clone --single-branch -b fcl-0.5 https://github.com/flexible-collision-library/fcl.git
-         cd $HOME/git/fcl; mkdir -p build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFCL_STATIC_LIBRARY=ON -DFCL_BUILD_TESTS=OFF ..; make install
+         cd $HOME/git/fcl; mkdir -p build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local -DFCL_STATIC_LIBRARY=ON -DFCL_BUILD_TESTS=OFF ..; make install
 
    * [librealsense](https://github.com/IntelRealSense/librealsense) (enabled by default, could be disabled with ccmake)
 
          sudo apt install --yes libusb-1.0-0-dev libglfw3-dev libgtk-3-dev
          cd $HOME/git; git clone --recurse-submodules https://github.com/IntelRealSense/librealsense.git
-         cd $HOME/git/librealsense; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DCMAKE_BUILD_TYPE=Release -DBUILD_EXAMPLES=OFF -DBUILD_GRAPHICAL_EXAMPLES=OFF ..; make install
+         cd $HOME/git/librealsense; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local -DCMAKE_BUILD_TYPE=Release -DBUILD_EXAMPLES=OFF -DBUILD_GRAPHICAL_EXAMPLES=OFF ..; make install
 
 * Install python and pybind
 
       sudo apt install --yes python3 python3-dev python3-numpy python3-pip python3-distutils
       echo 'export PATH="${PATH}:$HOME/.local/bin"' >> ~/.bashrc   #add this to your .bashrc, if not done already
-      source ~/.bashrc
+      echo 'export PYTHONPATH="${PYTHONPATH}:$HOME/.local/lib"' >> ~/.bashrc   #add this to your .bashrc, if not done already
       python3 -m pip install --user jupyter nbconvert matplotlib pybind11
 
 * Clone and compile this repo:
 
       cd $HOME/git; git clone --recurse-submodules git@github.com:MarcToussaint/botop.git
       cd $HOME/git/botop; APTGETYES=1 make -C rai -j1 installUbuntuAll  # calls sudo apt-get install
+	  cd $HOME/git/botop; APTGETYES=1 make -C rai -j1 unityAll
       export PYTHONVERSION=`python3 -c "import sys; print(str(sys.version_info[0])+'.'+str(sys.version_info[1]))"`
       cd $HOME/git/botop; mkdir -p build; cd build; cmake -DUSE_BULLET=OFF -DPYBIND11_PYTHON_VERSION=$PYTHONVERSION ..; make
 
-* Optionally add binaries to your $PATH; or add symbolic links to your user bin 
+* Optionally add binaries to ~/.local/bin
 
-      echo 'export PATH="$HOME/git/botop/build:$PATH"' >> ~/.bashrc
-      OR SOMETHING LIKE:
-      mkdir -p $HOME/bin
-      ln -s $HOME/git/botop/build/bot $HOME/bin/
-      ln -s $HOME/git/botop/build/kinEdit $HOME/bin/
+      cd $HOME/git/botop/build; make install
 
 * Test the things in test/
 

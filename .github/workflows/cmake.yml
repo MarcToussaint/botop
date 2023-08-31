@@ -3,67 +3,49 @@ name: CMake
 on: [push, pull_request]
 
 env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
   BUILD_TYPE: Release
 
 jobs:
   build:
-    # The CMake configure and build commands are platform agnostic and should work equally
-    # well on Windows or Mac.  You can convert this to a matrix build if you need
-    # cross-platform coverage.
-    # See: https://docs.github.com/en/free-pro-team@latest/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v2
       with:
-        # recursively checkout all submodules
         submodules: 'recursive'
 
     - name: install ubuntu dependencies
       run: |
-        sudo apt-get install build-essential clang cmake curl git libpoco-dev libeigen3-dev libccd-dev libboost-system-dev portaudio19-dev libglu1-mesa-dev
+        sudo apt-get install --yes build-essential clang cmake curl git libpoco-dev libeigen3-dev libccd-dev libboost-system-dev portaudio19-dev libglu1-mesa-dev
         APTGETYES=1 make -C rai -j1 installUbuntuAll
-        mkdir -p $HOME/git $HOME/opt
+        mkdir -p $HOME/git $HOME/.local
 
-    - name: install libfranka
-      run: |
-        cd $HOME/git; git clone --single-branch -b 0.10.0 --recurse-submodules https://github.com/frankaemika/libfranka
-        cd $HOME/git/libfranka; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF ..; make install
+    - name: install installer
+      run: wget https://github.com/MarcToussaint/rai-extern/raw/main/install.sh; chmod a+x install.sh
 
     - name: install PhysX
-      run: |
-        cd $HOME/git; git clone --single-branch -b release/104.1 https://github.com/NVIDIA-Omniverse/PhysX.git
-        cd $HOME/git/PhysX/physx; ./generate_projects.sh linux; cd compiler/linux-release/; cmake ../../compiler/public -DPX_BUILDPVDRUNTIME=OFF -DPX_BUILDSNIPPETS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/opt; make install
+      run: ./install.sh physx
 
     - name: install FCL
-      run: |
-        cd $HOME/git; git clone --single-branch -b fcl-0.5 https://github.com/flexible-collision-library/fcl.git
-        cd $HOME/git/fcl; mkdir -p build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DFCL_STATIC_LIBRARY=ON -DFCL_BUILD_TESTS=OFF ..; make install
+      run: ./install.sh fcl
 
-#    - name: install realsense
-#      run: |
-#        sudo apt install --yes libusb-1.0-0-dev libglfw3-dev libgtk-3-dev
-#        cd $HOME/git; git clone --recurse-submodules https://github.com/IntelRealSense/librealsense.git
-#        cd $HOME/git/librealsense; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/opt -DCMAKE_BUILD_TYPE=Release ..; make install
+    - name: install libfranka
+      run: ./install.sh libfranka
 
     - name: install python and pybind
       run: |
-        sudo apt install --yes python3 python3-dev python3-numpy python3-pip python3-distutils
+        sudo apt install --yes python3 python3-dev python3-pip
         echo 'export PATH="${PATH}:$HOME/.local/bin"' >> ~/.bashrc   #add this to your .bashrc, if not done already
         source ~/.bashrc
-        python3 -m pip install --user jupyter nbconvert matplotlib pybind11
+        python3 -m pip install --user numpy jupyter nbconvert matplotlib pybind11
 
     - name: setup build files
       run: |
-        make -C rai -j1 unityAll
         export PYTHONVERSION=`python3 -c "import sys; print(str(sys.version_info[0])+'.'+str(sys.version_info[1]))"`
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=$HOME/opt -DUSE_PHYSX=ON -DUSE_REALSENSE=OFF -DUSE_OPENCV_LOCAL=OFF -DPYBIND11_PYTHON_VERSION=$PYTHONVERSION -DUSE_QHULL8=ON
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=$HOME/.local -DUSE_PHYSX=ON -DUSE_REALSENSE=OFF -DUSE_OPENCV=OFF -DUSE_OPENCV_LOCAL=OFF -DPYBIND11_PYTHON_VERSION=$PYTHONVERSION -DUSE_QHULL8=ON
 
     - name: Build
-      run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
 
     - name: install
-      run: |
-        cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+      run: cmake --install ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
