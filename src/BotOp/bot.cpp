@@ -192,11 +192,12 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
   return keypressed;
 }
 
-bool BotOp::wait(rai::Configuration& C){
+bool BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd){
   for(;;){
     sync(C, .1);
     if(keypressed=='q') return false;
-    if(keypressed) return true;
+    if(forKeyPressed && keypressed) return true;
+    if(forTimeToEnd && getTimeToEnd()<=0.) return true;
   }
 }
 
