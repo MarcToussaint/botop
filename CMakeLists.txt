@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4)
+cmake_minimum_required(VERSION 3.5)
 
 project(LISRobotOperation)
 
@@ -41,7 +41,7 @@ add_definitions(
   -DRAI_ROOT_PATH=\"${CMAKE_SOURCE_DIR}/rai\"
   -DRAI_X11 -DRAI_LAPACK -DRAI_EIGEN -DRAI_PTHREAD
   -DRAI_GL
-  -DRAI_GLFW -DRAI_ANN -DRAI_QHULL -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
+  -DRAI_GLFW -DRAI_ANN -DRAI_QHULL8 -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
   -DRAI_GJK -DRAI_CCD -DRAI_FCL -DRAI_Lewiner
   -DRAI_PORTAUDIO
   -BOOST_ERROR_CODE_HEADER_ONLY
@@ -64,7 +64,7 @@ include_directories(
 
 link_directories(
   $ENV{HOME}/.local/lib
-  $ENV{HOME}/.local/bin/linux.clang/release
+  $ENV{HOME}/.local/lib/PhysX
   )
 
 file(GLOB SRC_GeoGJK rai/rai/Geo/GJK/*.c)
@@ -141,7 +141,6 @@ endif()
 
 if(USE_PHYSX)
   add_definitions(-DRAI_PHYSX -DNDEBUG -DPX_DISABLE_FLUIDS -DCORELIB -DPX32 -DLINUX)
-  link_directories($ENV{HOME}/.local/bin/linux.clang/release)
   target_link_libraries(rai PhysXExtensions_static_64 PhysX_static_64 PhysXCooking_static_64 PhysXCommon_static_64 PhysXFoundation_static_64)
   message(STATUS "[rai] using physx libs from ~/.local")
 endif()

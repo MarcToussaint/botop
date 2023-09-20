@@ -86,7 +86,7 @@ void testBotop(){
 
   C.view(true);
 
-  bot.gripperOpen(rai::_left);
+  bot.gripperMove(rai::_left);
   while(!bot.gripperDone(rai::_left)){
     bot.sync(C);
     cout <<"gripper pos: " <<bot.gripperPos(rai::_left) <<endl;

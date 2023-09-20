@@ -93,7 +93,7 @@ void testGrasp(){
     }
 
     if(t==600){
-      S.openGripper("gripper");
+      S.moveGripper("gripper");
     }
 
     if(t>1000 && S.getGripperIsOpen("gripper")){
@@ -144,7 +144,7 @@ void testGrasp2(){
     }
 
     if(t==600){
-      S.openGripper("r_gripper");
+      S.moveGripper("r_gripper");
     }
 
     if(t>1000 && S.getGripperIsOpen("r_gripper")){
@@ -180,7 +180,7 @@ void testOpenClose(){
     if(S.getGripperIsClose("r_gripper")) break;
   }
 
-  S.openGripper("r_gripper");
+  S.moveGripper("r_gripper");
   for(uint t=0;;t++){
     rai::wait(tau);
 

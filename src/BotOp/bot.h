@@ -56,7 +56,7 @@ struct BotOp{
   void setCompliance(const arr& J, double compliance=.5);
 
   //-- gripper commands - directly calling the gripper abstraction
-  void gripperOpen(rai::ArgWord leftRight, double width=.075, double speed=.2);
+  void gripperMove(rai::ArgWord leftRight, double width=.075, double speed=.2);
   void gripperClose(rai::ArgWord leftRight, double force=10, double width=.05, double speed=.1);
   void gripperCloseGrasp(rai::ArgWord leftRight, const char* objName, double force=10, double width=.05, double speed=.1);
   double gripperPos(rai::ArgWord leftRight);

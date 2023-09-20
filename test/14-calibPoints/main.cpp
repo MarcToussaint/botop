@@ -203,7 +203,7 @@ void demoCalibration(){
   BotOp bot(C, rai::getParameter<bool>("real"));
 
   //pre motion
-  bot.gripperOpen(rai::_left);
+  bot.gripperMove(rai::_left);
   {
     Move_IK move(bot, C, checks);
     move().addObjective({}, FS_positionRel, {"dot0", cam->name}, OT_eq, {1e0}, {0.,0.,-.3});
@@ -223,7 +223,7 @@ void demoCalibration(){
 
   //pre motion
   if(!bot.wait(C)) return;
-  bot.gripperOpen(rai::_left);
+  bot.gripperMove(rai::_left);
   {
     Move_IK move(bot, C, checks);
     move().addObjective({}, FS_positionRel, {"dot1", cam->name}, OT_eq, {1e0}, {0.,0.,-.3});
@@ -242,7 +242,7 @@ void demoCalibration(){
   }
 
   if(!bot.wait(C)) return;
-  bot.gripperOpen(rai::_left);
+  bot.gripperMove(rai::_left);
   bot.home(C);
 }
 
@@ -267,7 +267,7 @@ void checkTip(){
   }
 
   if(!bot.wait(C)) return;
-  bot.gripperOpen(rai::_left);
+  bot.gripperMove(rai::_left);
   bot.home(C);
 
 }

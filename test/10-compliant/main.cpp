@@ -45,7 +45,7 @@ void test_bot() {
   } //just syncs the model config C and updates display until done
   bot.setCompliance({}, 0.);
 
-  bot.gripperOpen(rai::_left);
+  bot.gripperMove(rai::_left);
   bot.home(C);
 }
 

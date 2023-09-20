@@ -85,11 +85,11 @@ void init_BotOp(pybind11::module& m) {
   .def("setControllerWriteData", &BotOp::setControllerWriteData,
        "[for internal debugging only] triggers writing control data into a file")
 
-  .def("gripperOpen", &BotOp::gripperOpen,
-       "open gripper",
+  .def("gripperOpen", &BotOp::gripperMove,
+       "move the gripper to width (default: open)",
       pybind11::arg("leftRight"),
       pybind11::arg("width") = .075,
-      pybind11::arg("speed") = .075)
+      pybind11::arg("speed") = .2)
 
   .def("gripperClose", &BotOp::gripperClose,
        "close gripper",

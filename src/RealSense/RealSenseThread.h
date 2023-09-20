@@ -22,5 +22,4 @@ protected:
   void open();
   void close();
   void step();
-
 };

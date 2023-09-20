@@ -335,7 +335,7 @@ void BotOp::setCompliance(const arr& J, double compliance){
   cmd.set()->P_compliance = P;
 }
 
-void BotOp::gripperOpen(rai::ArgWord leftRight, double width, double speed){
+void BotOp::gripperMove(rai::ArgWord leftRight, double width, double speed){
   if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->open(width, speed); }
   if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->open(width, speed); }
 }
