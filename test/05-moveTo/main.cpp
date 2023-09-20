@@ -15,24 +15,29 @@ const char *USAGE =
 void test_bot() {
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
   C.view(false);
 
   //-- start a robot thread
   BotOp bot(C, rai::getParameter<bool>("real", false));
 
-  //-- create 2 simple reference configurations
+  bot.setControllerWriteData(1);
+
+  //-- create 3 simple reference configurations
   arr q0 = bot.get_qHome();
-  arr qT = q0;
-  qT(1) -= .5;
+  arr q1 = q0, q2 = q0;
+  q1(1) += .2;
+  q2(1) -= .4;
 
-  bot.move(~qT, {2.}); //in 2 sec strict
+  bot.move((q1, q1, q2).reshape(-1,q0.N), {.5, .7, 2.}); //in 2 sec strict
 
-  while(bot.sync(C)){} //just syncs the model config C and updates display until done
+  bot.wait(C, true, true);
+  if(bot.keypressed=='q') return;
 
-  bot.moveTo(q0, 1.); //using timing cost=1
+  bot.moveTo(q0, 1., true); //using timing cost=1
 
-  while(bot.sync(C)){}
+  bot.wait(C, true, true);
+  if(bot.keypressed=='q') return;
 
   rai::wait();
 }

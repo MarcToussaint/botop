@@ -193,6 +193,7 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
 }
 
 bool BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd){
+  C.viewer()->raiseWindow();
   for(;;){
     sync(C, .1);
     if(keypressed=='q') return false;
@@ -211,7 +212,7 @@ std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
   return sp;
 }
 
-void BotOp::move(const arr& path, const arr& vels, const arr& times, bool overwrite, double overwriteCtrlTime){
+void BotOp::move(const arr& path, const arr& times, bool overwrite, double overwriteCtrlTime){
   CHECK_EQ(times.N, path.d0, "");
 //  CHECK_EQ(times.N, vels.d0, "");
 
@@ -229,7 +230,7 @@ void BotOp::move(const arr& path, const arr& vels, const arr& times, bool overwr
   }
 }
 
-void BotOp::move(const arr& path, const arr& times, bool overwrite, double overwriteCtrlTime){
+void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, double overwriteCtrlTime){
   arr _times=times;
 
   //-- if times.N != path.d0, fill in times
@@ -242,7 +243,7 @@ void BotOp::move(const arr& path, const arr& times, bool overwrite, double overw
   }
 
   if(std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref)){
-    return move(path, {}, _times, overwrite, overwriteCtrlTime);
+    return move(path, _times, overwrite, overwriteCtrlTime);
   }
 
   arr vels;
@@ -277,7 +278,7 @@ void BotOp::move(const arr& path, const arr& times, bool overwrite, double overw
     if(!_times.N) _times = integral(timingProblem.tau);
   }
 
-  move(path, vels, _times, overwrite, overwriteCtrlTime);
+  NIY; //move(path, vels, _times, overwrite, overwriteCtrlTime);
 }
 
 void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
