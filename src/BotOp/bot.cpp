@@ -137,7 +137,7 @@ arr BotOp::get_qDot() {
 }
 
 double BotOp::getTimeToEnd(){
-  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
   if(!sp){
     LOG(-1) <<"can't get timeToEnd for non-spline mode";
     return 0.;
@@ -147,7 +147,7 @@ double BotOp::getTimeToEnd(){
 }
 
 arr BotOp::getEndPoint(){
-  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
   if(!sp) return get_q();
   return sp->getEndPoint();
 }
@@ -192,21 +192,21 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
   return keypressed;
 }
 
-bool BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd){
+int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd){
   C.viewer()->raiseWindow();
   for(;;){
     sync(C, .1);
-    if(keypressed=='q') return false;
-    if(forKeyPressed && keypressed) return true;
-    if(forTimeToEnd && getTimeToEnd()<=0.) return true;
+    if(keypressed=='q') return keypressed;
+    if(forKeyPressed && keypressed) return keypressed;
+    if(forTimeToEnd && getTimeToEnd()<=0.) return keypressed;
   }
 }
 
-std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
-  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+std::shared_ptr<rai::BSplineCtrlReference> BotOp::getSplineRef(){
+  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
   if(!sp){
-    setReference<rai::SplineCtrlReference>();
-    sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+    setReference<rai::BSplineCtrlReference>();
+    sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
     CHECK(sp, "this is not a spline reference!")
   }
   return sp;
@@ -226,7 +226,7 @@ void BotOp::move(const arr& path, const arr& times, bool overwrite, double overw
     }
   }else{
     //LOG(1) <<"append: " <<ctrlTime <<" - " <<_times;
-    getSplineRef()->append(path, /*vels,*/ times, get_t(), true);
+    getSplineRef()->append(path, /*vels,*/ times, get_t());
   }
 }
 
@@ -242,7 +242,7 @@ void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, dou
     CHECK_EQ(_times.N, path.d0, "");
   }
 
-  if(std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref)){
+  if(std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref)){
     return move(path, _times, overwrite, overwriteCtrlTime);
   }
 
@@ -397,11 +397,14 @@ void BotOp::getImageDepthPcl(byteA& image, floatA& depth, arr& points, const cha
 
 void BotOp::home(rai::Configuration& C){
   C.viewer()->raiseWindow();
-  moveTo(qHome, 1.);
-  while(getTimeToEnd()>0.){
-    sync(C);
-    if(keypressed=='q') break;
-  }
+  moveTo(qHome, 1., true);
+  wait(C);
+}
+
+void BotOp::stop(rai::Configuration& C){
+  C.viewer()->raiseWindow();
+  moveTo(get_q(), 1., true);
+  wait(C);
 }
 
 void BotOp::hold(bool floating, bool damping){

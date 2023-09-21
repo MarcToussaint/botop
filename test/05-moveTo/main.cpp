@@ -25,19 +25,31 @@ void test_bot() {
 
   //-- create 3 simple reference configurations
   arr q0 = bot.get_qHome();
-  arr q1 = q0, q2 = q0;
-  q1(1) += .2;
-  q2(1) -= .4;
+  arr q1 = q0;
+  q1(1) += .4;
 
-  bot.move((q1, q1, q2).reshape(-1,q0.N), {.5, .7, 2.}); //in 2 sec strict
+//  bot.move((q1, q0, q1).reshape(-1,q0.N), {.5, .6, 2.});
 
-  bot.wait(C, true, true);
-  if(bot.keypressed=='q') return;
+  rai::wait(.5);
+  bot.sync(C);
 
-  bot.moveTo(q0, 1., true); //using timing cost=1
+  for(;;){
+    bot.moveTo(q1, 1., false);
+    bot.wait(C);
+    if(bot.keypressed=='q') break;
 
-  bot.wait(C, true, true);
-  if(bot.keypressed=='q') return;
+    bot.moveTo(q0, 1., false); //using timing cost=1
+    bot.wait(C);
+    if(bot.keypressed=='q') break;
+  }
+
+  bot.stop(C); rai::wait();
+
+  bot.home(C);
+  bot.wait(C, false, true);
+//  bot.home(C);
+//  bot.wait(C, true, true);
+//  if(bot.keypressed=='q') return;
 
   rai::wait();
 }
@@ -66,15 +78,14 @@ void test_withoutBotWrapper() {
   qT(1) -= .5;
 
   //-- define the reference feed to be a spline
-  auto sp = make_shared<rai::CubicSplineCtrlReference>();
+  auto sp = make_shared<rai::BSplineCtrlReference>();
 //  auto sp = make_shared<rai::SplineCtrlReference>();
   robot->cmd.set()->ref = sp;
 
   //1st motion:
   double ctrlTime = robot->state.get()->ctrlTime;
   sp->report(ctrlTime);
-  sp->append((qT, q0).reshape(2,-1), zeros(2,q0.N), arr{2., 4.}, ctrlTime);
-//  sp->append((qT, q0).reshape(2,-1), arr{2., 4.}, ctrlTime, true);
+  sp->append((qT, q0).reshape(2,-1), arr{2., 4.}, ctrlTime);
   sp->report(ctrlTime);
 
   for(;;){
@@ -85,10 +96,10 @@ void test_withoutBotWrapper() {
 
   //2nd motion:
   ctrlTime = robot->state.get()->ctrlTime;
-  sp->moveTo(qT, 1., ctrlTime, false);
+  sp->overwriteSmooth(~qT, {1.}, ctrlTime);
   cout <<"OVERRIDE AT t=" <<ctrlTime <<endl;
   sp->report(ctrlTime);
-  sp->moveTo(q0, 1., ctrlTime, true);
+  sp->append(~q0, {1.}, ctrlTime);
   sp->report(ctrlTime);
 
   rai::wait(.1);

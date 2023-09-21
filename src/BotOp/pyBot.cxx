@@ -145,7 +145,11 @@ void init_BotOp(pybind11::module& m) {
        pybind11::arg("waitTime") = .1)
 
   .def("home", &BotOp::home,
-       "drive the robot home (which is defined as the configuration C when you created BotOp); keeps argument C synced",
+       "immediately drive the robot home (see get_qHome); keeps argument C synced; same as moveTo(qHome, 1., True); wait(C);",
+       pybind11::arg("C"))
+
+  .def("stop", &BotOp::home,
+       "immediately stop the robot; keeps argument C synced; same as moveTo(get_q(), 1., True); wait(C);",
        pybind11::arg("C"))
 
   .def("hold", &BotOp::hold,

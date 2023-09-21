@@ -69,10 +69,11 @@ struct BotOp{
 
   //-- sync the user's C with the robot, update the display, return pressed key
   int sync(rai::Configuration& C, double waitTime=.1);
-  bool wait(rai::Configuration& C, bool forKeyPressed=true, bool forTimeToEnd=false);
+  int wait(rai::Configuration& C, bool forKeyPressed=true, bool forTimeToEnd=true);
 
   //-- motion macros
   void home(rai::Configuration& C);
+  void stop(rai::Configuration& C);
   void hold(bool floating=true, bool damping=true);
 
   //-- audio
@@ -81,7 +82,7 @@ struct BotOp{
 private:
   std::shared_ptr<rai::CameraAbstraction>& getCamera(const char* sensor);
   template<class T> BotOp& setReference();
-  std::shared_ptr<rai::SplineCtrlReference> getSplineRef();
+  std::shared_ptr<rai::BSplineCtrlReference> getSplineRef();
 };
 
 //===========================================================================
