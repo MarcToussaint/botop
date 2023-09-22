@@ -48,15 +48,15 @@ struct BotOp{
   int getKeyPressed(){ return keypressed; }
 
   //-- motion commands
-  void move(const arr& path, const arr& vels, const arr& times, bool overwrite=false, double overwriteCtrlTime=-1.);
   void move(const arr& path, const arr& times, bool overwrite=false, double overwriteCtrlTime=-1.);
+  void move_oldCubic(const arr& path, const arr& times, bool overwrite=false, double overwriteCtrlTime=-1.);
   void moveAutoTimed(const arr& path, double maxVel=1., double maxAcc=1.); //double timeCost);
   void moveTo(const arr& q_target, double timeCost=1., bool overwrite=false);
   void setControllerWriteData(int _writeData);
   void setCompliance(const arr& J, double compliance=.5);
 
   //-- gripper commands - directly calling the gripper abstraction
-  void gripperOpen(rai::ArgWord leftRight, double width=.075, double speed=.2);
+  void gripperMove(rai::ArgWord leftRight, double width=.075, double speed=.2);
   void gripperClose(rai::ArgWord leftRight, double force=10, double width=.05, double speed=.1);
   void gripperCloseGrasp(rai::ArgWord leftRight, const char* objName, double force=10, double width=.05, double speed=.1);
   double gripperPos(rai::ArgWord leftRight);
@@ -69,10 +69,11 @@ struct BotOp{
 
   //-- sync the user's C with the robot, update the display, return pressed key
   int sync(rai::Configuration& C, double waitTime=.1);
-  bool wait(rai::Configuration& C, bool forKeyPressed=true, bool forTimeToEnd=false);
+  int wait(rai::Configuration& C, bool forKeyPressed=true, bool forTimeToEnd=true);
 
   //-- motion macros
   void home(rai::Configuration& C);
+  void stop(rai::Configuration& C);
   void hold(bool floating=true, bool damping=true);
 
   //-- audio
@@ -81,7 +82,7 @@ struct BotOp{
 private:
   std::shared_ptr<rai::CameraAbstraction>& getCamera(const char* sensor);
   template<class T> BotOp& setReference();
-  std::shared_ptr<rai::SplineCtrlReference> getSplineRef();
+  std::shared_ptr<rai::BSplineCtrlReference> getSplineRef();
 };
 
 //===========================================================================

@@ -15,24 +15,41 @@ const char *USAGE =
 void test_bot() {
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
   C.view(false);
 
   //-- start a robot thread
   BotOp bot(C, rai::getParameter<bool>("real", false));
 
-  //-- create 2 simple reference configurations
+  bot.setControllerWriteData(1);
+
+  //-- create 3 simple reference configurations
   arr q0 = bot.get_qHome();
-  arr qT = q0;
-  qT(1) -= .5;
+  arr q1 = q0;
+  q1(1) += .4;
 
-  bot.move(~qT, {2.}); //in 2 sec strict
+  for(;;){
+    LOG(0) <<"adding snake";
+    bot.move((q1, q0, q1).reshape(-1,q0.N), {.1, 1., 2.});
+//    bot.moveTo(q1, 1., false);
+    bot.wait(C);
+    if(bot.keypressed=='q') break;
 
-  while(bot.sync(C)){} //just syncs the model config C and updates display until done
+    LOG(0) <<"adding home";
+    bot.moveTo(q0, 1., false); //using timing cost=1
+    bot.wait(C);
+    if(bot.keypressed=='q') break;
+  }
 
-  bot.moveTo(q0, 1.); //using timing cost=1
+//  LOG(0) <<"immediate stop";
+//  bot.stop(C); rai::wait();
 
-  while(bot.sync(C)){}
+  LOG(0) <<"immediate home";
+  bot.home(C);
+//  bot.wait(C, false, true);
+//  bot.home(C);
+//  bot.wait(C, true, true);
+//  if(bot.keypressed=='q') return;
 
   rai::wait();
 }
@@ -61,15 +78,14 @@ void test_withoutBotWrapper() {
   qT(1) -= .5;
 
   //-- define the reference feed to be a spline
-  auto sp = make_shared<rai::CubicSplineCtrlReference>();
+  auto sp = make_shared<rai::BSplineCtrlReference>();
 //  auto sp = make_shared<rai::SplineCtrlReference>();
   robot->cmd.set()->ref = sp;
 
   //1st motion:
   double ctrlTime = robot->state.get()->ctrlTime;
   sp->report(ctrlTime);
-  sp->append((qT, q0).reshape(2,-1), zeros(2,q0.N), arr{2., 4.}, ctrlTime);
-//  sp->append((qT, q0).reshape(2,-1), arr{2., 4.}, ctrlTime, true);
+  sp->append((qT, q0).reshape(2,-1), arr{2., 4.}, ctrlTime);
   sp->report(ctrlTime);
 
   for(;;){
@@ -80,10 +96,10 @@ void test_withoutBotWrapper() {
 
   //2nd motion:
   ctrlTime = robot->state.get()->ctrlTime;
-  sp->moveTo(qT, 1., ctrlTime, false);
+  sp->overwriteSmooth(~qT, {1.}, ctrlTime);
   cout <<"OVERRIDE AT t=" <<ctrlTime <<endl;
   sp->report(ctrlTime);
-  sp->moveTo(q0, 1., ctrlTime, true);
+  sp->append(~q0, {1.}, ctrlTime);
   sp->report(ctrlTime);
 
   rai::wait(.1);

@@ -78,9 +78,9 @@ void testPnp() {
       }
 
       if(bot.gripperL){
-        if(k==0){ bot.gripperOpen(rai::_left); rai::wait(1.); } // while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
+        if(k==0){ bot.gripperMove(rai::_left); rai::wait(1.); } // while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
         else if(k==1){ bot.gripperCloseGrasp(rai::_left, boxName); rai::wait(1.); } //while(!bot.gripperDone(rai::_left) ) rai::wait(.1); }
-        else if(k==2){ bot.gripperOpen(rai::_left); rai::wait(1.); } //while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
+        else if(k==2){ bot.gripperMove(rai::_left); rai::wait(1.); } //while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
       }
 
       //send komo as spline:

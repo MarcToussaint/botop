@@ -43,7 +43,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
       if(useGripper) gripperR = make_shared<FrankaGripper>(1);
     }else if(useArm=="both"){
-      robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
+       robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
       robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
       if(useGripper){
         LOG(0) <<"OPENING GRIPPERS";
@@ -137,7 +137,7 @@ arr BotOp::get_qDot() {
 }
 
 double BotOp::getTimeToEnd(){
-  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
   if(!sp){
     LOG(-1) <<"can't get timeToEnd for non-spline mode";
     return 0.;
@@ -147,7 +147,7 @@ double BotOp::getTimeToEnd(){
 }
 
 arr BotOp::getEndPoint(){
-  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
   if(!sp) return get_q();
   return sp->getEndPoint();
 }
@@ -192,26 +192,27 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
   return keypressed;
 }
 
-bool BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd){
+int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd){
+  C.viewer()->raiseWindow();
   for(;;){
     sync(C, .1);
-    if(keypressed=='q') return false;
-    if(forKeyPressed && keypressed) return true;
-    if(forTimeToEnd && getTimeToEnd()<=0.) return true;
+    if(keypressed=='q') return keypressed;
+    if(forKeyPressed && keypressed) return keypressed;
+    if(forTimeToEnd && getTimeToEnd()<=0.) return keypressed;
   }
 }
 
-std::shared_ptr<rai::SplineCtrlReference> BotOp::getSplineRef(){
-  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+std::shared_ptr<rai::BSplineCtrlReference> BotOp::getSplineRef(){
+  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
   if(!sp){
-    setReference<rai::SplineCtrlReference>();
-    sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+    setReference<rai::BSplineCtrlReference>();
+    sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
     CHECK(sp, "this is not a spline reference!")
   }
   return sp;
 }
 
-void BotOp::move(const arr& path, const arr& vels, const arr& times, bool overwrite, double overwriteCtrlTime){
+void BotOp::move(const arr& path, const arr& times, bool overwrite, double overwriteCtrlTime){
   CHECK_EQ(times.N, path.d0, "");
 //  CHECK_EQ(times.N, vels.d0, "");
 
@@ -225,11 +226,11 @@ void BotOp::move(const arr& path, const arr& vels, const arr& times, bool overwr
     }
   }else{
     //LOG(1) <<"append: " <<ctrlTime <<" - " <<_times;
-    getSplineRef()->append(path, /*vels,*/ times, get_t(), true);
+    getSplineRef()->append(path, /*vels,*/ times, get_t());
   }
 }
 
-void BotOp::move(const arr& path, const arr& times, bool overwrite, double overwriteCtrlTime){
+void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, double overwriteCtrlTime){
   arr _times=times;
 
   //-- if times.N != path.d0, fill in times
@@ -241,8 +242,8 @@ void BotOp::move(const arr& path, const arr& times, bool overwrite, double overw
     CHECK_EQ(_times.N, path.d0, "");
   }
 
-  if(std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref)){
-    return move(path, {}, _times, overwrite, overwriteCtrlTime);
+  if(std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref)){
+    return move(path, _times, overwrite, overwriteCtrlTime);
   }
 
   arr vels;
@@ -277,7 +278,7 @@ void BotOp::move(const arr& path, const arr& times, bool overwrite, double overw
     if(!_times.N) _times = integral(timingProblem.tau);
   }
 
-  move(path, vels, _times, overwrite, overwriteCtrlTime);
+  NIY; //move(path, vels, _times, overwrite, overwriteCtrlTime);
 }
 
 void BotOp::moveAutoTimed(const arr& path, double maxVel, double maxAcc){
@@ -335,7 +336,7 @@ void BotOp::setCompliance(const arr& J, double compliance){
   cmd.set()->P_compliance = P;
 }
 
-void BotOp::gripperOpen(rai::ArgWord leftRight, double width, double speed){
+void BotOp::gripperMove(rai::ArgWord leftRight, double width, double speed){
   if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->open(width, speed); }
   if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->open(width, speed); }
 }
@@ -396,11 +397,14 @@ void BotOp::getImageDepthPcl(byteA& image, floatA& depth, arr& points, const cha
 
 void BotOp::home(rai::Configuration& C){
   C.viewer()->raiseWindow();
-  moveTo(qHome, 1.);
-  while(getTimeToEnd()>0.){
-    sync(C);
-    if(keypressed=='q') break;
-  }
+  moveTo(qHome, 1., true);
+  wait(C);
+}
+
+void BotOp::stop(rai::Configuration& C){
+  C.viewer()->raiseWindow();
+  moveTo(get_q(), 1., true);
+  wait(C);
 }
 
 void BotOp::hold(bool floating, bool damping){

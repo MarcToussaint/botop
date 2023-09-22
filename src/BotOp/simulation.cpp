@@ -163,14 +163,14 @@ void BotThreadedSim::step(){
 
 void GripperSim::open(double width, double speed) {
   auto mux = simthread->stepMutex(RAI_HERE);
-  simthread->sim->openGripper(gripperName);
+  simthread->sim->moveGripper(gripperName, width, speed);
   q=width;
   isClosing=false; isOpening=true;
 }
 
 void GripperSim::close(double force, double width, double speed) {
   auto mux = simthread->stepMutex(RAI_HERE);
-  simthread->sim->closeGripper(gripperName);
+  simthread->sim->closeGripper(gripperName, width, speed);
   q=width;
   isOpening=false; isClosing=true;
 }
@@ -189,7 +189,5 @@ double GripperSim::pos(){
 
 bool GripperSim::isDone(){
   auto mux = simthread->stepMutex(RAI_HERE);
-  if(isClosing) return simthread->sim->getGripperIsGrasping(gripperName) || simthread->sim->getGripperIsClose(gripperName);
-  if(isOpening) return simthread->sim->getGripperIsOpen(gripperName);
-  return true;
+  return simthread->sim->gripperIsDone(gripperName);
 }

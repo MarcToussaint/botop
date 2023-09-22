@@ -85,11 +85,11 @@ void init_BotOp(pybind11::module& m) {
   .def("setControllerWriteData", &BotOp::setControllerWriteData,
        "[for internal debugging only] triggers writing control data into a file")
 
-  .def("gripperOpen", &BotOp::gripperOpen,
-       "open gripper",
+  .def("gripperMove", &BotOp::gripperMove,
+       "move the gripper to width (default: open)",
       pybind11::arg("leftRight"),
       pybind11::arg("width") = .075,
-      pybind11::arg("speed") = .075)
+      pybind11::arg("speed") = .2)
 
   .def("gripperClose", &BotOp::gripperClose,
        "close gripper",
@@ -144,8 +144,18 @@ void init_BotOp(pybind11::module& m) {
        pybind11::arg("C"),
        pybind11::arg("waitTime") = .1)
 
+  .def("wait", &BotOp::wait,
+       "repeatedly sync your workspace C until a key is pressed or motion ends (optionally)",
+       pybind11::arg("C"),
+       pybind11::arg("forKeyPressed") = true,
+       pybind11::arg("forTimeToEnd") = true)
+
   .def("home", &BotOp::home,
-       "drive the robot home (which is defined as the configuration C when you created BotOp); keeps argument C synced",
+       "immediately drive the robot home (see get_qHome); keeps argument C synced; same as moveTo(qHome, 1., True); wait(C);",
+       pybind11::arg("C"))
+
+  .def("stop", &BotOp::home,
+       "immediately stop the robot; keeps argument C synced; same as moveTo(get_q(), 1., True); wait(C);",
        pybind11::arg("C"))
 
   .def("hold", &BotOp::hold,
