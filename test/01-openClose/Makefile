@@ -1,4 +1,4 @@
-BASE = ../../../rai
+BASE = ../../rai
 BASE2 = ../../src
 
 RAI_CMAKE = 1

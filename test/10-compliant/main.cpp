@@ -29,20 +29,21 @@ void test_bot() {
   qT(1) -= .5;
 
   bot.move(~qT, {2.}); //in 2 sec strict
-  while(bot.sync(C)){}
+  bot.wait(C, false, true);
   bot.moveTo(q0, 1.); //using timing cost=1
-
-  while(bot.sync(C)){}
+  bot.wait(C, false, true);
 
   bot.hold(false, true);
 
   for(;;){
     bot.sync(C, .1);
     if(bot.keypressed=='q') break;
+
     arr y = C.eval(FS_position, {"l_gripper"}, {{1,3},{1,0,0}});
     bot.setCompliance(y.J(), 1.);
     cout <<y.J() * bot.get_tauExternal() <<endl;
-  } //just syncs the model config C and updates display until done
+  }
+
   bot.setCompliance({}, 0.);
 
   bot.gripperMove(rai::_left);

@@ -225,6 +225,10 @@ target_link_libraries(bot rai)
 
 ################################################################################
 
+set(PYTHON_SITE "lib/python${PYBIND11_PYTHON_VERSION}/site-packages")
+
+message(STATUS "[rai] installing python packages in " ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE}/robotic )
+
 install(
   DIRECTORY rai/rai
   DESTINATION ${CMAKE_INSTALL_PREFIX}/include
@@ -244,15 +248,16 @@ install(
   )
   
 install(
-  TARGETS rai ry
+  TARGETS rai
   DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
   COMPONENT pkgconfig)
 
 install(
-  TARGETS kinEdit
+  TARGETS kinEdit bot
   DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
 
 install(
-  TARGETS bot
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+  TARGETS ry
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE}/robotic)
+
 

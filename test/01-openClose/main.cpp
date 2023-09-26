@@ -71,12 +71,12 @@ void testDirect(){
 void testBotop(){
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
 
   //-- start a robot thread
   BotOp bot(C, rai::getParameter<bool>("BotOp/real", false));
 
-  C.view(true);
+  C.view(true, "press to close gripper");
 
   bot.gripperClose(rai::_left);
   while(!bot.gripperDone(rai::_left)){
@@ -84,15 +84,27 @@ void testBotop(){
     cout <<"gripper pos: " <<bot.gripperPos(rai::_left) <<endl;
   }
 
-  C.view(true);
+  C.view(true, "press to move to different positions with different speed");
 
-  bot.gripperMove(rai::_left);
+  bot.gripperMove(rai::_left, .05, 1.);
   while(!bot.gripperDone(rai::_left)){
     bot.sync(C);
     cout <<"gripper pos: " <<bot.gripperPos(rai::_left) <<endl;
   }
 
-  C.view(true);
+  bot.gripperMove(rai::_left, .02, .01);
+  while(!bot.gripperDone(rai::_left)){
+    bot.sync(C);
+    cout <<"gripper pos: " <<bot.gripperPos(rai::_left) <<endl;
+  }
+
+  bot.gripperMove(rai::_left, .1, 1.);
+  while(!bot.gripperDone(rai::_left)){
+    bot.sync(C);
+    cout <<"gripper pos: " <<bot.gripperPos(rai::_left) <<endl;
+  }
+
+  C.view(true, "press to stop");
 }
 
 //===========================================================================

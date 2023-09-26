@@ -6,18 +6,18 @@
 
 void testPnp() {
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
 
   C.addFrame("box", "table")
       ->setJoint(rai::JT_rigid)
       .setShape(rai::ST_ssBox, {.06,.15,.09,.005})
-      .setRelativePosition(arr{-.0,-.0,.15})
+      .setRelativePosition(arr{-.0,-.055,.095})
       .setMass(.1);
 
   C.addFrame("target", "table")
       ->setJoint(rai::JT_rigid)
       .setShape(rai::ST_ssBox, {.4,.4,.1,.01})
-      .setRelativePosition(arr{-.4,.2,.0});
+      .setRelativePosition(arr{-.5,-.1,.0});
 
   arr qHome = C.getJointState();
 
@@ -31,6 +31,9 @@ void testPnp() {
   const char* targetName="target";
   const char* arm1Name="l_panda_coll7";
   const char* arm2Name="l_panda_coll6";
+
+  double maxVel = rai::getParameter<double>("maxVel");
+  double maxAcc = rai::getParameter<double>("maxAcc");
 
   uint L=50;
   for(uint l=0;l<=L;l++){
@@ -78,19 +81,20 @@ void testPnp() {
       }
 
       if(bot.gripperL){
-        if(k==0){ bot.gripperMove(rai::_left); rai::wait(1.); } // while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
-        else if(k==1){ bot.gripperCloseGrasp(rai::_left, boxName); rai::wait(1.); } //while(!bot.gripperDone(rai::_left) ) rai::wait(.1); }
-        else if(k==2){ bot.gripperMove(rai::_left); rai::wait(1.); } //while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
+        if(k==0){ bot.gripperMove(rai::_left); rai::wait(.2); } //while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
+        else if(k==1){ bot.gripperCloseGrasp(rai::_left, boxName); rai::wait(.5); } //while(!bot.gripperDone(rai::_left) ) rai::wait(.1); }
+        else if(k==2){ bot.gripperMove(rai::_left); rai::wait(.2); } //while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
       }
 
       //send komo as spline:
-      bot.moveAutoTimed(path);
+      bot.moveAutoTimed(path, maxVel, maxAcc);
 
-      while(bot.sync(C));
-      if(bot.keypressed=='q' || bot.keypressed==27) return;
+      bot.wait(C, false, true);
+      if(bot.keypressed=='q' || bot.keypressed==27){ l=L; break; }
     }
   }
 
+  bot.home(C);
 }
 
 //===========================================================================

@@ -85,7 +85,7 @@ void init_BotOp(pybind11::module& m) {
   .def("setControllerWriteData", &BotOp::setControllerWriteData,
        "[for internal debugging only] triggers writing control data into a file")
 
-  .def("gripperOpen", &BotOp::gripperMove,
+  .def("gripperMove", &BotOp::gripperMove,
        "move the gripper to width (default: open)",
       pybind11::arg("leftRight"),
       pybind11::arg("width") = .075,
@@ -143,6 +143,12 @@ void init_BotOp(pybind11::module& m) {
        "sync your workspace configuration C with the robot state",
        pybind11::arg("C"),
        pybind11::arg("waitTime") = .1)
+
+   .def("wait", &BotOp::wait,
+        "wait until keypressed or end of spline buffer; keeps C sync'ed",
+        pybind11::arg("C"),
+        pybind11::arg("forKeyPressed") = true,
+        pybind11::arg("forTimeToEnd") = true)
 
   .def("home", &BotOp::home,
        "immediately drive the robot home (see get_qHome); keeps argument C synced; same as moveTo(qHome, 1., True); wait(C);",
