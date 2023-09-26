@@ -35,34 +35,41 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 
   //-- launch robots & grippers
   if(useRealRobot){
-    LOG(0) <<"OPENING FRANKAS";
-    if(useArm=="left"){
-      robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
-      if(useGripper) gripperL = make_shared<FrankaGripper>(0);
-    }else if(useArm=="right"){
-      robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
-      if(useGripper) gripperR = make_shared<FrankaGripper>(1);
-    }else if(useArm=="both"){
-      robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
-      robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
-      if(useGripper){
-        LOG(0) <<"OPENING GRIPPERS";
-        if(robotiq){
-          gripperL = make_shared<RobotiqGripper>(0);
-          gripperR = make_shared<RobotiqGripper>(1);
-        }else{
-          gripperL = make_shared<FrankaGripper>(0);
-          gripperR = make_shared<FrankaGripper>(1);
+    LOG(0) <<"CONNECTING TO FRANKAS";
+    try{
+      if(useArm=="left"){
+        robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
+        if(useGripper) gripperL = make_shared<FrankaGripper>(0);
+      }else if(useArm=="right"){
+        robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
+        if(useGripper) gripperR = make_shared<FrankaGripper>(1);
+      }else if(useArm=="both"){
+        robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
+        robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
+        if(useGripper){
+          LOG(0) <<"CONNECTING TO GRIPPERS";
+          if(robotiq){
+            gripperL = make_shared<RobotiqGripper>(0);
+            gripperR = make_shared<RobotiqGripper>(1);
+          }else{
+            gripperL = make_shared<FrankaGripper>(0);
+            gripperR = make_shared<FrankaGripper>(1);
+          }
         }
+      }else if(useArm=="none"){
+        LOG(0) <<"starting botop without ANY robot module";
+      }else{
+        HALT("you need a botUseArm configuration (right, left, both)");
       }
-    }else if(useArm=="none"){
-      LOG(0) <<"starting botop without ANY robot module";
-    }else{
-      HALT("you need a botUseArm configuration (right, left, both)");
-    }
-    {// if using franka gripper, do a homing?
-      //FrankaGripper *fg = dynamic_cast<FrankaGripper*>(gripperL.get());
-      //if(fg) fg->homing();
+      {// if using franka gripper, do a homing?
+        //FrankaGripper *fg = dynamic_cast<FrankaGripper*>(gripperL.get());
+        //if(fg) fg->homing();
+      }
+      C.setJointState(get_q());
+    } catch(const std::exception& ex) {
+      LOG(-1) <<"Starting the real robot failed! Error msg: " <<ex.what();
+    } catch(...) {
+      LOG(-1) <<"Starting the real robot failed! Error msg: " <<rai::errString();
     }
   }else{
     double hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
@@ -70,7 +77,6 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     robotL = simthread;
     if(useGripper) gripperL = make_shared<GripperSim>(simthread, "l_gripper");
   }
-  C.setJointState(get_q());
 
   //-- initialize the control reference
   hold(false, true);

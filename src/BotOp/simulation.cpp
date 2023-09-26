@@ -120,7 +120,7 @@ void BotThreadedSim::step(){
   sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
 //    sim->step({}, tau, sim->_none);
   q_real = simConfig.getJointState();
-  qDot_real = cmd_qDot_ref;
+  if(cmd_qDot_ref.N==qDot_real.N) qDot_real = cmd_qDot_ref;
 
   //-- add other crazy perturbations?
 //  if((step_count%1000)<100) q_real(0) = .1;
