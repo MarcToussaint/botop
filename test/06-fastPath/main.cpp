@@ -9,14 +9,16 @@ int main(int argc, char * argv[]){
 
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
 
   arr path = getLoopPath(C);
 
   //-- start a robot thread
   BotOp bot(C, rai::getParameter<bool>("real", false));
-  bot.home(C);
+
   bot.setControllerWriteData(1);
+
+  bot.home(C);
 
   //prepare storing optitrack data ?
   ofstream fil("z.calib.dat");
@@ -28,17 +30,22 @@ int main(int argc, char * argv[]){
   }
 
   //-- send path as spline
-  for(double speed=1.;speed<=5.;speed+=.5){
+  Metronome tic(.01);
+
+  for(double speed=1.;speed<=3.;speed+=.5){
     bot.move(path, arr{10.}/speed);
 
-    Metronome tic(.01);
-    while(bot.sync(C, -1.)){
-      if(bot.optitrack){
+    if(bot.optitrack){
+      while(bot.sync(C, -1.)){
         tic.waitForTic();
-        arr q = bot.get_q();
-        bot.optitrack->pull(C);
-        fil <<rai::realTime() <<" q " <<q <<" poseL " <<optiFrameL->ensure_X() <<" poseR " <<optiFrameR->ensure_X() <<endl; // <<" poseTable " <<optiTable->get_X() <<endl;
+        if(bot.optitrack){
+          arr q = bot.get_q();
+          bot.optitrack->pull(C);
+          fil <<rai::realTime() <<" q " <<q <<" poseL " <<optiFrameL->ensure_X() <<" poseR " <<optiFrameR->ensure_X() <<endl; // <<" poseTable " <<optiTable->get_X() <<endl;
+        }
       }
+    }else{
+      bot.wait(C, false, true);
     }
     if(bot.keypressed=='q' || bot.keypressed==27) break;
   }

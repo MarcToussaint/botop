@@ -65,7 +65,7 @@ void BotThreadedSim::pullDynamicStates(rai::Configuration& C){
     if(f->inertia && f->inertia->type==rai::BT_dynamic){
       f->set_X() = simConfig.frames(f->ID)->ensure_X();
     }
-    if(f->joint && !f->joint->active){
+    if(f->joint && !f->joint->active && f->joint->dim==1){ //gripper?
       CHECK_EQ(f->joint->qIndex, simConfig.frames(f->ID)->joint->qIndex, "");
       f->joint->setDofs(simConfig.qInactive, f->joint->qIndex);
     }

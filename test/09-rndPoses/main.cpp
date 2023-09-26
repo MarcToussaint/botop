@@ -19,6 +19,8 @@ void rndPoses(){
   }
 
   double maxVel = rai::getParameter<double>("maxVel", 1.);
+  double maxAcc = rai::getParameter<double>("maxAcc", 1.);
+
   arr qHome = C.getJointState();
   arr limits = C.getLimits();
   FrameL collisionPairs = C.getCollisionAllPairs();
@@ -53,7 +55,7 @@ void rndPoses(){
       cout <<" === path feasible  === " <<endl;
 
       //wait til finished and update gui
-      while(bot.sync(C));
+      bot.wait(C, false, true);
       if(bot.keypressed=='q') break;
 
       //write data
@@ -64,7 +66,7 @@ void rndPoses(){
       }
 
       cout <<" === -> executing === " <<endl;
-      bot.moveAutoTimed(path, maxVel);
+      bot.moveAutoTimed(path, maxVel, maxAcc);
     }else{
       cout <<" === pose infeasible === " <<endl;
     }

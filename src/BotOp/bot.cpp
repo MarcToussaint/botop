@@ -43,7 +43,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
       if(useGripper) gripperR = make_shared<FrankaGripper>(1);
     }else if(useArm=="both"){
-       robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
+      robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
       robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
       if(useGripper){
         LOG(0) <<"OPENING GRIPPERS";
@@ -213,25 +213,9 @@ std::shared_ptr<rai::BSplineCtrlReference> BotOp::getSplineRef(){
 }
 
 void BotOp::move(const arr& path, const arr& times, bool overwrite, double overwriteCtrlTime){
-  CHECK_EQ(times.N, path.d0, "");
-//  CHECK_EQ(times.N, vels.d0, "");
-
-  if(overwrite){
-    CHECK(overwriteCtrlTime>0., "overwrite -> need to give a cut-time (e.g. start or MPC cycle, or just get_t())");
-    //LOG(1) <<"overwrite: " <<ctrlTime <<" - " <<_times;
-    if(times.first()>0.){
-      getSplineRef()->overwriteSmooth(path, /*vels,*/ times, overwriteCtrlTime);
-    }else{
-      getSplineRef()->overwriteHard(path, /*vels,*/ times, overwriteCtrlTime);
-    }
-  }else{
-    //LOG(1) <<"append: " <<ctrlTime <<" - " <<_times;
-    getSplineRef()->append(path, /*vels,*/ times, get_t());
-  }
-}
-
-void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, double overwriteCtrlTime){
   arr _times=times;
+
+  CHECK(_times.N, "move needs some times specified - use moveAutoTimed as alternative");
 
   //-- if times.N != path.d0, fill in times
   if(_times.N==1 && path.d0>1){ //divide total time in grid
@@ -241,6 +225,24 @@ void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, dou
   if(_times.N){ //times are fully specified
     CHECK_EQ(_times.N, path.d0, "");
   }
+
+  if(overwrite){
+    CHECK(overwriteCtrlTime>0., "overwrite -> need to give a cut-time (e.g. start or MPC cycle, or just get_t())");
+    //LOG(1) <<"overwrite: " <<ctrlTime <<" - " <<_times;
+    if(times.first()>0.){
+      getSplineRef()->overwriteSmooth(path, /*vels,*/ _times, overwriteCtrlTime);
+    }else{
+      getSplineRef()->overwriteHard(path, /*vels,*/ _times, overwriteCtrlTime);
+    }
+  }else{
+    //LOG(1) <<"append: " <<ctrlTime <<" - " <<_times;
+    getSplineRef()->append(path, /*vels,*/ _times, get_t());
+  }
+}
+
+void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, double overwriteCtrlTime){
+  arr _times=times;
+
 
   if(std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref)){
     return move(path, _times, overwrite, overwriteCtrlTime);
@@ -403,7 +405,7 @@ void BotOp::home(rai::Configuration& C){
 
 void BotOp::stop(rai::Configuration& C){
   C.viewer()->raiseWindow();
-  moveTo(get_q(), 1., true);
+  moveTo(get_q(), .01, true);
   wait(C);
 }
 
