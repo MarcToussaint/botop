@@ -28,25 +28,25 @@ void test_bot() {
   arr q1 = q0;
   q1(1) += .4;
 
-//  bot.move((q1, q0, q1).reshape(-1,q0.N), {.5, .6, 2.});
-
-  rai::wait(.5);
-  bot.sync(C);
-
   for(;;){
-    bot.moveTo(q1, 1., false);
+    LOG(0) <<"adding snake";
+    bot.move((q1, q0, q1).reshape(-1,q0.N), {.1, 1., 2.});
+//    bot.moveTo(q1, 1., false);
     bot.wait(C);
     if(bot.keypressed=='q') break;
 
+    LOG(0) <<"adding home";
     bot.moveTo(q0, 1., false); //using timing cost=1
     bot.wait(C);
     if(bot.keypressed=='q') break;
   }
 
-  bot.stop(C); rai::wait();
+//  LOG(0) <<"immediate stop";
+//  bot.stop(C); rai::wait();
 
+  LOG(0) <<"immediate home";
   bot.home(C);
-  bot.wait(C, false, true);
+//  bot.wait(C, false, true);
 //  bot.home(C);
 //  bot.wait(C, true, true);
 //  if(bot.keypressed=='q') return;
