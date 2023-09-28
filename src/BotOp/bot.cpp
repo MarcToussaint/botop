@@ -26,8 +26,8 @@
 BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   //-- launch arm(s) & gripper(s)
   bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
-  bool robotiq = rai::getParameter<bool>("bot/useRobotiq", true);
-  rai::String useArm = rai::getParameter<rai::String>("bot/useArm", "both");
+  bool robotiq = rai::getParameter<bool>("bot/useRobotiq", false);
+  rai::String useArm = rai::getParameter<rai::String>("bot/useArm", "left");
 
   C.ensure_indexedJoints();
   qHome = C.getJointState();
