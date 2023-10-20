@@ -71,9 +71,9 @@ struct CameraSim : rai::CameraAbstraction {
     simthread->sim->selectSensor(name);
     simthread->sim->getImageAndDepth(image, depth);
   }
-  virtual arr getFxypxy(){
+  virtual arr getFxycxy(){
     simthread->sim->selectSensor(name);
-    return simthread->sim->cameraview().currentSensor->getFxypxy();
+    return simthread->sim->cameraview().currentSensor->getFxycxy();
   }
   virtual rai::Transformation getPose(){
     simthread->sim->selectSensor(name);

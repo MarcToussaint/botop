@@ -65,7 +65,7 @@ struct BotOp{
   //-- camera commands
   void getImageAndDepth(byteA& image, floatA& depth, const char* sensor);
   void getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates=false);
-  arr  getCameraFxypxy(const char* sensor);
+  arr  getCameraFxycxy(const char* sensor);
 
   //-- sync the user's C with the robot, update the display, return pressed key
   int sync(rai::Configuration& C, double waitTime=.1);

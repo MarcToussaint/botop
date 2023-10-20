@@ -136,8 +136,8 @@ void RealSenseThread::open(){
     if(vsp){
       rs2_intrinsics intrinsics = vsp.get_intrinsics();
       LOG(1) <<"  is video: w=" <<intrinsics.width <<" h=" <<intrinsics.height <<" px=" <<intrinsics.ppx << " py=" <<intrinsics.ppy <<" fx=" <<intrinsics.fx <<" fy=" <<intrinsics.fy <<" distorsion=" <<intrinsics.model <<floatA().referTo(intrinsics.coeffs, 5);
-      if(sp.stream_type()==RS2_STREAM_DEPTH) depth_fxypxy = arr{intrinsics.fx, intrinsics.fy, intrinsics.ppx, intrinsics.ppy};
-      if(sp.stream_type()==RS2_STREAM_COLOR) color_fxypxy = arr{intrinsics.fx, intrinsics.fy, intrinsics.ppx, intrinsics.ppy};
+      if(sp.stream_type()==RS2_STREAM_DEPTH) depth_fxycxy = arr{intrinsics.fx, intrinsics.fy, intrinsics.ppx, intrinsics.ppy};
+      if(sp.stream_type()==RS2_STREAM_COLOR) color_fxycxy = arr{intrinsics.fx, intrinsics.fy, intrinsics.ppx, intrinsics.ppy};
     }
 
     if(sp.stream_type()==RS2_STREAM_COLOR) rs2_get_video_stream_intrinsics(sp.get(), &s->depth_intrinsics, NULL);
@@ -150,10 +150,10 @@ void RealSenseThread::open(){
   //-- align with depth or color?
   if(alignToDepth){
     s->align = std::make_shared<rs2::align>(RS2_STREAM_DEPTH);
-    fxypxy = depth_fxypxy;
+    fxycxy = depth_fxycxy;
   }else{
     s->align = std::make_shared<rs2::align>(RS2_STREAM_COLOR);
-    fxypxy = color_fxypxy;
+    fxycxy = color_fxycxy;
   }
 }
 
