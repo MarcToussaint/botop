@@ -1,6 +1,6 @@
 BASE = ../../rai
-BASE2 = ../../src
+BASE2 = ../..
 
 DEPEND = Core Gui RealSense Perception
 
-include $(BASE)/makeutils/generic.mk
+include $(BASE)/_make/generic.mk

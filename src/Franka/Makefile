@@ -1,5 +1,5 @@
 BASE = ../../rai
-BASE2 = ../../src
+BASE2 = ../..
 NAME   = $(shell basename `pwd`)
 OUTPUT = lib$(NAME).so
 
@@ -12,4 +12,4 @@ CPATH := $(CPATH):$(HOME)/git/libfranka/include
 LPATH := $(LPATH):$(HOME)/git/libfranka/build
 LIBS += -lfranka
 
-include $(BASE)/makeutils/generic.mk
+include $(BASE)/_make/generic.mk

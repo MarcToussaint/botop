@@ -28,6 +28,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
   bool robotiq = rai::getParameter<bool>("bot/useRobotiq", false);
   rai::String useArm = rai::getParameter<rai::String>("bot/useArm", "left");
+  bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
 
   C.ensure_indexedJoints();
   qHome = C.getJointState();
@@ -37,6 +38,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   if(useRealRobot){
     LOG(0) <<"CONNECTING TO FRANKAS";
     try{
+      if(blockRealRobot) throw "blocking real robot";
       if(useArm=="left"){
         robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
         if(useGripper) gripperL = make_shared<FrankaGripper>(0);

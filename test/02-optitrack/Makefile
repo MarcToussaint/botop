@@ -1,8 +1,8 @@
 BASE = ../../rai
-BASE2 = ../../src
+BASE2 = ../..
 
 EIGEN = 1
 
 DEPEND = Core Gui OptiTrack
 
-include $(BASE)/makeutils/generic.mk
+include $(BASE)/_make/generic.mk
