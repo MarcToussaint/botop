@@ -1,8 +1,6 @@
 BASE = ../../rai
-BASE2 = ../../src
-
-RAI_CMAKE = 1
+BASE2 = ../..
 
 LIBS = -lpthread -lboost_system
 
-include $(BASE)/makeutils/generic.mk
+include $(BASE)/_make/generic.mk

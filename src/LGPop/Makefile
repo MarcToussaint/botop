@@ -12,4 +12,4 @@ PYBIND = 0
 SRCS = $(shell find . -maxdepth 1 -name '*.cpp' )
 OBJS = $(SRCS:%.cpp=%.o)
 
-include $(BASE)/makeutils/generic.mk
+include $(BASE)/_make/generic.mk

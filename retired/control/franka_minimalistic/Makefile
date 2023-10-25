@@ -10,4 +10,4 @@ CPATH := $(CPATH):$(HOME)/git/libfranka/include
 LPATH := $(LPATH):$(HOME)/git/libfranka/build
 LIBS += -lfranka
 
-include $(BASE)/makeutils/generic.mk
+include $(BASE)/_make/generic.mk

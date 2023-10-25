@@ -390,13 +390,13 @@ void BotOp::getImageAndDepth(byteA& image, floatA& depth, const char* sensor){
 
 arr BotOp::getCameraFxypxy(const char* sensor){
   auto cam = getCamera(sensor);
-  return cam->getFxypxy();
+  return cam->getFxycxy();
 }
 
 void BotOp::getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates){
   auto cam = getCamera(sensor);
   cam->getImageAndDepth(image, depth);
-  depthData2pointCloud(points, depth, cam->getFxypxy());
+  depthData2pointCloud(points, depth, cam->getFxycxy());
   if(globalCoordinates){
     rai::Transformation pose=cam->getPose();
     if(!pose.isZero()) pose.applyOnPointArray(points);

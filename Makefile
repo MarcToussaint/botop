@@ -1,5 +1,5 @@
 BASE = rai
-BASE2 = src
+BASE2 = .
 
 DEPEND = KOMO Core Algo Geo Kin Gui Optim Perception
 
@@ -23,8 +23,8 @@ tests: $(test_paths:%=inPath_make/%)
 runTests: tests
 	@rm -f z.test-report
 	@find test -mindepth 1 -maxdepth 1 -type d \
-		-exec rai/makeutils/run-path.sh {} \;
+		-exec rai/_make/run-path.sh {} \;
 
-include $(BASE)/makeutils/generic.mk
+include $(BASE)/_make/generic.mk
 
 .NOTPARALLEL:

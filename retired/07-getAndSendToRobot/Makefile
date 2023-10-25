@@ -1,10 +1,10 @@
 BASE = ../rai
 BASE2 = ../src
 
-CPATHS	+= $(HOME)/spartan/makeutils/install/include
+CPATHS	+= $(HOME)/spartan/_make/install/include
 
 DEPEND = Sim Core Kin KOMO Gui RosCom Geo
 
 LIBS += -lExec
 
-include $(BASE)/makeutils/generic.mk
+include $(BASE)/_make/generic.mk

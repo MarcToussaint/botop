@@ -56,8 +56,8 @@ endif()
 ################################################################################
 
 include_directories(
-  rai/rai
-  src/
+  rai/src
+  src
   /usr/include/eigen3
   $ENV{HOME}/.local/include
   )
@@ -67,10 +67,10 @@ link_directories(
   $ENV{HOME}/.local/lib/PhysX
   )
 
-file(GLOB SRC_GeoGJK rai/rai/Geo/GJK/*.c)
-file(GLOB SRC_GeoPly rai/rai/Geo/ply/*.c)
-file(GLOB SRC_GeoCcd rai/rai/Geo/ccd_rai/*.c)
-file(GLOB SRC_GeoLewiner rai/rai/Geo/Lewiner/*.cpp)
+file(GLOB SRC_GeoGJK rai/src/Geo/GJK/*.c)
+file(GLOB SRC_GeoPly rai/src/Geo/ply/*.c)
+file(GLOB SRC_GeoCcd rai/src/Geo/ccd_rai/*.c)
+file(GLOB SRC_GeoLewiner rai/src/Geo/Lewiner/*.cpp)
 
 file(GLOB SRC_BotOp src/BotOp/*.cpp)
 file(GLOB SRC_Franka src/Franka/*.cpp)
@@ -81,22 +81,22 @@ file(GLOB SRC_Audio src/Audio/*.cpp)
 file(GLOB SRC_MarkerVision src/MarkerVision/*.cpp)
 
 add_library(rai SHARED
-  rai/rai/Core/unity.cxx
-  rai/rai/Optim/unity.cxx
-  rai/rai/Geo/unity.cxx
+  rai/src/Core/unity.cxx
+  rai/src/Optim/unity.cxx
+  rai/src/Geo/unity.cxx
   ${SRC_GeoGJK}
   ${SRC_GeoPly}
   ${SRC_GeoCcd}
   ${SRC_GeoLewiner}
-  rai/rai/Algo/unity.cxx
-  rai/rai/Search/unity.cxx
-  rai/rai/PathAlgos/unity.cxx
-  rai/rai/Gui/unity.cxx
-  rai/rai/Kin/unity.cxx
-  rai/rai/KOMO/unity.cxx
-  rai/rai/Logic/unity.cxx
-  rai/rai/Control/unity.cxx
-  rai/rai/Perception/unity.cxx
+  rai/src/Algo/unity.cxx
+  rai/src/Search/unity.cxx
+  rai/src/PathAlgos/unity.cxx
+  rai/src/Gui/unity.cxx
+  rai/src/Kin/unity.cxx
+  rai/src/KOMO/unity.cxx
+  rai/src/Logic/unity.cxx
+  rai/src/Control/unity.cxx
+  rai/src/Perception/unity.cxx
   ${SRC_BotOp}
   ${SRC_Franka}
   ${SRC_OptiTrack}
@@ -201,7 +201,7 @@ if(USE_PYBIND)
   include_directories(${pybind11_INCLUDE_DIRS})
   
   pybind11_add_module(ry SHARED
-    rai/rai/ry/unity.cxx
+    rai/src/ry/unity.cxx
     src/BotOp/pyBot.cxx
   )
 
@@ -211,6 +211,8 @@ if(USE_PYBIND)
 endif()
 
 ################################################################################
+#
+# verbosity: info on eventual compiler flags
 
 get_property(_defs DIRECTORY PROPERTY COMPILE_DEFINITIONS)
 message(STATUS "[rai] compiler flags: " "${_defs}")
@@ -219,6 +221,9 @@ message(STATUS "[rai] compiler flags: " "${_defs}")
 
 add_executable(kinEdit rai/bin/src_kinEdit/main.cpp)
 target_link_libraries(kinEdit rai)
+
+add_executable(meshTool rai/bin/src_meshTool/main.cpp)
+target_link_libraries(meshTool rai)
 
 add_executable(bot bin/bot/main.cpp)
 target_link_libraries(bot rai)
@@ -230,14 +235,10 @@ set(PYTHON_SITE "lib/python${PYBIND11_PYTHON_VERSION}/site-packages")
 message(STATUS "[rai] installing python packages in " ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE}/robotic )
 
 install(
-  DIRECTORY rai/rai
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/include
-  FILES_MATCHING
-  PATTERN "*.h" PATTERN "*.hxx" PATTERN "*.ipp"
-  PATTERN "retired" EXCLUDE
-  )
+  TARGETS ry
+  DESTINATION ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE}/robotic)
 
-file(GLOB SRC_botopSrc src/*)
+file(GLOB sources rai/src/* src/*)
 
 install(
   DIRECTORY ${SRC_botopSrc}
@@ -253,11 +254,5 @@ install(
   COMPONENT pkgconfig)
 
 install(
-  TARGETS kinEdit bot
+  TARGETS kinEdit meshTool bot
   DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-
-install(
-  TARGETS ry
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE}/robotic)
-
-

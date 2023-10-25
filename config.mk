@@ -34,7 +34,8 @@ BULLET = 0
 FCL_LOCAL = 1
 
 ## below are more libs, which we could use, but are disabled by default
-#OPENCV = 0
+OPENCV = 0
+OPENCV4 = 0
 #GRAPHVIZ = 0
 GTK = 0
 G4 = 0

@@ -1,6 +1,6 @@
 BASE = ../../rai
-BASE2 = ../../src
+BASE2 = ../..
 
 DEPEND = Core Gui Franka Kin
 
-include $(BASE)/makeutils/generic.mk
+include $(BASE)/_make/generic.mk

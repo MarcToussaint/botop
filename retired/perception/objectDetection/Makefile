@@ -1,8 +1,8 @@
 BASE = ../../rai
-BASE2 = ../../src
+BASE2 = ../..
 
 DEPEND = Core Gui Operate Perception RealSense BackgroundSubtraction
 
 OPENCV = 1
 
-include $(BASE)/makeutils/generic.mk
+include $(BASE)/_make/generic.mk

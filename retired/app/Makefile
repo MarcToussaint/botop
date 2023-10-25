@@ -7,4 +7,4 @@ GL = 1
 ROS = 0
 DEPEND = Core Gui Kin KOMO Geo Algo RosCom Perception Control LGP Logic
 
-include $(BASE)/makeutils/generic.mk
+include $(BASE)/_make/generic.mk
