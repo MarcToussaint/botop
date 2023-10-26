@@ -117,8 +117,11 @@ void BotThreadedSim::step(){
     P_compliance = cmdGet->P_compliance;
   }
 
-  sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
-//    sim->step({}, tau, sim->_none);
+  if(cmd_q_ref.N && cmd_qDot_ref.N){
+    sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
+  }else{
+    sim->step({}, tau, sim->_none);
+  }
   q_real = simConfig.getJointState();
   if(cmd_qDot_ref.N==qDot_real.N) qDot_real = cmd_qDot_ref;
 
