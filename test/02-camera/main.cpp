@@ -19,10 +19,10 @@ int testDirect(){
   {
     RS.depth.waitForNextRevision();
     RS.image.waitForNextRevision();
-    Depth2PointCloud cvt2pcl(RS.depth, RS.fxypxy(0), RS.fxypxy(1), RS.fxypxy(2), RS.fxypxy(3));
+    Depth2PointCloud cvt2pcl(RS.depth, RS.fxycxy(0), RS.fxycxy(1), RS.fxycxy(2), RS.fxycxy(3));
     PointCloudViewer pcview(cvt2pcl.points, RS.image);
 
-    cout <<"Camera Fxypxy: " <<RS.fxypxy <<endl;
+    cout <<"Camera fxycxy: " <<RS.fxycxy <<endl;
 
     {
       auto depthGet = RS.depth.get();

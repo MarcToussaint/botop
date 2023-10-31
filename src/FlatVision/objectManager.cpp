@@ -394,8 +394,8 @@ void ObjectManager::assignPerceptsToObjects(rai::Array<FlatPercept>& flats,
   }
 }
 
-void ObjectManager::displayLabelsAsPCL(PixelLabel label, const byteA& labels, const floatA& cam_depth, const arr& cam_pose, const arr& cam_fxypxy, rai::KinematicWorld& config){
-  arr V = getPCLforLabels(label, labels, cam_depth, cam_pose, cam_fxypxy);
+void ObjectManager::displayLabelsAsPCL(PixelLabel label, const byteA& labels, const floatA& cam_depth, const arr& cam_pose, const arr& cam_fxycxy, rai::KinematicWorld& config){
+  arr V = getPCLforLabels(label, labels, cam_depth, cam_pose, cam_fxycxy);
   rai::Frame *f = getFrame(config, 0, STRING("pcl_"<<(int)label));
   f->shape->visual = true;
   f->X.set(cam_pose);
@@ -408,7 +408,7 @@ void ObjectManager::displayLabelsAsPCL(PixelLabel label, const byteA& labels, co
 
 
 //if(&directSync){
-//  ptr<Object> obj = createObjectFromPercept(flat, labels, cam_color, cam_depth, cam_pose, cam_fxypxy, OT_pcl);
+//  ptr<Object> obj = createObjectFromPercept(flat, labels, cam_color, cam_depth, cam_pose, cam_fxycxy, OT_pcl);
 //  obj->pixelLabel = PixelLabel(PL_objects + obj->object_ID);
 //  rai::Frame *f=getFrame(directSync, 0, STRING("perc_"<<k));
 //  f->shape->visual = false;

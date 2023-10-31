@@ -8,7 +8,7 @@
 
 #ifdef RAI_PYBIND
 
-#include "pyBot.h"
+#include "py-BotOp.h"
 
 #include <ry/types.h>
 
@@ -24,7 +24,7 @@
 
 void init_BotOp(pybind11::module& m) {
   
-  pybind11::class_<BotOp, shared_ptr<BotOp>>(m, "BotOp", "needs some docu!")
+  pybind11::class_<BotOp, shared_ptr<BotOp>>(m, "BotOp", "Robot Operation interface -- see https://marctoussaint.github.io/robotics-course/tutorials/1b-botop.html")
 
   .def(pybind11::init<rai::Configuration&, bool>(),
        "constructor",
@@ -114,7 +114,7 @@ void init_BotOp(pybind11::module& m) {
        "returns if gripper is done",
        pybind11::arg("leftRight"))
 
-  .def("getCameraFxypxy", &BotOp::getCameraFxypxy,
+  .def("getCameraFxycxy", &BotOp::getCameraFxycxy,
        "returns camera intrinsics",
        pybind11::arg("sensorName"))
 

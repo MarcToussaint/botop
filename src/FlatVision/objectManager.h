@@ -47,7 +47,7 @@ struct ObjectManager{
 
   void displayLabelsAsPCL(PixelLabel label,
                           const byteA& labels, const floatA& cam_depth,
-                          const arr& cam_pose, const arr& cam_fxypxy,
+                          const arr& cam_pose, const arr& cam_fxycxy,
                           rai::KinematicWorld& config);
 
   void displayLabels(const byteA& labels,

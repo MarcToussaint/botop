@@ -39,11 +39,11 @@ bool sense_HsvBlob(BotOp& bot, rai::Configuration& C, const char* camName, const
 
   arr x;
   if(Pinv.N){
-    makeHomogeneousImageCoordinate(u, img.d0);
+    makeHomogeneousImageCoordinate(u);
     x = Pinv*u;
   }else{
     x = u;
-    depthData2point(x, bot.getCameraFxypxy(camName));
+    depthData2point(x, bot.getCameraFxycxy(camName));
   }
   if(verbose>0) LOG(0)  <<"dot in cam coords: " <<x;
   C[camName]->get_X().applyOnPoint(x);

@@ -16,7 +16,7 @@ void testBGSThread() {
   LOG(0) <<"..done";
 
   RS.depth.waitForNextRevision();
-  Depth2PointCloud cvt2pcl(RS.depth, RS.depth_fxypxy(0), RS.depth_fxypxy(1), RS.depth_fxypxy(2), RS.depth_fxypxy(3));
+  Depth2PointCloud cvt2pcl(RS.depth, RS.depth_fxycxy(0), RS.depth_fxycxy(1), RS.depth_fxycxy(2), RS.depth_fxycxy(3));
   PointCloudViewer pcview(cvt2pcl.points, RS.color, 1.);
 
   Var<floatA> cameraDepth(RS.depth);

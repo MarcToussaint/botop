@@ -10,13 +10,13 @@ struct RealSenseThread : Thread, rai::CameraAbstraction {
   struct sRealSenseThread *s=0;
   Var<byteA> image;
   Var<floatA> depth;
-  arr fxypxy, color_fxypxy, depth_fxypxy;
+  arr fxycxy, color_fxycxy, depth_fxycxy;
 
   RealSenseThread(const char *_name);
   ~RealSenseThread();
 
   virtual void getImageAndDepth(byteA& _image, floatA& _depth);
-  arr getFxypxy(){ return fxypxy; }
+  arr getFxycxy(){ return fxycxy; }
 
 protected:
   void open();

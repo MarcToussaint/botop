@@ -73,7 +73,7 @@ void recomputeObjMinMaxAvgDepthSize(std::shared_ptr<Object> obj){
   }
 }
 
-void create3DfromFlat(std::shared_ptr<Object> obj, NovelObjectType type, const arr& fxypxy){
+void create3DfromFlat(std::shared_ptr<Object> obj, NovelObjectType type, const arr& fxycxy){
   //get (top) center
   arr center = zeros(3);
   double sum=0.;
@@ -88,7 +88,7 @@ void create3DfromFlat(std::shared_ptr<Object> obj, NovelObjectType type, const a
     }
   }
   center /= sum;
-  depthData2point(center, fxypxy);
+  depthData2point(center, fxycxy);
   obj->pose.pos = center;
 
   if(type==OT_pcl){
@@ -96,7 +96,7 @@ void create3DfromFlat(std::shared_ptr<Object> obj, NovelObjectType type, const a
     floatA _depth = obj->depth.sub(obj->rect(1), obj->rect(3)-1, obj->rect(0), obj->rect(2)-1);
     floatA _mask = obj->mask.sub(obj->rect(1), obj->rect(3)-1, obj->rect(0), obj->rect(2)-1);
     arr V;
-    depthData2pointCloud(V, _depth, fxypxy(0), fxypxy(1), fxypxy(2)-obj->rect(0), fxypxy(3)-obj->rect(1));
+    depthData2pointCloud(V, _depth, fxycxy(0), fxycxy(1), fxycxy(2)-obj->rect(0), fxycxy(3)-obj->rect(1));
     V.reshape(V.N/3, 3);
     uint maskN=0;
     for(uint i=0;i<_mask.N;i++) if(_mask.elem(i)>.5) maskN++;
@@ -129,7 +129,7 @@ void create3DfromFlat(std::shared_ptr<Object> obj, NovelObjectType type, const a
       }
     }else NIY;
 
-    for(uint i=0;i<polygon.d0;i++) depthData2point(&polygon(i,0), fxypxy.p);
+    for(uint i=0;i<polygon.d0;i++) depthData2point(&polygon(i,0), fxycxy.p);
 
     //-- create mesh from polygon
     obj->mesh.clear();
@@ -155,7 +155,7 @@ void create3DfromFlat(std::shared_ptr<Object> obj, NovelObjectType type, const a
 ptr<Object> createObjectFromPercept(const FlatPercept& flat,
                                     const byteA& labels,
                                     const byteA& cam_color, const floatA& cam_depth,
-                                    const arr& cam_pose, const arr& fxypxy,
+                                    const arr& cam_pose, const arr& fxycxy,
                                     NovelObjectType type){
   cv::Mat cv_cam_depth = CV(cam_depth);
 
@@ -174,7 +174,7 @@ ptr<Object> createObjectFromPercept(const FlatPercept& flat,
 
   //-- create object's 3D shape
   obj->pose.setZero();
-  create3DfromFlat(obj, type, fxypxy);
+  create3DfromFlat(obj, type, fxycxy);
 
 
   obj->mesh.clear();
@@ -189,7 +189,7 @@ ptr<Object> createObjectFromPercept(const FlatPercept& flat,
 
 arr getPCLforLabels(PixelLabel label,
                     const byteA& labels, const floatA& cam_depth,
-                    const arr& cam_pose, const arr& fxypxy){
+                    const arr& cam_pose, const arr& fxycxy){
 
   uint n=0;
   for(byte l:labels) if(l==label) n++;
@@ -208,7 +208,7 @@ arr getPCLforLabels(PixelLabel label,
   }
   CHECK_EQ(n, V.d0, "");
 
-  for(uint i=0;i<V.d0;i++) depthData2point(&V(i,0), fxypxy.p);
+  for(uint i=0;i<V.d0;i++) depthData2point(&V(i,0), fxycxy.p);
 
   return V;
 }

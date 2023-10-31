@@ -27,7 +27,7 @@ CERES = 0
 NLOPT = 0
 IPOPT = 0
 
-## we use the following collision/physics libraries by default, but can be disabled
+## we can use the following collision/physics libraries, some disabled by default
 #FCL = 0
 #PHYSX = 0
 BULLET = 0

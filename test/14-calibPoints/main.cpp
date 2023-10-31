@@ -11,18 +11,39 @@
 #include <Gui/opengl.h>
 #include <Geo/depth2PointCloud.h>
 
+#include <Optim/NLP_Solver.h>
+
 //===========================================================================
 
+void setupConfig(rai::Configuration& C){
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+
+  arr dots = rai::getParameter<arr>("dots");
+  dots.reshape(-1,3);
+
+  cout <<"-- adding " <<dots.d0 <<" dots" <<endl;
+  for(uint i=0;i<dots.d0;i++){
+    C.addFrame(STRING("dot" <<i), "table")
+        ->setRelativePosition(dots[i])
+        .setShape(rai::ST_cylinder, {.001, .02})
+        .setColor({.2, .3, 1});
+  }
+}
 void collectData(){
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile("station.g");
+  setupConfig(C);
 
-//  C["bellybutton"]->name = "dot0";
+  arr dots = rai::getParameter<arr>("dots");
+  uint views = rai::getParameter<uint>("views");
+  dots.reshape(-1,3);
+
+  OpenGL imgGl;
+
   rai::Frame* cam = C["cameraWrist"];
   rai::Frame* mount = C["l_panda_joint7"];
 
-  BotOp bot(C, rai::getParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
 
 #if 0
   bot.gripperClose(rai::_left);
@@ -40,13 +61,12 @@ void collectData(){
 
   rai::Graph data;
 
-  uint nDots=2;
-  for(uint d=0;d<nDots;d++){
-    for(uint k=0;k<20; k++){
+  for(uint d=0;d<dots.d0;d++){
+    for(uint k=0;k<views; k++){
       rai::Frame* dot = C[STRING("dot" <<d)];
 
       arr dotPos = arr{.2, .15, .2}%(rand(3)-.5);
-      dotPos(2) -= .35;
+      dotPos(2) += .35;
       double wristAngle = rnd.uni(-2.3, 2.3);
 
       {
@@ -67,16 +87,19 @@ void collectData(){
 
       rai::Graph& dat = data.addSubgraph(STRING(dot->name<<k));
       bot.getImageAndDepth(img, depth, cam->name);
+      dat.add("dot", dot->ID);
+      dat.add("q", bot.get_q());
       dat.add("mountPose", mount->getPose());
       dat.add("camPose", cam->getPose());
-      dat.add("camFxypxy", bot.getCameraFxypxy(cam->name));
+      dat.add("camFxycxy", bot.getCameraFxycxy(cam->name));
       dat.add("dotPosition", dot->getPosition());
       dat.add("img", img);
       dat.add("depth", depth);
+      imgGl.watchImage(img, false);
     }
   }
 
-  data.write(FILE("dat.g"), "\n", 0, -1, false, true);
+  data.write(FILE("dat.g"), ",", "{}", 0);
 
   bot.home(C);
 }
@@ -114,8 +137,10 @@ void computeCalibration(){
 
   // set hsv filter parameters
   arr hsvFilter = rai::getParameter<arr>("hsvFilter");
+  int checks = rai::getParameter<int>("checks", 1);
 
-  arr U(0,4), X(0,3);
+  arr U(0,4), X(0,4);
+  arr histogram;
 
   OpenGL disp;
   for(rai::Node *n:data){
@@ -128,39 +153,44 @@ void computeCalibration(){
     rai::Transformation mountPose(dat.get<arr>("mountPose"));
     rai::Transformation camPose(dat.get<arr>("camPose"));
     rai::Vector dotWorld(dat.get<arr>("dotPosition"));
-    arr Fxypxy = dat.get<arr>("camFxypxy");
+    arr fxycxy = dat.get<arr>("camFxycxy");
 
     if(img.d0 != depth.d0) continue;
 
-    // image coordinates
-    arr u = getHsvBlobImageCoords(img, depth, hsvFilter);
+    // blob image coordinates
+    arr u = getHsvBlobImageCoords(img, depth, hsvFilter, 0, histogram);
     if(!u.N){ rai::wait(); continue; }
 
-    // homogeneous
+    // blob homogeneous coordinates
     arr uHom = u;
-    makeHomogeneousImageCoordinate(uHom, img.d0);
+    makeHomogeneousImageCoordinate(uHom);
 
-    // camera coordinates assuming given intrinsics
-    arr xCam=u;
-    depthData2point(xCam, Fxypxy); //transforms the point to camera xyz coordinates
+    // blob camera coordinates,  assuming given intrinsics
+    arr xCam = u;
+    depthData2point(xCam, fxycxy); //transforms the point to camera xyz coordinates
 
-    // camera coordinates from ground truth world coordinates
-    arr x = (dotWorld / camPose).getArr();
+    // dot coordinates in cam/mount frame
+    arr x = (dotWorld / mountPose).getArr(); //camPose or mountPose - both work...
 
-    cout <<"blob: " <<u <<' ' <<uHom <<' ' <<xCam <<' ' <<x <<' ' <<xCam-x <<' ' <<Fxypxy <<endl;
+    cout <<"blob im image: " <<u
+        <<"\nin homogen:    " <<uHom
+       <<"\ndot-rel-cam:   " <<xCam
+      <<"\nblob-from-hom: " <<x
+     <<"\ncalib err:     " <<x-xCam <<endl;
 
-    disp.watchImage(img, true, 1.);
+    disp.watchImage(img, checks>0, 1.);
 
     //collect data
     U.append(uHom);
+    x.append(1.); //works equally with or without appending 1...
     X.append(x);
   }
+  X.reshape(U.d0, -1);
 
   //-- multiple iterations
-  arr Pinv, K, R, t;
+  arr Pinv;
   for(uint k=0;k<5;k++){
     Pinv = ~X * U * inverse_SymPosDef(~U*U);
-    decomposeInvProjectionMatrix(K, R, t, Pinv);
     for(uint i=0;i<X.d0;i++){
       double ei = sqrt(sumOfSqr(X[i] - Pinv*U[i]));
       cout <<"   error on data " <<i <<": " <<ei;
@@ -173,16 +203,102 @@ void computeCalibration(){
   }
 
   //-- output
+  arr K, R, t;
+  decomposeInvProjectionMatrix(K, R, t, Pinv);
   rai::Transformation T;
-  T.rot.setMatrix(~R);
+  T.rot.setMatrix(R);
   T.pos=t;
-  arr Fxypxy = {K(0,0), K(1,1), K(0,2), K(1,2)};
+  arr fxycxy = {K(0,0), K(1,1), K(0,2), K(1,2)};
   cout <<"*** total Pinv:\n" <<Pinv <<endl;
+  cout <<"*** R*K^-1:  \n" <<R*inverse(K) <<endl;
   cout <<"*** camera intrinsics K:\n" <<K <<endl;
-  cout <<"*** camera Fxypxy :\n" <<Fxypxy <<endl;
+  cout <<"*** camera fxycxy :\n" <<fxycxy <<endl;
   cout <<"*** camera world pose: " <<T <<endl;
   cout <<"*** camera world pos: " <<T.pos <<endl;
   cout <<"*** camera world rot: " <<T.rot <<endl;
+
+  FILE("z.hsv") <<(~histogram).modRaw() <<endl;
+  gnuplot("set title 'HSV histogram'; plot 'z.hsv' us 0:1 t 'H', '' us 0:2 t 'S', '' us 0:3 t 'V'");
+  rai::wait();
+}
+
+//===========================================================================
+
+void komoCalibrate(){
+  arr hsvFilter = rai::getParameter<arr>("hsvFilter");
+  int checks = rai::getParameter<int>("checks", 1);
+
+  rai::Configuration C;
+  setupConfig(C);
+
+  rai::Graph data("dat.g");
+
+  //make camera mount stable free joint
+  rai::Frame* cam = C["cameraWrist"];
+  cam->setJoint(rai::JT_free);
+  cam->joint->isStable = true;
+  arr qCam = cam->joint->getDofState();
+  C.report();
+
+
+  //add a 'viewPoint' marker to the camera
+  rai::Frame* viewPoint = C.addFrame("viewPoint", cam->name);
+  viewPoint->setShape(rai::ST_marker, {.1});
+
+  //setup KOMO, one frame for each datapoint
+  KOMO komo(C, data.N, 1, 0, false);
+  komo.setupPathConfig();
+
+  //add objectives for each data point
+  arr histogram;
+  for(uint t=0;t<komo.T;t++){
+    rai::Node *n = data(t);
+
+    rai::Graph& dat = n->graph();
+
+    //set the configuration
+    arr q = dat.get<arr>("q");
+    if(!t){
+      komo.setConfiguration_qOrg(t, (q, qCam));
+    }else{
+      komo.setConfiguration_qOrg(t, q);
+    }
+
+    //set the viewPoint
+    byteA img(dat.get<byteA>("img"));
+    floatA depth(dat.get<floatA>("depth"));
+    arr fxycxy = dat.get<arr>("camFxycxy");
+    arr u = getHsvBlobImageCoords(img, depth, hsvFilter, 0, histogram);
+    arr xCam = u;
+    depthData2point(xCam, fxycxy); //transforms the point to camera xyz coordinates
+    komo.timeSlices(t, viewPoint->ID) ->setRelativePosition(xCam);
+
+    cout <<n->key;
+    n->key.resize(n->key.N-1, true);
+
+    //add calibration objective
+    komo.addObjective({double(t+1)}, FS_positionDiff, {"viewPoint", n->key}, OT_eq, {1e0});
+  }
+
+  komo.pathConfig.selectJoints({komo.timeSlices(0, cam->ID)->joint});
+
+  komo.view(true, "before optim");
+//  komo.pathConfig.animate();
+
+  cout <<komo.report(false) <<endl;
+
+  NLP_Solver sol;
+  sol.setProblem(komo.nlp());
+  auto ret = sol.solve();
+  cout <<komo.report(false) <<endl;
+  cout <<*ret <<endl;
+  cout <<"== optimized camera mount pose: " <<komo.x <<endl;
+
+  komo.view(true, "after optim");
+
+  FILE("z.hsv") <<(~histogram).modRaw() <<endl;
+  gnuplot("set title 'HSV histogram'; plot 'z.hsv' us 0:1 t 'H', '' us 0:2 t 'S', '' us 0:3 t 'V'");
+  rai::wait();
 }
 
 //===========================================================================
@@ -190,58 +306,48 @@ void computeCalibration(){
 void demoCalibration(){
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile("station.g");
+  setupConfig(C);
+
   rai::Frame* target = C.addFrame("target");
   target->setShape(rai::ST_marker, {.1});
   target->setColor({1.,.5,0.});
+
+  C.view(true);
 
   rai::Frame* cam = C["cameraWrist"];
   arr hsvFilter = rai::getParameter<arr>("hsvFilter");
   arr Pinv = rai::getParameter<arr>("Pinv");
   int checks = rai::getParameter<int>("checks", 1);
 
-  BotOp bot(C, rai::getParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
 
-  //pre motion
-  bot.gripperMove(rai::_left);
-  {
-    Move_IK move(bot, C, checks);
-    move().addObjective({}, FS_positionRel, {"dot0", cam->name}, OT_eq, {1e0}, {0.,0.,-.3});
-    if(!move.go()) return;
+  for(uint i=0;;i++){
+    rai::Frame *dot = C.getFrame(STRING("dot"<<i), false);
+    if(!dot) break
+      ;
+    //pre motion
+    bot.gripperMove(rai::_left);
+    {
+      Move_IK move(bot, C, checks);
+      move().addObjective({}, FS_positionRel, {dot->name, cam->name}, OT_eq, {1e0}, {0.,0.,.25});
+      if(!move.go()) return;
+    }
+
+    //fine motion
+    bot.gripperMove(rai::_left, 0);
+    for(uint t=0;t<5;t++) bot.sync(C);
+    if(!sense_HsvBlob(bot, C, cam->name, "target", hsvFilter, Pinv, checks)) return;
+    {
+      Move_IK move(bot, C, checks);
+      move().addObjective({}, FS_vectorZ, {"l_gripper"}, OT_eq, {1e0}, {0.,0.,1.});
+      move().addObjective({}, FS_positionDiff, {"l_gripper", "target"}, OT_eq, {1e0}, {0.,0., .01});
+      if(!move.go()) return;
+    }
+
+    bot.wait(C, true, false);
+    if(bot.keypressed=='q') break;
   }
 
-  //fine motion
-  bot.gripperCloseGrasp(rai::_left, 0);
-  for(uint t=0;t<5;t++) bot.sync(C);
-  if(!sense_HsvBlob(bot, C, cam->name, "target", hsvFilter, Pinv, checks)) return;
-  {
-    Move_IK move(bot, C, checks);
-    move().addObjective({}, FS_vectorZ, {"l_gripper"}, OT_eq, {1e0}, {0.,0.,1.});
-    move().addObjective({}, FS_positionRel, {"target", "l_gripper"}, OT_eq, {1e0}, {0.,0.,-.01});
-    if(!move.go()) return;
-  }
-
-  //pre motion
-  if(!bot.wait(C)) return;
-  bot.gripperMove(rai::_left);
-  {
-    Move_IK move(bot, C, checks);
-    move().addObjective({}, FS_positionRel, {"dot1", cam->name}, OT_eq, {1e0}, {0.,0.,-.3});
-    if(!move.go()) return;
-  }
-
-  //fine motion
-  bot.gripperCloseGrasp(rai::_left, 0);
-  for(uint t=0;t<5;t++) bot.sync(C);
-  if(!sense_HsvBlob(bot, C, cam->name, "target", hsvFilter, Pinv, checks)) return;
-  {
-    Move_IK move(bot, C, checks);
-    move().addObjective({}, FS_vectorZ, {"l_gripper"}, OT_eq, {1e0}, {0.,0.,1.});
-    move().addObjective({}, FS_positionRel, {"target", "l_gripper"}, OT_eq, {1e0}, {0.,0.,-.01});
-    if(!move.go()) return;
-  }
-
-  if(!bot.wait(C)) return;
   bot.gripperMove(rai::_left);
   bot.home(C);
 }
@@ -253,7 +359,7 @@ void checkTip(){
   rai::Configuration C;
   C.addFile("station.g");
 
-  BotOp bot(C, rai::getParameter<bool>("real"));
+  BotOp bot(C, rai::getParameter<bool>("real", false));
 
   rai::Frame* tip = C["l_gripper"];
 
@@ -280,10 +386,11 @@ int main(int argc, char * argv[]){
 //  collectData();
 
 //  computeCalibration();
+  komoCalibrate();
 
 //  selectHSV();
 
-  demoCalibration();
+//  demoCalibration();
 
 //  checkTip();
 

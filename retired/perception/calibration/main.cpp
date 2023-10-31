@@ -82,11 +82,11 @@ void online(){
     cout <<"CALIB:" <<calib <<endl;
 
     {
-      arr fxypxy = OP.cam_Fxypxy.get();
+      arr fxycxy = OP.cam_fxycxy.get();
       auto armCalib = OP.armPoseCalib.set();
       armCalib->setZero();
-      armCalib->operator()(0,0) = calib(1)/fxypxy(1);
-      armCalib->operator()(0,1) = calib(0)/fxypxy(0);
+      armCalib->operator()(0,0) = calib(1)/fxycxy(1);
+      armCalib->operator()(0,1) = calib(0)/fxycxy(0);
 //      armCalib->operator()(0,2) = .2* calib(2);
       armCalib->operator()(0,5) = calib(2);
     }
@@ -151,7 +151,7 @@ void online(){
      <<"  mean depth=" <<d
     <<"  error="<<cameraHeight - (tableHeight+d) <<endl;
 
-  Depth2PointCloud doPcl(doCamera.depth, doCamera.getFxypxy()); //(0), doCamera.depth_fxypxy(1), doCamera.depth_fxypxy(2), doCamera.depth_fxypxy(3));
+  Depth2PointCloud doPcl(doCamera.depth, doCamera.getFxycxy()); //(0), doCamera.depth_fxycxy(1), doCamera.depth_fxycxy(2), doCamera.depth_fxycxy(3));
   PointCloudViewer pcview(doPcl.points, doCamera.color);
   doPcl.points.waitForNextRevision(10);
 

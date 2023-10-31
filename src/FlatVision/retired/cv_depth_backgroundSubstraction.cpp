@@ -194,8 +194,8 @@ void CV_BackgroundSubstraction_Thread::step(){
 
   compute(_color, _depth, _inputMask);
 
-  arr fxypxy = cameraFxypxy.get();
-  CHECK(fxypxy.N, "need camera calibration parameters");
+  arr fxycxy = cameraFxycxy.get();
+  CHECK(fxycxy.N, "need camera calibration parameters");
   if(false){
     auto P = percepts.set();
     P->clear();
@@ -204,11 +204,11 @@ void CV_BackgroundSubstraction_Thread::step(){
       auto p = make_shared<PercMesh>();
       p->id=k++;
       //add the observed points to the mesh:
-      depthData2pointCloud(p->mesh.V, cv_p.depthRect, fxypxy(0), fxypxy(1), fxypxy(2)-cv_p.rect(0), fxypxy(3)-cv_p.rect(1));
+      depthData2pointCloud(p->mesh.V, cv_p.depthRect, fxycxy(0), fxycxy(1), fxycxy(2)-cv_p.rect(0), fxycxy(3)-cv_p.rect(1));
       p->mesh.V.reshape(p->mesh.V.N/3, 3);
       //add the background points to the mesh: (assuming object to rest on background)
       arr V2;
-      depthData2pointCloud(V2, cv_p.backgroundRect, fxypxy(0), fxypxy(1), fxypxy(2)-cv_p.rect(0), fxypxy(3)-cv_p.rect(1));
+      depthData2pointCloud(V2, cv_p.backgroundRect, fxycxy(0), fxycxy(1), fxycxy(2)-cv_p.rect(0), fxycxy(3)-cv_p.rect(1));
       V2.reshape(V2.N/3, 3);
       p->mesh.V.append(V2);
       //make convex

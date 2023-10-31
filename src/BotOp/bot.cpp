@@ -28,10 +28,16 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
   bool robotiq = rai::getParameter<bool>("bot/useRobotiq", false);
   rai::String useArm = rai::getParameter<rai::String>("bot/useArm", "left");
+  bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
 
   C.ensure_indexedJoints();
   qHome = C.getJointState();
   state.set()->initZero(qHome.N);
+
+  if(blockRealRobot && useRealRobot){
+    LOG(0) <<"-- blocking useRealRobot -- ";
+    useRealRobot=false;
+  }
 
   //-- launch robots & grippers
   if(useRealRobot){
@@ -388,7 +394,7 @@ void BotOp::getImageAndDepth(byteA& image, floatA& depth, const char* sensor){
   cam->getImageAndDepth(image, depth);
 }
 
-arr BotOp::getCameraFxypxy(const char* sensor){
+arr BotOp::getCameraFxycxy(const char* sensor){
   auto cam = getCamera(sensor);
   return cam->getFxycxy();
 }

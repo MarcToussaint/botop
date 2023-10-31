@@ -55,8 +55,8 @@ void FlatVisionThread::step(){
   // TODO this assumes that the calibration was done with the already cropped image!
   // This of course can be fixed easily in the project method, which should get the cropping parameters
 
-//  _cam_fxypxy(2) -= cL;
-//  _cam_fxypxy(3) -= cT;
+//  _cam_fxycxy(2) -= cL;
+//  _cam_fxycxy(3) -= cT;
 
 
   //-- background
@@ -70,32 +70,32 @@ void FlatVisionThread::step(){
   exRobot.compute(labels, _cam_color, _cam_depth, _model_segments, _model_depth);
   {
     //  cout <<"calib_L=" <<exRobot.calib <<endl;
-    arr fxypxy = cam_Fxypxy.get();
+    arr fxycxy = cam_fxycxy.get();
     auto armCalib = armPoseCalib.set();
     armCalib()[0] = exRobot.calib;
-    armCalib()(0,0) /= fxypxy(0);
-    armCalib()(0,1) /= fxypxy(1);
+    armCalib()(0,0) /= fxycxy(0);
+    armCalib()(0,1) /= fxycxy(1);
   }
 
   objectManager.displayLabelPCL(exRobot.label,
                                 labels, _cam_depth,
-                                _cam_pose, _cam_fxypxy,
+                                _cam_pose, _cam_fxycxy,
                                 config.set());
 
   exRobot.label=PixelLabel(PL_robot|1);
   exRobot.compute(labels, _cam_color, _cam_depth, _model_segments, _model_depth);
   {
     //  cout <<"calib_R=" <<exRobot.calib <<endl;
-    arr fxypxy = cam_Fxypxy.get();
+    arr fxycxy = cam_fxycxy.get();
     auto armCalib = armPoseCalib.set();
     armCalib()[1] = exRobot.calib;
-    armCalib()(1,0) /= fxypxy(0);
-    armCalib()(1,1) /= fxypxy(1);
+    armCalib()(1,0) /= fxycxy(0);
+    armCalib()(1,1) /= fxycxy(1);
   }
 
   objectManager.displayLabelPCL(exRobot.label,
                                 labels, _cam_depth,
-                                _cam_pose, _cam_fxypxy,
+                                _cam_pose, _cam_fxycxy,
                                 config.set());
 #endif
 
@@ -105,7 +105,7 @@ void FlatVisionThread::step(){
   exObject.verbose=1;
   exObject.compute(labels, _cam_color, _cam_depth, _model_segments, _model_depth);
   {
-    objectManager.updateObjectPose(exObject.label, exObject.calib, _cam_fxypxy);
+    objectManager.updateObjectPose(exObject.label, exObject.calib, _cam_fxycxy);
   }
 
   objectManager.explainObjectPixels(labels, _cam_color, _cam_depth, _model_segments, _model_depth);
@@ -147,12 +147,12 @@ void FlatVisionThread::step(){
 //  }
 
 //  //make objects from novel flat percepts
-//  CHECK(_cam_fxypxy.N, "need camera calibration parameters");
+//  CHECK(_cam_fxycxy.N, "need camera calibration parameters");
 //  if(true){
 //    auto P = percepts.set();
 //    P->clear();
 //    for(FlatPercept& flat : exNovel.flats){
-//      P->append( novelPerceptToObject(flat, labels, _cam_depth, _cam_pose, _cam_fxypxy) );
+//      P->append( novelPerceptToObject(flat, labels, _cam_depth, _cam_pose, _cam_fxycxy) );
 //    }
 //  }
 }

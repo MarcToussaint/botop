@@ -90,8 +90,8 @@ bool ObjectManager::mergePerceptIntoObjects(FlatPercept& perc,
 void ObjectManager::createNewObjectFromPercept(FlatPercept& p,
                                                const byteA& labels,
                                                const byteA& cam_color, const floatA& cam_depth,
-                                               const arr& cam_pose, const arr& cam_fxypxy){
-  ptr<Object> obj = novelPerceptToObject(p, labels, cam_color, cam_depth, cam_pose, cam_fxypxy, OT_box);
+                                               const arr& cam_pose, const arr& cam_fxycxy){
+  ptr<Object> obj = novelPerceptToObject(p, labels, cam_color, cam_depth, cam_pose, cam_fxycxy, OT_box);
   obj->object_ID = objIdCount++;
   obj->pixelLabel = PixelLabel(PL_objects + obj->object_ID);
   objects.set()->append(obj);
@@ -102,7 +102,7 @@ void ObjectManager::processNovelPercepts(rai::Array<FlatPercept>& flats,
                                          const byteA& labels,
                                          const byteA& cam_color, const floatA& cam_depth,
                                          const byteA& model_segments, const floatA& model_depth,
-                                         const arr& cam_pose, const arr& cam_fxypxy){
+                                         const arr& cam_pose, const arr& cam_fxycxy){
 
   for(FlatPercept& p:flats){
     bool success = mergePerceptIntoObjects(p, labels, cam_color, cam_depth, model_segments, model_depth);
@@ -110,14 +110,14 @@ void ObjectManager::processNovelPercepts(rai::Array<FlatPercept>& flats,
     //create novel object if it can't be merged
     if(!success){
       if(objIdCount<=0){
-        createNewObjectFromPercept(p,labels, cam_color, cam_depth, cam_pose, cam_fxypxy);
+        createNewObjectFromPercept(p,labels, cam_color, cam_depth, cam_pose, cam_fxycxy);
       }
     }
   }
 
 }
 
-void ObjectManager::updateObjectPose(PixelLabel label, const arr& calib, const arr& cam_fxypxy){
+void ObjectManager::updateObjectPose(PixelLabel label, const arr& calib, const arr& cam_fxycxy){
   ptr<Object> obj;
   auto O = objects.set();
   for(ptr<Object>& o:O()) if(o->pixelLabel==label){ obj=o; break; }
@@ -127,8 +127,8 @@ void ObjectManager::updateObjectPose(PixelLabel label, const arr& calib, const a
   }
 
   double step=.5;
-  obj->pose.pos.x += step * calib(0)/cam_fxypxy(0);
-  obj->pose.pos.y += step * calib(1)/cam_fxypxy(1);
+  obj->pose.pos.x += step * calib(0)/cam_fxycxy(0);
+  obj->pose.pos.y += step * calib(1)/cam_fxycxy(1);
   //    obj->pose.pos.z += 0.2*step * calib(0,2);
   //    obj->pose.rot.addX(0.2*step*calib(0,3));
   //    obj->pose.rot.addY(0.2*step*calib(0,4));

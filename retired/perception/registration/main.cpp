@@ -16,7 +16,7 @@ void online(){
   Var<floatA> cam_depth; //camera output
   Var<byteA> cam_color;  //camera output
   Var<arr> cam_pose;     //camera pose
-  Var<arr> cam_Fxypxy;   //camera parameters
+  Var<arr> cam_fxycxy;   //camera parameters
 
   Var<arr> regError;
 
@@ -25,8 +25,8 @@ void online(){
   //-- camera thread
   auto cam = make_shared<RealSenseThread>(cam_color, cam_depth);
   cam_depth.waitForNextRevision();
-  cam_Fxypxy.set() = cam->depth_fxypxy;
-  cout <<"RS calib=" <<cam_Fxypxy.get()() <<endl;
+  cam_fxycxy.set() = cam->depth_fxycxy;
+  cout <<"RS calib=" <<cam_fxycxy.get()() <<endl;
 
   //methods
   ExplainBackground exBackground;
@@ -37,7 +37,7 @@ void online(){
   byteA labels;
   byteA _cam_color;
   floatA _cam_depth;
-  arr _cam_fxypxy, _cam_pose;
+  arr _cam_fxycxy, _cam_pose;
   int cL=80,cR=110,cT=60,cB=100;
 
   for(uint k=0;;k++){
@@ -48,10 +48,10 @@ void online(){
     //-- crop
     _cam_color = cam_color.get()->sub(cT,-cB-1,cL,-cR-1,0,-1);
     _cam_depth = cam_depth.get()->sub(cT,-cB-1,cL,-cR-1);
-    _cam_fxypxy = cam_Fxypxy.get();
+    _cam_fxycxy = cam_fxycxy.get();
     _cam_pose = cam_pose.get();
-    _cam_fxypxy(2) -= cL;
-    _cam_fxypxy(3) -= cT;
+    _cam_fxycxy(2) -= cL;
+    _cam_fxycxy(3) -= cT;
 
     pixelColorNormalizeIntensity(_cam_color);
 
@@ -68,7 +68,7 @@ void online(){
 
   //extract object from cluster
   FlatPercept& flat = exNovel.flats.first();
-  ptr<Object> obj = createObjectFromPercept(flat, labels, _cam_color, _cam_depth, _cam_pose, _cam_fxypxy, OT_box);
+  ptr<Object> obj = createObjectFromPercept(flat, labels, _cam_color, _cam_depth, _cam_pose, _cam_fxycxy, OT_box);
 
   cout <<"CREATED OBJECT: " <<*obj <<endl;
 
@@ -80,10 +80,10 @@ void online(){
     //-- crop
     _cam_color = cam_color.get()->sub(cT,-cB-1,cL,-cR-1,0,-1);
     _cam_depth = cam_depth.get()->sub(cT,-cB-1,cL,-cR-1);
-    _cam_fxypxy = cam_Fxypxy.get();
+    _cam_fxycxy = cam_fxycxy.get();
     _cam_pose = cam_pose.get();
-    _cam_fxypxy(2) -= cL;
-    _cam_fxypxy(3) -= cT;
+    _cam_fxycxy(2) -= cL;
+    _cam_fxycxy(3) -= cT;
 
     pixelColorNormalizeIntensity(_cam_color);
 

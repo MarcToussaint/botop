@@ -42,20 +42,20 @@ struct CV_BackgroundSubstraction_Thread : Thread, CV_BackgroundSubstraction {
   Var<floatA> depth;
   Var<byteA> mask;
   Var<arr> cameraPose;
-  Var<arr> cameraFxypxy;
+  Var<arr> cameraFxycxy;
   CV_BackgroundSubstraction_Thread(Var<PerceptL>& _percepts,
                                    Var<byteA>& _color,
                                    Var<floatA>& _depth,
                                    Var<byteA>& _mask,
                                    Var<arr>& _cameraPose,
-                                   Var<arr>& _cameraFxypxy, int _verbose=1)
+                                   Var<arr>& _cameraFxycxy, int _verbose=1)
     : Thread("BackgroundSubstraction", -1.),
       percepts(this, _percepts),
       color(this, _color),
       depth(this, _depth, true),
       mask(this, _mask),
       cameraPose(this, _cameraPose),
-      cameraFxypxy(this, _cameraFxypxy){
+      cameraFxycxy(this, _cameraFxycxy){
     CV_BackgroundSubstraction::verbose = _verbose;
     threadOpen();
   }

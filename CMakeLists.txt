@@ -200,12 +200,12 @@ if(USE_PYBIND)
   add_definitions(-DRAI_PYBIND)
   include_directories(${pybind11_INCLUDE_DIRS})
   
-  pybind11_add_module(ry SHARED
+  pybind11_add_module(_robotic SHARED
     rai/src/ry/unity.cxx
-    src/BotOp/pyBot.cxx
+    src/BotOp/py-BotOp.cxx
   )
 
-  target_link_libraries(ry PRIVATE
+  target_link_libraries(_robotic PRIVATE
     rai
   )
 endif()
@@ -218,6 +218,11 @@ get_property(_defs DIRECTORY PROPERTY COMPILE_DEFINITIONS)
 message(STATUS "[rai] compiler flags: " "${_defs}")
 
 ################################################################################
+
+add_custom_target(docstrings #ALL
+  DEPENDS _robotic
+  COMMAND pybind11-stubgen --ignore-invalid=all _robotic
+  COMMAND mv stubs/_robotic*/__init__.pyi _robotic.pyi)
 
 add_executable(kinEdit rai/bin/src_kinEdit/main.cpp)
 target_link_libraries(kinEdit rai)
@@ -235,7 +240,7 @@ set(PYTHON_SITE "lib/python${PYBIND11_PYTHON_VERSION}/site-packages")
 message(STATUS "[rai] installing python packages in " ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE}/robotic )
 
 install(
-  TARGETS ry
+  TARGETS _robotic
   DESTINATION ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE}/robotic)
 
 file(GLOB sources rai/src/* src/*)

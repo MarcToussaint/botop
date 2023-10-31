@@ -83,7 +83,7 @@ void test_pickAndPlace(){
   K.optimizeTree();
   Var<arr> cameraPose;
   cameraPose.set() = K["camera"]->X.getArr7d();
-  Var<arr> cameraFxypxy;
+  Var<arr> cameraFxycxy;
 
 
   Var<CtrlMsg> ctrl;
@@ -108,7 +108,7 @@ void test_pickAndPlace(){
   //-- camera simulation
   rai::Sim_CameraView CV(RK, .05, "camera");
   auto sen = CV.C.currentSensor;
-  cameraFxypxy.set() = ARR(sen->cam.focalLength*sen->height, sen->cam.focalLength*sen->height, .5*sen->width, .5*sen->height);
+  cameraFxycxy.set() = ARR(sen->cam.focalLength*sen->height, sen->cam.focalLength*sen->height, .5*sen->width, .5*sen->height);
 
   //-- pipeline: depth -> point cloud
 //  Depth2PointCloud depth2pc(CV.depth, CV.C.currentSensor->cam.focalLength*300);
@@ -150,7 +150,7 @@ void test_pickAndPlace(){
 //    return 0;
 //  });
 
-  CV_BackgroundSubstraction_Thread BS(CV.color, CV.depth, robotMask.color, cameraPose, cameraFxypxy, 1);
+  CV_BackgroundSubstraction_Thread BS(CV.color, CV.depth, robotMask.color, cameraPose, cameraFxycxy, 1);
 
   cout <<"WAITING FOR BACKGROUND..." <<flush;
   CV.depth.waitForRevisionGreaterThan(20);

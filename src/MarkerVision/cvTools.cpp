@@ -2,24 +2,29 @@
 
 #include <Perception/opencv.h>
 
-void makeHomogeneousImageCoordinate(arr& u, uint imgHeight){
-//  u(1) = double(imgHeight-1)-u(1);
-//  u(2) *= -1.;
+void makeHomogeneousImageCoordinate(arr& u){
   u(0) *= u(2);
   u(1) *= u(2);
   u.append(1.);
 }
 
 void decomposeInvProjectionMatrix(arr& K, arr& R, arr& t, const arr& P){
-  arr KR = P.sub(0,2,0,2);
-  t = ~P.col(3);
-  KR = inverse(KR);
-  lapack_RQ(K, R, KR);
+  t = P.col(3); t.resizeCopy(3);
+  arr KRt = inverse(P.sub(0,2,0,2));
+  lapack_RQ(K, R, KRt);
+  //cout <<"K*R" <<K*R <<"\nKR:" <<KRt <<endl;
+  transpose(R);
+  if(K(2,2)<0.){ //transforms the solution to be consistent with convention $K(2,2)\approx 1$
+    arr I=eye(3);
+    I(1,1) = I(2,2) = -1.;
+    R = R*I;
+    K = K*I;
+  }
 }
 
 #ifdef RAI_OPENCV
 
-arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int verbose){
+arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int verbose, arr& histograms){
   cv::Mat rgb = CV(_rgb);
   cv::Mat depth = CV(_depth);
 
@@ -72,6 +77,13 @@ arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int
         depthValues.append(d);
         objX += x;
         objY += y;
+        if(!!histograms){
+          if(!histograms.N) histograms.resize(3,255).setZero();
+          cv::Vec3b c=hsv.at<cv::Vec3b>(y,x);
+          histograms(0,c.val[0]) ++;
+          histograms(1,c.val[1]) ++;
+          histograms(2,c.val[2]) ++;
+        }
       }
     }
   }

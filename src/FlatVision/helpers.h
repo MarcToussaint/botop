@@ -73,7 +73,7 @@ void pixelColorNormalizeIntensity(byteA&);
 
 arr getPCLforLabels(PixelLabel label,
                     const byteA& labels, const floatA& cam_depth,
-                    const arr& cam_pose, const arr& fxypxy);
+                    const arr& cam_pose, const arr& fxycxy);
 
 
 arr projectPointFromCameraToWorld(arr x, const arr& PInv);
