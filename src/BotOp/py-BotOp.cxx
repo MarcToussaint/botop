@@ -8,7 +8,7 @@
 
 #ifdef RAI_PYBIND
 
-#include "pyBot.h"
+#include "py-BotOp.h"
 
 #include <ry/types.h>
 

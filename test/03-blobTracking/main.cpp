@@ -11,7 +11,7 @@
 #include <Gui/viewer.h>
 #include <Core/thread.h>
 
-arr getHsvBlobPosition(cv::Mat& rgb, cv::Mat& depth, const arr& hsvFilter, const arr& Fxypxy){
+arr getHsvBlobPosition(cv::Mat& rgb, cv::Mat& depth, const arr& hsvFilter, const arr& fxycxy){
   //blur
   cv::blur(rgb, rgb, cv::Size(3,3));
 
@@ -67,7 +67,7 @@ arr getHsvBlobPosition(cv::Mat& rgb, cv::Mat& depth, const arr& hsvFilter, const
       blobPosition= {objX, objY, objDepth};
 
       // camera coordinates
-      depthData2point(blobPosition, Fxypxy); //transforms the point to camera xyz coordinates
+      depthData2point(blobPosition, fxycxy); //transforms the point to camera xyz coordinates
 
       // world coordinates
       //cameraFrame->X.applyOnPoint(objCoords); //transforms into world coordinates
@@ -103,7 +103,7 @@ void tracking2(){
   RealSenseThread RS("cam");
 
   // grab the camera intrinsics
-  arr Fxypxy = RS.fxypxy;
+  arr fxycxy = RS.fxycxy;
 
   // set hsv filter parameters
   arr hsvFilter = rai::getParameter<arr>("hsvFilter").reshape(2,3);
@@ -119,7 +119,7 @@ void tracking2(){
     if(rgb.rows != depth.rows) continue;
 
     // blur
-    arr pos = getHsvBlobPosition(rgb, depth, hsvFilter, Fxypxy);
+    arr pos = getHsvBlobPosition(rgb, depth, hsvFilter, fxycxy);
     cout <<"blob position: " <<pos <<endl;
 
     if(pos.N){
