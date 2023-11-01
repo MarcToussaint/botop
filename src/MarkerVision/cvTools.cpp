@@ -78,7 +78,7 @@ arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int
         objX += x;
         objY += y;
         if(!!histograms){
-          if(!histograms.N) histograms.resize(3,255).setZero();
+          if(!histograms.N) histograms.resize(3,256).setZero();
           cv::Vec3b c=hsv.at<cv::Vec3b>(y,x);
           histograms(0,c.val[0]) ++;
           histograms(1,c.val[1]) ++;
@@ -123,6 +123,8 @@ arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int
       if(!blobPosition.N) cv::waitKey();
     }
   }
+
+  if(verbose>1) cv::waitKey();
 
   return blobPosition;
 }

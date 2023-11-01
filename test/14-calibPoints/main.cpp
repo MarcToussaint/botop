@@ -233,11 +233,24 @@ void komoCalibrate(){
 
   rai::Graph data("dat.g");
 
+
   //make camera mount stable free joint
   rai::Frame* cam = C["cameraWrist"];
   cam->setJoint(rai::JT_free);
   cam->joint->isStable = true;
   arr qCam = cam->joint->getDofState();
+  uintA cId = {cam->ID};
+
+  //make all dots translational joints
+  for(rai::Frame *dot:C.frames){
+    if(!dot->name.startsWith("dot")) continue;
+    cout <<dot->name <<endl;
+    dot->setJoint(rai::JT_trans3);
+    dot->joint->isStable = true;
+    qCam.append(dot->joint->getDofState());
+    cId.append(dot->ID);
+  }
+
   C.report();
 
 
@@ -248,6 +261,7 @@ void komoCalibrate(){
   //setup KOMO, one frame for each datapoint
   KOMO komo(C, data.N, 1, 0, false);
   komo.setupPathConfig();
+  komo.pathConfig.report();
 
   //add objectives for each data point
   arr histogram;
@@ -273,14 +287,18 @@ void komoCalibrate(){
     depthData2point(xCam, fxycxy); //transforms the point to camera xyz coordinates
     komo.timeSlices(t, viewPoint->ID) ->setRelativePosition(xCam);
 
-    cout <<n->key;
     n->key.resize(n->key.N-1, true);
 
     //add calibration objective
     komo.addObjective({double(t+1)}, FS_positionDiff, {"viewPoint", n->key}, OT_eq, {1e0});
+
+    //if(checks>1) komo.view(true, STRING("init t=" <<t));
   }
 
-  komo.pathConfig.selectJoints({komo.timeSlices(0, cam->ID)->joint});
+  //select only calib dofs:
+  DofL dofs;
+  for(uint id:cId) dofs.append(komo.timeSlices(0, id)->joint);
+  komo.pathConfig.selectJoints(dofs);
 
   komo.view(true, "before optim");
 //  komo.pathConfig.animate();
@@ -308,13 +326,19 @@ void demoCalibration(){
   rai::Configuration C;
   setupConfig(C);
 
-  rai::Frame* target = C.addFrame("target");
+  rai::Frame* target = C.addFrame("target", "table");
   target->setShape(rai::ST_marker, {.1});
   target->setColor({1.,.5,0.});
 
   C.view(true);
 
   rai::Frame* cam = C["cameraWrist"];
+  arr qCam = rai::getParameter<arr>("QcameraWrist");
+//  cam->setRelativePose(qCam);
+
+  arr dots = rai::getParameter<arr>("dots");
+  dots.reshape(-1,3);
+
   arr hsvFilter = rai::getParameter<arr>("hsvFilter");
   arr Pinv = rai::getParameter<arr>("Pinv");
   int checks = rai::getParameter<int>("checks", 1);
@@ -323,10 +347,9 @@ void demoCalibration(){
 
   for(uint i=0;;i++){
     rai::Frame *dot = C.getFrame(STRING("dot"<<i), false);
-    if(!dot) break
-      ;
+    if(!dot) break;
     //pre motion
-    bot.gripperMove(rai::_left);
+    //bot.gripperMove(rai::_left);
     {
       Move_IK move(bot, C, checks);
       move().addObjective({}, FS_positionRel, {dot->name, cam->name}, OT_eq, {1e0}, {0.,0.,.25});
@@ -335,8 +358,9 @@ void demoCalibration(){
 
     //fine motion
     bot.gripperMove(rai::_left, 0);
-    for(uint t=0;t<5;t++) bot.sync(C);
-    if(!sense_HsvBlob(bot, C, cam->name, "target", hsvFilter, Pinv, checks)) return;
+//    for(uint t=0;t<5;t++) bot.sync(C);
+//    if(!sense_HsvBlob(bot, C, cam->name, "target", hsvFilter, Pinv, checks)) return;
+    target->setRelativePosition(dots[i]);
     {
       Move_IK move(bot, C, checks);
       move().addObjective({}, FS_vectorZ, {"l_gripper"}, OT_eq, {1e0}, {0.,0.,1.});
@@ -386,11 +410,11 @@ int main(int argc, char * argv[]){
 //  collectData();
 
 //  computeCalibration();
-  komoCalibrate();
+//  komoCalibrate();
 
 //  selectHSV();
 
-//  demoCalibration();
+  demoCalibration();
 
 //  checkTip();
 
