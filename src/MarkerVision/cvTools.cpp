@@ -14,11 +14,16 @@ void decomposeInvProjectionMatrix(arr& K, arr& R, arr& t, const arr& P){
   lapack_RQ(K, R, KRt);
   //cout <<"K*R" <<K*R <<"\nKR:" <<KRt <<endl;
   transpose(R);
-  if(K(2,2)<0.){ //transforms the solution to be consistent with convention $K(2,2)\approx 1$
+  {
+    //transforms the solution to be consistent with convention $K(2,2)\approx 1$
     arr I=eye(3);
-    I(1,1) = I(2,2) = -1.;
-    R = R*I;
-    K = K*I;
+    uint num=0;
+    for(uint i=0;i<3;i++) if(K(i,i)<0.){ I(i,i) = -1.; num++; }
+    if(num){
+      if(num!=2) LOG(-1) <<"??? is your cam left handed ???";
+      R = R*I;
+      K = K*I;
+    }
   }
 }
 
