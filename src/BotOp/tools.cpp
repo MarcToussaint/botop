@@ -12,7 +12,10 @@ Move_IK::Move_IK(BotOp& _bot, rai::Configuration& _C, int _askForOK) : bot(_bot)
 }
 
 bool Move_IK::go(){
-  auto ret = NLP_Solver().setProblem(komo.nlp()).solve();
+  NLP_Solver sol;
+  sol.setProblem(komo.nlp());
+  sol.opt.set_stopTolerance(1e-4);
+  auto ret = sol.solve();
   cout <<*ret <<endl;
   if(!ret->feasible){
     return false;
