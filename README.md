@@ -62,11 +62,11 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
       cd botop
       export PY_VERSION=`python3 -c "import sys; print(str(sys.version_info[0])+'.'+str(sys.version_info[1]))"`
       cmake -DUSE_BULLET=OFF -DUSE_OPENCV=OFF -DPY_VERSION=$PY_VERSION . -B build  #options: disable USE_LIBFRANKA USE_REALSENSE USE_PYBIND USE_PHYSX
-	  make -C build
+	  make -C build/
 
 * Optionally install lib, headers, and binaries to ~/.local
 
-      make -C build install
+      make -C build/ install
 
 * Test the things in test/
 
