@@ -45,7 +45,7 @@ void collectData(){
 
   arr dots = rai::getParameter<arr>("dots");
   uint views = rai::getParameter<uint>("views");
-  dots.reshape(-1,3);
+  dots.reshape(-1, 2);
 
   OpenGL imgGl;
 
@@ -75,7 +75,7 @@ void collectData(){
       rai::Frame* dot = C[STRING("dot" <<d)];
 
       arr dotPos = arr{.2, .15, .2}%(rand(3)-.5);
-      dotPos(2) += .35;
+      dotPos(2) += .3;
       double wristAngle = rnd.uni(-2.3, 2.3);
 
       {
@@ -187,7 +187,7 @@ void computeCalibration(){
       <<"\nblob-from-hom: " <<x
      <<"\ncalib err:     " <<x-xCam <<endl;
 
-    disp.watchImage(img, checks>0, 1.);
+    disp.watchImage(img, checks>1, 1.);
 
     //collect data
     U.append(uHom);
@@ -301,7 +301,8 @@ void komoCalibrate(){
     byteA img(dat.get<byteA>("img"));
     floatA depth(dat.get<floatA>("depth"));
     arr fxycxy = dat.get<arr>("camFxycxy");
-    arr u = getHsvBlobImageCoords(img, depth, hsvFilter, 0, histogram);
+    arr u = getHsvBlobImageCoords(img, depth, hsvFilter, checks, histogram);
+    if(!u.N) continue;
     arr xCam = u;
     depthData2point(xCam, fxycxy); //transforms the point to camera xyz coordinates
     rai::Frame *viewP = komo.timeSlices(t, viewPoint->ID);
@@ -309,7 +310,7 @@ void komoCalibrate(){
 
     //    cout <<t <<' ' <<q <<viewP->name <<viewP->getPosition() <<endl;
 
-    n->key.resize(n->key.N-1, true);
+    n->key.resize(4, true);
 
     //add calibration objective
     komo.addObjective({double(t+1)}, FS_positionDiff, {"viewPoint", n->key}, OT_sos, {1e2});
@@ -337,7 +338,7 @@ void komoCalibrate(){
   sol.opt.set_stopTolerance(1e-6);
   sol.opt.set_verbose(0);
   auto ret = sol.solve();
-//  cout <<komo.report(false) <<endl;
+  cout <<komo.report(false) <<endl; //reports match per feature..
   cout <<"-- result: " <<*ret <<endl;
   cout <<"== optimized parameters (camera, dots): " <<ret->x <<endl;
 
@@ -353,9 +354,9 @@ void komoCalibrate(){
 
   komo.view(true, "after optim");
 
-//  FILE("z.hsv") <<(~histogram).modRaw() <<endl;
-//  gnuplot("set title 'HSV histogram'; plot 'z.hsv' us 0:1 t 'H', '' us 0:2 t 'S', '' us 0:3 t 'V'");
-//  rai::wait();
+  FILE("z.hsv") <<(~histogram).modRaw() <<endl;
+  gnuplot("set title 'HSV histogram'; plot 'z.hsv' us 0:1 t 'H', '' us 0:2 t 'S', '' us 0:3 t 'V'");
+  rai::wait();
 }
 
 //===========================================================================
@@ -380,6 +381,7 @@ void demoCalibration(){
   int checks = rai::getParameter<int>("checks", 1);
 
   BotOp bot(C, rai::getParameter<bool>("real", false));
+  bot.home(C);
 
   for(uint i=0;;i++){
     rai::Frame *dot = C.getFrame(STRING("dot"<<i), false);
@@ -394,13 +396,15 @@ void demoCalibration(){
 
     //fine motion
     bot.gripperMove(rai::_left, 0);
-//    for(uint t=0;t<5;t++) bot.sync(C);
-//    if(!sense_HsvBlob(bot, C, cam->name, "target", hsvFilter, Pinv, checks)) return;
+#if 1
+    for(uint t=0;t<5;t++) bot.sync(C);
+    if(!sense_HsvBlob(bot, C, cam->name, "target", hsvFilter, Pinv, checks)) return;
 //    target->setRelativePosition(dot->getRelativePosition());
+#endif
     {
       Move_IK move(bot, C, checks);
       move().addObjective({}, FS_vectorZ, {"l_gripper"}, OT_eq, {1e0}, {0.,0.,1.});
-      move().addObjective({}, FS_positionDiff, {"l_gripper", dot->name}, OT_eq, {1e0}, {0.,0., .01});
+      move().addObjective({}, FS_positionDiff, {"l_gripper", "target" /*dot->name*/}, OT_eq, {1e0}, {0.,0., .01});
       if(!move.go()) return;
     }
 
@@ -445,12 +449,12 @@ int main(int argc, char * argv[]){
 
 //  collectData();
 
-//  computeCalibration();
+  computeCalibration();
 //  komoCalibrate();
 
 //  selectHSV();
 
-  demoCalibration();
+//  demoCalibration();
 
 //  checkTip();
 
