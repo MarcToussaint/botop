@@ -44,7 +44,7 @@ arr getLoopPath(rai::Configuration& C){
     CHECK_EQ(q.d1, 14, "");
     //special case: copy path to other arm
     q.reshape(q.d0,2,7);
-    for(uint t=0;t<q.d0;t++) q(t,0,{}) = q(t,1,{});
+    for(uint t=0;t<q.d0;t++) q(t,1,{}) = q(t,0,{});
     q.reshape(q.d0,14);
     komo.x = q;
     komo.set_x(q);

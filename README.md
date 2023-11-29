@@ -1,12 +1,25 @@
 # LIS robot operation repo
 
-This repo is how we, in the [Learning & Intelligent Systems Lab](https://argmin.lis.tu-berlin.de/), operate our robots. Perhaps the most significant aspect is that we decided for a spline-based convention to command motion (in class BotOp), which turned out the cleanest interface to our pose and motion optimization methods, and now also MPC methods.
+This repo is how we, in the
+[Learning & Intelligent Systems Lab](https://argmin.lis.tu-berlin.de/),
+operate our robots. We decided for a spline-based convention to
+command motion (in class BotOp), which turned out the cleanest
+interface to our motion optimization methods, and now also MPC
+methods.
 
-This repo is really our working environment, is not clean, contains much outdated code, and might be too specific for others to use, but we're happy to share. When run without hardware, the BotOp interface can  emulate/simulate any robot (e.g., found in rai-robotModels).
+This repo is really our working environment, is not clean, contains
+much outdated code, and might be too specific for others to use, but
+we're happy to share. When run without hardware, the BotOp interface
+can emulate/simulate any robot (e.g., found in rai-robotModels).
 
-The [rai](https://github.com/MarcToussaint/rai) submodule contains our actual algorithmic code base (data structures, optimizers, kinematics, KOMO, LGP, etc).
+See the [robotic python package](https://github.com/MarcToussaint/rai)
+for a python wrapper.
 
-No, we don't use ROS at all anymore.
+The [rai](https://github.com/MarcToussaint/rai) module contains our
+actual algorithmic code base (data structures, optimizers, kinematics,
+KOMO, LGP, etc).
+
+We don't use ROS at all anymore.
 
 ## Installation
 
@@ -14,64 +27,50 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
 
 * The following assumes $HOME/git as your git path, and $HOME/.local to
   install 3rd-party libs -- please stick to this (no system-wide
-  installs). Setup basics:
+  installs). The following installs basic ubuntu packages (used by external packages and botop):
 
       sudo apt update
-      sudo apt install --yes build-essential clang cmake curl git libpoco-dev libeigen3-dev libccd-dev libboost-system-dev portaudio19-dev libglu1-mesa-dev
+	  sudo apt install --yes \
+        g++ clang make cmake curl git wget \
+        liblapack-dev libf2c2-dev libqhull-dev libeigen3-dev libann-dev libccd-dev \
+        libjsoncpp-dev libyaml-cpp-dev libpoco-dev libboost-system-dev portaudio19-dev libusb-1.0-0-dev \
+        libx11-dev libglu1-mesa-dev libglfw3-dev libglew-dev freeglut3-dev libpng-dev libassimp-dev
       mkdir -p $HOME/git $HOME/.local
 
-* Install several external libraries from source. Perhaps first choose # kernels for compile:
+* External libraries: You can skip librealsense and libfranka if you disable below. To standardize installations, I use a [basic install script](https://github.com/MarcToussaint/rai-extern/blob/main/install.sh) (have a look, if you have concerns what it does).
 
-      export MAKEFLAGS="-j3"
+      export MAKEFLAGS="-j $(command nproc --ignore 2)"
+	  wget https://github.com/MarcToussaint/rai-extern/raw/main/install.sh; chmod a+x install.sh
+      ./install.sh fcl
+      ./install.sh physx
+      ./install.sh librealsense
+      ./install.sh libfranka  ## for OLD frankas instead:   ./install.sh -v 0.7.1 libfranka
 
-   * [libfranka](https://github.com/frankaemika/libfranka) (needs 0.7.1 for old pandas, 0.9.2 or 0.10.0 for new!)
-   
-         cd $HOME/git; git clone --single-branch -b 0.7.1 --recurse-submodules https://github.com/frankaemika/libfranka
-         cd $HOME/git/libfranka; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local -DBUILD_EXAMPLES=OFF -DBUILD_TESTS=OFF ..; make install
+* You can skip this, if you disable pybind11 below.
 
-   * PhysX (physical simulator, enabled by default, could be disabled with ccmake)
-   
-         cd $HOME/git; git clone --single-branch -b release/104.1 https://github.com/NVIDIA-Omniverse/PhysX.git
-         cd $HOME/git/PhysX/physx; ./generate_projects.sh linux; cd compiler/linux-release/; cmake ../../compiler/public -DPX_BUILDPVDRUNTIME=OFF -DPX_BUILDSNIPPETS=OFF -DCMAKE_INSTALL_PREFIX=$HOME/.local; make install
+      sudo apt install --yes python3-dev python3 python3-pip
+      python3 -m pip install --user numpy pybind11 pybind11-stubgen
+	  
+	  # add the following to your .bashrc, if not done already
+      echo 'export PATH="${PATH}:$HOME/.local/bin"' >> ~/.bashrc
+      echo 'export PYTHONPATH="${PYTHONPATH}:$HOME/.local/lib"' >> ~/.bashrc
 
-   * FCL 0.5 (version important)
+* Finally, clone and compile this repo:
 
-         cd $HOME/git; git clone --single-branch -b fcl-0.5 https://github.com/flexible-collision-library/fcl.git
-         cd $HOME/git/fcl; mkdir -p build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local -DFCL_STATIC_LIBRARY=ON -DFCL_BUILD_TESTS=OFF ..; make install
+      cd $HOME/git
+	  git clone --recurse-submodules git@github.com:MarcToussaint/botop.git
+      cd botop
+      export PY_VERSION=`python3 -c "import sys; print(str(sys.version_info[0])+'.'+str(sys.version_info[1]))"`
+      cmake -DUSE_BULLET=OFF -DUSE_OPENCV=OFF -DPY_VERSION=$PY_VERSION . -B build  #options: disable USE_LIBFRANKA USE_REALSENSE USE_PYBIND USE_PHYSX
+	  make -C build/
 
-   * [librealsense](https://github.com/IntelRealSense/librealsense) (enabled by default, could be disabled with ccmake)
+* Optionally install lib, headers, and binaries to ~/.local
 
-         sudo apt install --yes libusb-1.0-0-dev libglfw3-dev libgtk-3-dev
-         cd $HOME/git; git clone --recurse-submodules https://github.com/IntelRealSense/librealsense.git
-         cd $HOME/git/librealsense; mkdir build; cd build; cmake -DCMAKE_INSTALL_PREFIX=$HOME/.local -DCMAKE_BUILD_TYPE=Release -DBUILD_EXAMPLES=OFF -DBUILD_GRAPHICAL_EXAMPLES=OFF ..; make install
-
-* Install python and pybind
-
-      sudo apt install --yes python3 python3-dev python3-numpy python3-pip python3-distutils
-      echo 'export PATH="${PATH}:$HOME/.local/bin"' >> ~/.bashrc   #add this to your .bashrc, if not done already
-      echo 'export PYTHONPATH="${PYTHONPATH}:$HOME/.local/lib"' >> ~/.bashrc   #add this to your .bashrc, if not done already
-      python3 -m pip install --user jupyter nbconvert matplotlib pybind11
-
-* Clone and compile this repo:
-
-      cd $HOME/git; git clone --recurse-submodules git@github.com:MarcToussaint/botop.git
-      cd $HOME/git/botop; APTGETYES=1 make -C rai -j1 installUbuntuAll  # calls sudo apt-get install
-	  cd $HOME/git/botop; APTGETYES=1 make -C rai -j1 unityAll
-      export PYTHONVERSION=`python3 -c "import sys; print(str(sys.version_info[0])+'.'+str(sys.version_info[1]))"`
-      cd $HOME/git/botop; mkdir -p build; cd build; cmake -DUSE_BULLET=OFF -DPYBIND11_PYTHON_VERSION=$PYTHONVERSION ..; make
-
-* Optionally add binaries to ~/.local/bin
-
-      cd $HOME/git/botop/build; make install
+      make -C build/ install
 
 * Test the things in test/
 
       bot -sim -loop
-
-* Hacky: If you need to, overwrite the python pip-wheel with the locally compiled lib:
-
-      ln -f -s $HOME/git/botop/build/libry.cpython-??-x86_64-linux-gnu.so $HOME/.local/lib/python3.8/site-packages/robotic/libry.so
-
 
 
 ## Panda robot operation

@@ -39,17 +39,17 @@ int main(int argc, char * argv[]){
 
   if(rai::checkParameter<bool>("float")){
     bot.hold(true, false);
-    bot.wait(C);
+    bot.wait(C, true, false);
   }
 
   if(rai::checkParameter<bool>("damp")){
     bot.hold(true, true);
-    bot.wait(C);
+    bot.wait(C, true, false);
   }
 
   if(rai::checkParameter<bool>("hold")){
     bot.hold(false, true);
-    bot.wait(C);
+    bot.wait(C, true, false);
   }
 
   if(rai::checkParameter<bool>("up")){
