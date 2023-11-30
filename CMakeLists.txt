@@ -47,6 +47,7 @@ add_definitions(
   -BOOST_ERROR_CODE_HEADER_ONLY
   -DRAI_BotOp
   -DRAI_ROBOTIQ
+  -DRAI_OMNIBASE
   )
 
 if(USE_QHULL8)
@@ -74,6 +75,7 @@ file(GLOB SRC_GeoLewiner rai/src/Geo/Lewiner/*.cpp)
 
 file(GLOB SRC_BotOp src/BotOp/*.cpp)
 file(GLOB SRC_Franka src/Franka/*.cpp)
+file(GLOB SRC_Omnibase src/Omnibase/*.cpp)
 file(GLOB SRC_OptiTrack src/OptiTrack/*.cpp)
 file(GLOB SRC_RealSense src/RealSense/*.cpp)
 file(GLOB SRC_Robotiq src/Robotiq/*.cpp)
@@ -99,6 +101,7 @@ add_library(rai SHARED
   rai/src/Perception/unity.cxx
   ${SRC_BotOp}
   ${SRC_Franka}
+  ${SRC_Omnibase}
   ${SRC_OptiTrack}
   ${SRC_RealSense}
   ${SRC_Robotiq}
@@ -110,7 +113,8 @@ target_link_libraries(rai
   jsoncpp lapack blas pthread rt X11
   assimp ccd fcl qhull ann glfw GLEW glut GLU GL png
   portaudio
-  boost_system 
+  boost_system
+  hidapi-hidraw
   )
 
 ################################################################################
@@ -175,7 +179,7 @@ endif()
 
 if(USE_REALSENSE)
   add_definitions(-DRAI_REALSENSE)
-  target_link_libraries(rai realsense2)
+  target_link_libraries(rai realsense2 realsense-file fw usb-1.0)
   message(STATUS "[rai] using realsense libs")
 endif()
 
@@ -221,7 +225,7 @@ message(STATUS "[rai] compiler flags: " "${_defs}")
 
 add_custom_target(docstrings #ALL
   DEPENDS _robotic
-  COMMAND pybind11-stubgen --ignore-invalid=all _robotic
+  COMMAND env PYTHONPATH="." pybind11-stubgen --ignore-invalid=all _robotic
   COMMAND mv stubs/_robotic*/__init__.pyi _robotic.pyi)
 
 add_executable(kinEdit rai/bin/src_kinEdit/main.cpp)
