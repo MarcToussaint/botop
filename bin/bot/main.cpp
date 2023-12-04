@@ -12,7 +12,7 @@ int main(int argc, char * argv[]){
   if(rai::checkParameter<rai::String>("confFile")){
     C.addFile(rai::getParameter<rai::String>("confFile"));
   }else{
-    if(rai::getParameter<rai::String>("bot/useArm", "both")=="left"){
+    if(rai::getParameter<rai::String>("bot/useArm", "left")=="left"){
       C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
     }else{
       C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable-calibrated.g"));
@@ -21,18 +21,18 @@ int main(int argc, char * argv[]){
 
   BotOp bot(C, !rai::checkParameter<bool>("sim"));
 
-  if(rai::checkParameter<bool>("open")){
-    bot.hold(false, true);
-    if(bot.gripperL) bot.gripperL->open();
-    if(bot.gripperR) bot.gripperR->open();
-    if(bot.gripperL) while(!bot.gripperL->isDone()) rai::wait(.1);
-    if(bot.gripperR) while(!bot.gripperR->isDone()) rai::wait(.1);
-  }
-
   if(rai::checkParameter<bool>("close")){
     bot.hold(false, true);
     if(bot.gripperL) bot.gripperL->close();
     if(bot.gripperR) bot.gripperR->close();
+    if(bot.gripperL) while(!bot.gripperL->isDone()) rai::wait(.1);
+    if(bot.gripperR) while(!bot.gripperR->isDone()) rai::wait(.1);
+  }
+
+  if(rai::checkParameter<bool>("open")){
+    bot.hold(false, true);
+    if(bot.gripperL) bot.gripperL->open();
+    if(bot.gripperR) bot.gripperR->open();
     if(bot.gripperL) while(!bot.gripperL->isDone()) rai::wait(.1);
     if(bot.gripperR) while(!bot.gripperR->isDone()) rai::wait(.1);
   }
