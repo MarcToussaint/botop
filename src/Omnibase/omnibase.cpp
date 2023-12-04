@@ -13,7 +13,7 @@ struct OmnibaseController{
   arr qLast, sLast; //q: joint state; s: motor state
 #endif
 
-  OmnibaseController(rai::String address){
+  OmnibaseController(const StringA& addresses){
 #ifdef USE_FAKE
     fake_q.resize(3).setZero();
     fake_qDot.resize(3).setZero();
@@ -21,10 +21,9 @@ struct OmnibaseController{
     //-- launch 3 motors
     motors.resize(3);
     for(uint i=0;i<motors.N;i++){
-      motors(i) = make_shared<SimplexMotion>(address, 0x04d8, 0xf79a);
+      motors(i) = make_shared<SimplexMotion>(addresses(i), 0x04d8, 0xf79a);
       motors(i)->runReset(); //resets position counter
       motors(i)->runTorque(0.); //starts torque mode
-      address(address.N-1)++;
     }
     qLast = zeros(3);
     sLast = zeros(motors.N);
@@ -44,8 +43,12 @@ struct OmnibaseController{
 
   arr getJacobian(){
     //return Jacobian based on qLast
-    arr J(3,3);
-    NIY;
+    arr J = {
+      -1./3., 1./::sqrt(3.), 1./3.,
+      -1./3., -1./::sqrt(3.), 1./3.,
+      2./3., 0., 1./3.
+    };
+    J.resize(3,3);
     return J;
   }
 
@@ -116,10 +119,10 @@ void OmnibaseThread::init(uint _robotID, const uintA& _qIndices) {
   LOG(0) << "Omnibase: Kp_freq:" << Kp_freq << " Kd_ratio:" << Kd_ratio;
 
   //-- get robot address
-  address = rai::getParameter<rai::String>("Omnibase/address", "172.16.0.2");
+  addresses = rai::getParameter<StringA>("Omnibase/addresses", {"/dev/hidraw0", "/dev/hidraw1", "/dev/hidraw2"});
 
   //-- start thread and wait for first state signal
-  LOG(0) <<"launching Omnibase " <<robotID <<" at " <<address;
+  LOG(0) <<"launching Omnibase " <<robotID <<" at " <<addresses;
 
   threadLoop();
   while(Thread::step_count<2) rai::wait(.01);
@@ -127,7 +130,7 @@ void OmnibaseThread::init(uint _robotID, const uintA& _qIndices) {
 
 void OmnibaseThread::open(){
   // connect to robot
-   robot = make_shared<OmnibaseController>(address);
+   robot = make_shared<OmnibaseController>(addresses);
 
    //-- initialize state and ctrl with first state
    arr q_real, qDot_real;
