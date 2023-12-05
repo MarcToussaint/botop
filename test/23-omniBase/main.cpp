@@ -36,17 +36,20 @@ void moveOmnibase(){
   C.addFile(rai::raiPath("../rai-robotModels/omnibase/omnibase.g"));
 
   C.addFrame("way0") ->setPosition({0., 0., .1});
-  C.addFrame("way1") ->setPosition({1., 0., .1});
-  C.addFrame("way2") ->setPosition({0., 1., .1});
+  C.addFrame("way1") ->setPosition({.25, 0., .1});
+  C.addFrame("way2") ->setPosition({0., .25, .1});
   C.view(false);
 
   arr q = getPath(C);
 
   BotOp bot(C, true);
 
+//  bot.hold(true, false);
+//  bot.wait(C, true, false); return;
+
   rai::wait(.1);
 
-  bot.move(q, {5.});
+  bot.move(q, {9.});
   bot.wait(C);
 
   rai::wait();

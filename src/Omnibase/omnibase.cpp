@@ -3,7 +3,7 @@
 
 #ifdef RAI_OMNIBASE
 
-#define USE_FAKE
+//#define USE_FAKE
 
 struct OmnibaseController{
 #ifdef USE_FAKE
@@ -22,6 +22,13 @@ struct OmnibaseController{
     motors.resize(3);
     for(uint i=0;i<motors.N;i++){
       motors(i) = make_shared<SimplexMotion>(addresses(i), 0x04d8, 0xf79a);
+      cout <<"model name: '" <<motors(i)->getModelName() <<"'" <<endl;
+      cout <<"serial number: '" <<motors(i)->getSerialNumber() <<"'" <<endl;
+      cout <<"address: '" <<motors(i)->getAddress() <<"'" <<endl;
+      cout <<"motor temperature: " <<motors(i)->getMotorTemperature() <<endl;
+      cout <<"voltage: " <<motors(i)->getVoltage() <<endl;
+
+      //motors(i)->setPID(300, 0, 200, 100, 2, 0);
       motors(i)->runReset(); //resets position counter
       motors(i)->runTorque(0.); //starts torque mode
     }
@@ -43,12 +50,25 @@ struct OmnibaseController{
 
   arr getJacobian(){
     //return Jacobian based on qLast
+    double gears = 3.;
+    double r = .06;
+    double R = .3;
     arr J = {
-      -1./3., 1./::sqrt(3.), 1./3.,
-      -1./3., -1./::sqrt(3.), 1./3.,
-      2./3., 0., 1./3.
+    -.25, -.25, .5,
+    .25*sqrt(3.), -.25*sqrt(3.), 0.,
+    1/(3.*R), 1/(3.*R), 1./(3.*R)
     };
-    J.resize(3,3);
+    J *= r/gears;
+    J.reshape(3,3);
+
+
+    double phi = qLast(2);
+    arr rot = eye(3);
+    rot(0,0) = rot(1,1) = cos(phi);
+    rot(0,1) = -sin(phi);
+    rot(1,0) = sin(phi);
+    J = rot * J;
+
     return J;
   }
 
@@ -74,12 +94,14 @@ struct OmnibaseController{
     q = qLast + qDelta;
     qDot = Jacobian * sDot;
 
+//    cout <<"state: q: " <<q <<" qDot: " <<qDot <<endl;
+
     qLast = q;
     sLast = s;
 #endif
   }
 
-  void setTorques(const arr& u){
+  void setTorques(const arr& u_motors){
 #ifdef USE_FAKE //fake implementation: replace real physics dynamics by trivial double integrator
     double invMass = 1.;
     double tau=.01;
@@ -88,29 +110,33 @@ struct OmnibaseController{
     fake_qDot += .5*tau*invMass*u;
     LOG(0) <<"stepping..." <<u <<fake_q <<fake_qDot;
 #else
-    //-- convert joint torques to motor torques
-    arr Jacobian = getJacobian();
-    arr u_s = ~Jacobian * u; //Jacobian transpose law
-
     //-- send torques to motors
-    CHECK_EQ(u_s.N, motors.N, "control signal has wrong dimensionality");
+    CHECK_EQ(u_motors.N, motors.N, "control signal has wrong dimensionality");
+
+    clip(u_motors, -1., 1.);
+    cout <<"  sending motor torques: " <<u_motors <<endl;
     for(uint i=0;i<motors.N;i++){
-      motors(i)->setTarget(u_s(i)/motors(i)->maxTorque*32767);
+      motors(i)->setTarget(u_motors(i)/motors(i)->maxTorque*32767);
     }
 #endif
   }
 };
 
+OmnibaseThread::OmnibaseThread(uint robotID, const uintA &_qIndices, const Var<rai::CtrlCmdMsg> &_cmd, const Var<rai::CtrlStateMsg> &_state)
+    : RobotAbstraction(_cmd, _state), Thread("OmnibaseThread", .02){
+    init(robotID, _qIndices);
+}
+
 OmnibaseThread::~OmnibaseThread(){
-  LOG(0) <<"shutting down Omnibase " <<robotID;
-  threadClose();
+    LOG(0) <<"shutting down Omnibase " <<robotID;
+    threadClose();
 }
 
 void OmnibaseThread::init(uint _robotID, const uintA& _qIndices) {
-  robotID=_robotID;
-  qIndices=_qIndices;
+    robotID=_robotID;
+    qIndices=_qIndices;
 
-  CHECK_EQ(qIndices.N, 3, "");
+    CHECK_EQ(qIndices.N, 3, "");
   qIndices_max = rai::max(qIndices);
 
   //-- basic Kp Kd settings for reference control mode
@@ -226,7 +252,7 @@ void OmnibaseThread::step(){
       arr del = q_ref - q_real;
       err = ::sqrt(scalarProduct(del, P_compliance*del));
     }
-    if(err>.05){ //stall!
+    if(err>1.05){ //stall!
       state.set()->stall = 2; //no progress in reference time! for at least 2 iterations (to ensure continuous stall with multiple threads)
       cout <<"STALLING - step:" <<steps <<" err: " <<err <<endl;
     }
@@ -253,14 +279,30 @@ void OmnibaseThread::step(){
 
   //-- initialize zero torques
   u.resize(3).setZero();
+  qDot_ref.setZero(); //REMOVE LATER!!!
+
+  arr J = robot->getJacobian();
+  arr Jinv = pseudoInverse(J, NoArr, 1e-6);
 
   //-- add feedback term
+#if 0
   if(q_ref.N==3){
     u += Kp * (q_ref - q_real);
   }
   if(qDot_ref.N==3){
     u += Kd % (qDot_ref - qDot_real);
   }
+#else
+  if(q_ref.N==3){
+    arr delta_motor = Jinv * (q_ref - q_real);
+    u += .1 * delta_motor;
+  }
+  if(qDot_ref.N==3){
+    qDot_ref.setZero();
+    arr delta_motor = Jinv * (qDot_ref - qDot_real);
+    u += .005 * delta_motor;
+  }
+#endif
 
   //-- project with compliance
   if(P_compliance.N) u = P_compliance * u;
