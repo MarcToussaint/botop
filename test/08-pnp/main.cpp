@@ -35,7 +35,8 @@ void testPnp() {
   double maxVel = rai::getParameter<double>("maxVel");
   double maxAcc = rai::getParameter<double>("maxAcc");
 
-  uint L=50;
+  uint L = rai::getParameter<int>("trials", 50);
+
   for(uint l=0;l<=L;l++){
     //-- pick a random place direction
     //    rai::Enum<rai::ArgWord> placeDirection = rai::Array<rai::ArgWord>{rai::_yAxis, rai::_zAxis, rai::_yNegAxis, rai::_zNegAxis }.rndElem();
@@ -66,7 +67,7 @@ void testPnp() {
 
       if(k==1){ //move to keyframes[1]
         C.attach(gripperName, boxName);
-        path = getStartGoalPath_new(C, keyframes[1], qHome, { {{.3,.7}, {boxName, targetName}, .05},
+        path = getStartGoalPath_new(C, keyframes[1], qHome, { {{.3,.7}, {boxName, "table"}, .05},
                                                               {{}, {boxName, "table"}, .0},
                                                               {{}, {boxName, targetName}, .0},
                                                               {{}, {arm1Name, targetName}, .0},
@@ -84,9 +85,9 @@ void testPnp() {
       }
 
       if(bot.gripperL){
-        if(k==0){ bot.gripperMove(rai::_left); rai::wait(.2); } //while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
-        else if(k==1){ bot.gripperCloseGrasp(rai::_left, boxName); rai::wait(.5); } //while(!bot.gripperDone(rai::_left) ) rai::wait(.1); }
-        else if(k==2){ bot.gripperMove(rai::_left); rai::wait(.2); } //while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
+//        if(k==0){ bot.gripperMove(rai::_left); rai::wait(.2); } //while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
+//        if(k==1){ bot.gripperCloseGrasp(rai::_left, boxName); rai::wait(.5); } //while(!bot.gripperDone(rai::_left) ) rai::wait(.1); }
+//        else if(k==2){ bot.gripperMove(rai::_left); rai::wait(.2); } //while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
       }
 
       //send komo as spline:
@@ -94,9 +95,16 @@ void testPnp() {
 
       bot.wait(C, false, true);
       if(bot.keypressed=='q' || bot.keypressed==27){ l=L; break; }
+
+      if(bot.gripperL){
+        if(k==0){ bot.gripperCloseGrasp(rai::_left, boxName); rai::wait(.5); } //while(!bot.gripperDone(rai::_left) ) rai::wait(.1); }
+        if(k==1){ bot.gripperMove(rai::_left); rai::wait(.2); } //while(!bot.gripperDone(rai::_left)) rai::wait(.1); }
+      }
+
     }
   }
 
+  bot.gripperMove(rai::_left); rai::wait(.5);
   bot.home(C);
 }
 

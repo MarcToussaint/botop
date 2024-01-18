@@ -246,7 +246,7 @@ arr getBoxPnpKeyframes_new(rai::Configuration& C, str graspDirection, str placeD
   auto info = STRING("grasp " <<graspDirection <<" place " <<placeDirection);
   ManipulationModelling M(C, info);
   M.setup_pick_and_place_waypoints(gripper, box, 1e-1, 1e-1);
-  M.grasp_box(1., gripper, box, palm, graspDirection);
+  M.grasp_box(1., gripper, box, palm, graspDirection, .03);
   M.place_box(2., box, table, palm, placeDirection);
 //  M.target_relative_xy_position(2., box, table, arr{.2, .2});
 //  M.target_x_orientation(2., box, place_orientation);
