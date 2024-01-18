@@ -118,7 +118,7 @@ void BotThreadedSim::step(){
   }
 
   if(cmd_q_ref.N && cmd_qDot_ref.N){
-  sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
+    sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
   }else{
     sim->step({}, tau, sim->_none);
   }

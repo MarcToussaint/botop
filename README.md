@@ -33,7 +33,7 @@ This assumes a standard Ubuntu, tested on 18.04, 20.04, and latest docker. (When
 	  sudo apt install --yes \
         g++ clang make cmake curl git wget \
         liblapack-dev libf2c2-dev libqhull-dev libeigen3-dev libann-dev libccd-dev \
-        libjsoncpp-dev libyaml-cpp-dev libpoco-dev libboost-system-dev portaudio19-dev libusb-1.0-0-dev \
+        libjsoncpp-dev libyaml-cpp-dev libpoco-dev libboost-system-dev portaudio19-dev libusb-1.0-0-dev libhidapi-dev \
         libx11-dev libglu1-mesa-dev libglfw3-dev libglew-dev freeglut3-dev libpng-dev libassimp-dev
       mkdir -p $HOME/git $HOME/.local
 

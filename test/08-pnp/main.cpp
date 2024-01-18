@@ -38,12 +38,14 @@ void testPnp() {
   uint L=50;
   for(uint l=0;l<=L;l++){
     //-- pick a random place direction
-    rai::Enum<rai::ArgWord> placeDirection = rai::Array<rai::ArgWord>{rai::_yAxis, rai::_zAxis, rai::_yNegAxis, rai::_zNegAxis }.rndElem();
+    //    rai::Enum<rai::ArgWord> placeDirection = rai::Array<rai::ArgWord>{rai::_yAxis, rai::_zAxis, rai::_yNegAxis, rai::_zNegAxis }.rndElem();
+    str placeDirection = StringA{"y", "z", "yNeg", "zNeg"}.rndElem();
     cout <<"========= PLACEMENT " <<l <<": " <<placeDirection <<endl;
 
     //-- compute pnp keyframes (that box can only be picked in x-direction)
     C.setJointState(bot.get_q());
-    arr keyframes = getBoxPnpKeyframes(C, rai::_xAxis, placeDirection, boxName, gripperName, palmName, targetName, qHome);
+//    arr keyframes = getBoxPnpKeyframes(C, rai::_xAxis, placeDirection, boxName, gripperName, palmName, targetName, qHome);
+    arr keyframes = getBoxPnpKeyframes_new(C, "x", placeDirection, boxName, gripperName, palmName, targetName, qHome);
     if(!keyframes.N) continue; //infeasible
 
     //-- execute keyframes
@@ -54,30 +56,31 @@ void testPnp() {
 
       if(k==0){ //move to keyframes[0]
         C.attach(targetName, boxName);
-        path = getStartGoalPath(C, keyframes[0], qHome, { {{.3,.7}, {palmName, boxName}, .1},
-                                                          {{}, {palmName, boxName}, .0},
-                                                          {{}, {arm1Name, targetName}, .0},
-                                                          {{}, {arm2Name, targetName}, .0},
-                                                        }, {gripperName}, true, true);
+        path = getStartGoalPath_new(C, keyframes[0], qHome, { {{.3,.7}, {palmName, boxName}, .1},
+                                                              {{}, {palmName, boxName}, .0},
+                                                              {{}, {arm1Name, targetName}, .0},
+                                                              {{}, {arm2Name, targetName}, .0},
+                                                            }, {gripperName}, true, true);
         if(!path.N) break;
       }
 
       if(k==1){ //move to keyframes[1]
         C.attach(gripperName, boxName);
-        path = getStartGoalPath(C, keyframes[1], qHome, { {{.3,.7}, {boxName, targetName}, .05},
-                                                          {{}, {boxName, targetName}, .0},
-                                                          {{}, {arm1Name, targetName}, .0},
-                                                          {{}, {arm2Name, targetName}, .0}
-                                                        }, {gripperName}, false, false);
+        path = getStartGoalPath_new(C, keyframes[1], qHome, { {{.3,.7}, {boxName, targetName}, .05},
+                                                              {{}, {boxName, "table"}, .0},
+                                                              {{}, {boxName, targetName}, .0},
+                                                              {{}, {arm1Name, targetName}, .0},
+                                                              {{}, {arm2Name, targetName}, .0}
+                                                            }, {gripperName}, false, false);
         if(!path.N) break;
       }
 
       if(k==2){ //move to home
         C.attach(targetName, boxName);
-        path = getStartGoalPath(C, qHome, qHome, { {{.3,.5}, {palmName, boxName}, .1},
-                                                   {{}, {palmName, boxName}, .0},
-                                                   {{}, {arm1Name, targetName}, .0}
-                                }, {gripperName}, false, true);
+        path = getStartGoalPath_new(C, qHome, qHome, { {{.3,.5}, {palmName, boxName}, .1},
+                                                       {{}, {palmName, boxName}, .0},
+                                                       {{}, {arm1Name, targetName}, .0}
+                                    }, {gripperName}, false, true);
       }
 
       if(bot.gripperL){
