@@ -48,7 +48,8 @@ add_definitions(
   -DRAI_BotOp
   -DRAI_ROBOTIQ
   -DRAI_OMNIBASE
-  )
+  -DRAI_OPTITRACK -DENABLE_OPTITRACK
+)
 
 if(USE_QHULL8)
   add_definitions( -DRAI_QHULL8 )
