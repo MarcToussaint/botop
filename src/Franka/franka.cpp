@@ -45,7 +45,15 @@ void FrankaThread::init(uint _robotID, const uintA& _qIndices) {
   //-- start thread and wait for first state signal
   LOG(0) <<"launching Franka " <<robotID <<" at " <<ipAddress;
   threadStep();  //this is not looping! The step method passes a callback to robot.control, which is blocking! (that's why we use a thread) until stop becomes true
-  while(requiresInitialization) rai::wait(.01);
+
+  for(uint i=0;i<200;i++){
+    if(!requiresInitialization) break;
+    rai::wait(.01);
+  }
+  if(requiresInitialization){
+    threadCancel();
+    THROW("lauching Franka timeout!");
+  }
 }
 
 void FrankaThread::step(){

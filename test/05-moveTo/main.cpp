@@ -51,7 +51,7 @@ void test_bot() {
 //  bot.wait(C, true, true);
 //  if(bot.keypressed=='q') return;
 
-  rai::wait();
+//  rai::wait();
 }
 
 //===========================================================================

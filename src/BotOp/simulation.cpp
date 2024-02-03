@@ -187,6 +187,7 @@ void GripperSim::closeGrasp(const char* objName, double force, double width, dou
 }
 
 double GripperSim::pos(){
+  auto mux = simthread->stepMutex(RAI_HERE);
   return simthread->sim->getGripperWidth(gripperName);
 }
 
