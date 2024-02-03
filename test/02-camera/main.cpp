@@ -68,30 +68,40 @@ void testBotop(){
   //-- setup a configuration
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+  rai::Frame *pcl = C.addFrame("wristPcl", "cameraWrist");
+  pcl->setPointCloud({}, {});
   C.view(false);
 
-  //-- start a robot thread
+  //-- start a robot
   BotOp bot(C, rai::getParameter<bool>("BotOp/real", false));
 
 //  bot.home(C);
+//  bot.hold(true, false);
 
-  bot.hold(true, false);
+  arr q0 = bot.get_qHome();
+  arr q1 = q0;
+  q1(1) += .4;
 
-  rai::Frame *pcl = C.addFrame("wristPcl", "cameraWrist");
-  pcl->setPointCloud({}, {});
+  bot.moveTo(q1, 1.);
+  bot.moveTo(q0, 1.);
+
 
   OpenGL gl, gl2;
   byteA image;
   floatA depth;
   arr points;
-  for(;;){
+  for(uint k=0;k<1000;){
     bot.sync(C);
     if(bot.keypressed=='q'){ LOG(0) <<"HERE"; break; }
 
     bot.getImageDepthPcl(image, depth, points, "cameraWrist", false);
-    {
-      auto mux = C.gl().dataLock(RAI_HERE);
-      pcl->setPointCloud(points, image);
+    pcl->setPointCloud(points, image);
+    pcl->setColor({1.,0.,0.});
+
+    if(bot.getTimeToEnd()<=0.){
+      bot.moveTo(q1, 1.);
+      bot.moveTo(q0, 1.);
+      k++;
     }
 
 #if 0
@@ -106,10 +116,29 @@ void testBotop(){
 
 //===========================================================================
 
+void testMini(){
+  rai::Configuration C;
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+
+  rai::Frame *frame = C.addFrame("myTestFrame");
+  frame->setShape(rai::ST_marker, {0.3});
+//  frame->setColor(arr{1,0,0});
+
+  BotOp bot(C, false);
+  byteA img;
+  floatA depth;
+  bot.getImageAndDepth(img, depth, "cameraWrist");
+
+
+
+}
+
+//===========================================================================
+
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
 //  testDirect();
   testBotop();
-
+//  testMini();
 }

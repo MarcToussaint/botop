@@ -12,6 +12,7 @@
 #include <Franka/franka.h>
 #include <Franka/FrankaGripper.h>
 #include "simulation.h"
+#include <Omnibase/omnibase.h>
 #include <Robotiq/RobotiqGripper.h>
 #include <OptiTrack/optitrack.h>
 #include <RealSense/RealSenseThread.h>
@@ -41,17 +42,12 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 
   //-- launch robots & grippers
   if(useRealRobot){
+    uint robotID=0;
     LOG(0) <<"CONNECTING TO FRANKAS";
     try{
-      if(useArm=="left"){
-        robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
-        if(useGripper) gripperL = make_shared<FrankaGripper>(0);
-      }else if(useArm=="right"){
-        robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
-        if(useGripper) gripperR = make_shared<FrankaGripper>(1);
-      }else if(useArm=="both"){
-        robotL = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'), cmd, state);
-        robotR = make_shared<FrankaThread>(1, franka_getJointIndices(C,'r'), cmd, state);
+      if(C.getFrame("l_panda_base", false) && C.getFrame("r_panda_base", false)){
+        robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
+        robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
         if(useGripper){
           LOG(0) <<"CONNECTING TO GRIPPERS";
           if(robotiq){
@@ -62,10 +58,14 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
             gripperR = make_shared<FrankaGripper>(1);
           }
         }
-      }else if(useArm=="none"){
-        LOG(0) <<"starting botop without ANY robot module";
+      } else if(C.getFrame("l_panda_base", false)){
+        robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
+        if(useGripper) gripperL = make_shared<FrankaGripper>(0);
+      } else if(C.getFrame("r_panda_base", false)){
+        robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
+        if(useGripper) gripperR = make_shared<FrankaGripper>(1);
       }else{
-        HALT("you need a botUseArm configuration (right, left, both)");
+        LOG(0) <<"starting botop without franka robots (no frames l_panda_base or r_panda_base defined)";
       }
       {// if using franka gripper, do a homing?
         //FrankaGripper *fg = dynamic_cast<FrankaGripper*>(gripperL.get());
@@ -73,10 +73,20 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       }
       C.setJointState(get_q());
     } catch(const std::exception& ex) {
-      LOG(-1) <<"Starting the real robot failed! Error msg: " <<ex.what();
+      LOG(-1) <<"Starting the franka robot(s) failed! Error msg: " <<ex.what();
     } catch(...) {
-      LOG(-1) <<"Starting the real robot failed! Error msg: " <<rai::errString();
+      LOG(-1) <<"Starting the franka robot(s) failed! Error msg: " <<rai::errString();
     }
+
+    try{
+      if(C.getFrame("omnibase_world", false)){
+        LOG(0) <<"CONNECTING TO OMNIBASE";
+        robotL = make_shared<OmnibaseThread>(robotID++, uintA{0,1,2}, cmd, state);
+      }
+    } catch(const std::exception& ex) {
+      LOG(-1) <<"Starting the omnibase failed! Error msg: " <<ex.what();
+    }
+
   }else{
     double hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
     simthread = make_shared<BotThreadedSim>(C, cmd, state, StringA(), .001, hyperSpeed); //, StringA(), .001, 10.);
@@ -206,6 +216,7 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
 
 int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd){
   C.viewer()->raiseWindow();
+  if(forKeyPressed) C.viewer()->resetPressedKey();
   for(;;){
     sync(C, .1);
     if(keypressed=='q') return keypressed;

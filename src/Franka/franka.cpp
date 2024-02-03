@@ -45,7 +45,15 @@ void FrankaThread::init(uint _robotID, const uintA& _qIndices) {
   //-- start thread and wait for first state signal
   LOG(0) <<"launching Franka " <<robotID <<" at " <<ipAddress;
   threadStep();  //this is not looping! The step method passes a callback to robot.control, which is blocking! (that's why we use a thread) until stop becomes true
-  while(requiresInitialization) rai::wait(.01);
+
+  for(uint i=0;i<200;i++){
+    if(!requiresInitialization) break;
+    rai::wait(.01);
+  }
+  if(requiresInitialization){
+    threadCancel();
+    THROW("lauching Franka timeout!");
+  }
 }
 
 void FrankaThread::step(){
@@ -115,12 +123,10 @@ void FrankaThread::step(){
     arr state_q_real, state_qDot_real;
     {
       auto stateSet = state.set();
-      //1) increment ctrlTime if no stall and lead thread:   robotID==0
-      if(robotID==0){
+      if(robotID==0){ // if this is the lead robot, increment ctrlTime if no stall
         if(!stateSet->stall) stateSet->ctrlTime += .001; //HARD CODED: 1kHz
         else stateSet->stall--;
       }
-      //2) adopt ctrlTime!
       ctrlTime = stateSet->ctrlTime;
       for(uint i=0;i<7;i++){
         stateSet->q.elem(qIndices(i)) = q_real.elem(i);
