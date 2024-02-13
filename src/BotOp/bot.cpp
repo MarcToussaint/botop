@@ -216,10 +216,10 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
 
 int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd){
   C.viewer()->raiseWindow();
-  if(forKeyPressed) C.viewer()->resetPressedKey();
+  C.viewer()->resetPressedKey();
   for(;;){
     sync(C, .1);
-    if(keypressed=='q') return keypressed;
+    //if(keypressed=='q') return keypressed;
     if(forKeyPressed && keypressed) return keypressed;
     if(forTimeToEnd && getTimeToEnd()<=0.) return keypressed;
   }
@@ -376,7 +376,7 @@ void BotOp::gripperCloseGrasp(rai::ArgWord leftRight, const char* objName, doubl
   if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->closeGrasp(objName, force, width, speed); }
 }
 
-double BotOp::gripperPos(rai::ArgWord leftRight){
+double BotOp::getGripperPos(rai::ArgWord leftRight){
   if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else return gripperL->pos(); }
   if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else return gripperR->pos(); }
   return 0;
