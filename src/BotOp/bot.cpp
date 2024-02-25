@@ -205,7 +205,7 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
   if(rai::getParameter<bool>("bot/raiseWindow",false)) C.viewer()->raiseWindow();
   double ctrlTime = get_t();
   keypressed = C.view(false, STRING("BotOp sync'ed at time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
-  if(keypressed) C.viewer()->resetPressedKey();
+  if(keypressed) C.viewer()->_resetPressedKey();
 //  if(keypressed==13) return false;
 //  if(keypressed=='q' || keypressed==27) return false;
 //  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
@@ -216,12 +216,13 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
 
 int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd){
   C.viewer()->raiseWindow();
-  C.viewer()->resetPressedKey();
+  C.viewer()->_resetPressedKey();
   for(;;){
     sync(C, .1);
     //if(keypressed=='q') return keypressed;
     if(forKeyPressed && keypressed) return keypressed;
     if(forTimeToEnd && getTimeToEnd()<=0.) return keypressed;
+    if(!rai::getInteractivity() && !forTimeToEnd && forKeyPressed) return ' ';
   }
 }
 

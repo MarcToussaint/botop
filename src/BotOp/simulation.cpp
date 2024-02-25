@@ -25,7 +25,7 @@ BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
   {
     q_real = C.getJointState();
     qDot_real.resize(q_real.N).setZero();
-    collisionPairs = simConfig.getCollisionAllPairs();
+    //    collisionPairs = simConfig.getCollidablePairs();
     //    cout <<" CollisionPairs:" <<endl;
     //    for(uint i=0;i<collisionPairs.d0;i++) cout <<collisionPairs(i,0)->name <<'-' <<collisionPairs(i,1)->name <<endl;
 
