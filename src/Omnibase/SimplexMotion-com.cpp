@@ -1,9 +1,5 @@
 #include "SimplexMotion-com.h"
 
-#ifndef USE_HIDRAW
-#  define USE_HIDAPI
-#endif
-
 #include <cstdint>
 #include <iostream>
 #include <string.h>
@@ -235,9 +231,7 @@ bool SimplexMotion_Communication::readBuf(int len){
   return true;
 }
 
-#endif
-
-#ifdef USE_HIDRAW
+#elif defined USE_HIDRAW
 
 //===========================================================================
 //
@@ -355,5 +349,20 @@ bool SimplexMotion_Communication::readBuf(int len){
   }
   return true;
 }
+
+#else 
+
+//===========================================================================
+//
+// fake (NICO) implementation
+//
+
+#define NICO throw std::runtime_error("not implemented with this compiler options: usually this means that the implementation needs an external library and a corresponding compiler option - see the source code");
+
+SimplexMotion_Communication::SimplexMotion_Communication(const char* devPath, unsigned short vendor_id, unsigned short product_id){ NICO }
+
+SimplexMotion_Communication::~SimplexMotion_Communication(){ NICO }
+bool SimplexMotion_Communication::writeBuf(int len){ NICO }
+bool SimplexMotion_Communication::readBuf(int len){ NICO }
 
 #endif

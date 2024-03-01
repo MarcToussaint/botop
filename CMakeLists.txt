@@ -13,7 +13,11 @@ set(PY_VERSION 3.8 CACHE STRING "python version")
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "..." FORCE)
 endif()
-set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+set(PYTHON_SITE "lib/python${PY_VERSION}/site-packages")
+set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
+set(CMAKE_INSTALL_RPATH "\$ORIGIN;${CMAKE_INSTALL_PREFIX}/lib")
+#only for testing: python module needs to link to python later!
+#set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-undefined")
 
 ## options
 option(USE_PYBIND "build python bindings" ON)
@@ -25,6 +29,7 @@ option(USE_OPENCV_LOCAL "link to opencv" OFF)
 option(USE_REALSENSE "link to realsense2 driver library" ON)
 option(USE_LIBFRANKA "link to libfranka" ON)
 option(USE_PCL "link to pcl library" OFF)
+option(USE_H5 "link to h5 library" ON)
 option(USE_QHULL8 "use (newer) version 8 of qhull" OFF)
 option(MODULE_Vive "compile the ViveController module" OFF)
 
@@ -60,14 +65,20 @@ endif()
 include_directories(
   rai/src
   src
-  /usr/include/eigen3
   $ENV{HOME}/.local/include
+  /usr/include/eigen3
   )
 
 link_directories(
   $ENV{HOME}/.local/lib
-  $ENV{HOME}/.local/lib/PhysX
   )
+
+if(USE_PHYSX)
+  link_directories($ENV{HOME}/.local/lib/PhysX)
+endif()
+if(USE_H5)
+  link_directories(/usr/lib/x86_64-linux-gnu/hdf5/serial)
+endif()
 
 file(GLOB SRC_GeoGJK rai/src/Geo/GJK/*.c)
 file(GLOB SRC_GeoPly rai/src/Geo/ply/*.c)
@@ -110,31 +121,40 @@ add_library(rai SHARED
   ${SRC_MarkerVision}
   )
 
-target_link_libraries(rai
-  jsoncpp lapack blas pthread rt X11
-  assimp ccd fcl qhull ann glfw GLEW glut GLU GL png
-  portaudio
-  boost_system
-  hidapi-hidraw
-  )
-
 ################################################################################
 #
 # compile extra modules
 
 if(MODULE_Vive)
   add_definitions(-DRAI_Vive)
-  target_sources(rai PRIVATE src/ViveController/vivecontroller.cpp)
+  target_sources(rai src/ViveController/vivecontroller.cpp)
   message(STATUS "[rai] compiling module Vive")
 endif()
   
 ################################################################################
 #
-# include external libraries
+# rai include/link external libraries
+
+target_link_libraries(rai
+  # ORDER MATTERS! test with -no-undefined linker flag (above)
+  jsoncpp lapack blas
+  assimp fcl ccd ann qhull
+  glfw GLEW glut GLU GL png
+  portaudio
+  hidapi-hidraw
+  )
 
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 #target_link_libraries (rai Eigen3::Eigen)
 find_package(PkgConfig REQUIRED)
+
+if(USE_H5)
+  find_package(HDF5 REQUIRED)
+  add_definitions(-DRAI_H5)
+  include_directories(${HDF5_INCLUDE_DIRS})
+  target_link_libraries(rai hdf5_cpp hdf5 z)
+  message(STATUS "[rai] using H5 libs: hdf5 hdf5_cpp in " ${HDF5_INCLUDE_DIRS})
+endif()
 
 if(USE_BULLET)
   find_package(Bullet REQUIRED)
@@ -190,6 +210,10 @@ if(USE_LIBFRANKA)
   message(STATUS "[rai] using libfranka")
 endif()
 
+target_link_libraries(rai 
+  pthread rt X11 boost_system
+  )
+
 ################################################################################
 
 if(USE_PYBIND)
@@ -239,6 +263,8 @@ add_executable(bot bin/bot/main.cpp)
 target_link_libraries(bot rai)
 
 ################################################################################
+
+message(STATUS "[rai] installing python packages in " ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE}/robotic )
 
 file(GLOB SRC_botopSrc rai/src/* src/*)
 
