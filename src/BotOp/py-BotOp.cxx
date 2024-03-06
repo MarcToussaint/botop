@@ -148,7 +148,8 @@ void init_BotOp(pybind11::module& m) {
        "repeatedly sync your workspace C until a key is pressed or motion ends (optionally)",
        pybind11::arg("C"),
        pybind11::arg("forKeyPressed") = true,
-       pybind11::arg("forTimeToEnd") = true)
+       pybind11::arg("forTimeToEnd") = true,
+       pybind11::arg("forGripper") = false)
 
   .def("home", &BotOp::home,
        "immediately drive the robot home (see get_qHome); keeps argument C synced; same as moveTo(qHome, 1., True); wait(C);",
