@@ -134,6 +134,8 @@ void BotThreadedSim::step(){
     simConfig.view(false, STRING("EMULATION - time " <<ctrlTime));
   }
 
+  //if(!(step_count%100)) cout <<"simulation thread load:" <<timer.report() <<endl;
+
   //-- check for collisions!
 #if 0
   emuConfig.setJointState(q_real);

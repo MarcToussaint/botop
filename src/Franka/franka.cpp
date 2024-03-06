@@ -316,7 +316,7 @@ void FrankaThread::step(){
     }
 
     //-- data log?
-    if(writeData>0 && !(steps%1)){
+    if(writeData>0 && !(steps%10)){
       if(!dataFile.is_open()) dataFile.open(STRING("z.panda"<<robotID <<".dat"));
       dataFile <<ctrlTime <<' '; //single number
       q_real.modRaw().write(dataFile); //7

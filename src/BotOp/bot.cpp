@@ -27,8 +27,6 @@
 BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   //-- launch arm(s) & gripper(s)
   bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
-  bool robotiq = rai::getParameter<bool>("bot/useRobotiq", false);
-  rai::String useArm = rai::getParameter<rai::String>("bot/useArm", "left");
   bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
 
   C.ensure_indexedJoints();
@@ -41,6 +39,30 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   }
 
   //-- launch robots & grippers
+  if(useRealRobot && useGripper){
+    LOG(0) <<"CONNECTING TO GRIPPERS";
+    try{
+      if(C.getFrame("l_panda_hand", false) && C.getFrame("r_panda_hand", false)){
+        gripperL = make_shared<FrankaGripper>(0);
+        gripperR = make_shared<FrankaGripper>(1);
+      }else if(C.getFrame("l_panda_hand", false)){
+        gripperL = make_shared<FrankaGripper>(0);
+      }else if(C.getFrame("r_panda_hand", false)){
+        gripperR = make_shared<FrankaGripper>(1);
+
+      }else if(C.getFrame("l_robotiq_base", false) && C.getFrame("r_robotiq_base", false)){
+        gripperL = make_shared<RobotiqGripper>(0);
+        gripperR = make_shared<RobotiqGripper>(1);
+      }else if(C.getFrame("l_robotiq_base", false)){
+        gripperL = make_shared<RobotiqGripper>(0);
+      }else if(C.getFrame("r_robotiq_base", false)){
+        gripperR = make_shared<RobotiqGripper>(1);
+      }
+    } catch(const std::exception& ex) {
+      LOG(-1) <<"Starting the gripper(s) failed! Error msg: " <<ex.what();
+    }
+  }
+
   if(useRealRobot){
     uint robotID=0;
     LOG(0) <<"CONNECTING TO FRANKAS";
@@ -48,28 +70,12 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       if(C.getFrame("l_panda_base", false) && C.getFrame("r_panda_base", false)){
         robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
         robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
-        if(useGripper){
-          LOG(0) <<"CONNECTING TO GRIPPERS";
-          if(robotiq){
-            gripperL = make_shared<RobotiqGripper>(0);
-            gripperR = make_shared<RobotiqGripper>(1);
-          }else{
-            gripperL = make_shared<FrankaGripper>(0);
-            gripperR = make_shared<FrankaGripper>(1);
-          }
-        }
       } else if(C.getFrame("l_panda_base", false)){
         robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
-        if(useGripper) gripperL = make_shared<FrankaGripper>(0);
       } else if(C.getFrame("r_panda_base", false)){
         robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
-        if(useGripper) gripperR = make_shared<FrankaGripper>(1);
       }else{
         LOG(0) <<"starting botop without franka robots (no frames l_panda_base or r_panda_base defined)";
-      }
-      {// if using franka gripper, do a homing?
-        //FrankaGripper *fg = dynamic_cast<FrankaGripper*>(gripperL.get());
-        //if(fg) fg->homing();
       }
       C.setJointState(get_q());
     } catch(const std::exception& ex) {
@@ -214,7 +220,7 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
   return keypressed;
 }
 
-int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd){
+int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd, bool forGripper){
   C.viewer()->raiseWindow();
   C.viewer()->_resetPressedKey();
   for(;;){
@@ -222,6 +228,7 @@ int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd){
     //if(keypressed=='q') return keypressed;
     if(forKeyPressed && keypressed) return keypressed;
     if(forTimeToEnd && getTimeToEnd()<=0.) return keypressed;
+    if(forGripper && gripperDone(rai::_left)) return 'g';
     if(!rai::getInteractivity() && !forTimeToEnd && forKeyPressed) return ' ';
   }
 }
@@ -386,7 +393,7 @@ double BotOp::getGripperPos(rai::ArgWord leftRight){
 bool BotOp::gripperDone(rai::ArgWord leftRight){
   if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else return gripperL->isDone(); }
   if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else return gripperR->isDone(); }
-  return false;
+  return true;
 }
 
 std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
