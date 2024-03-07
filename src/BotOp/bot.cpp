@@ -94,11 +94,12 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     }
 
   }else{
-    double hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
-    simthread = make_shared<BotThreadedSim>(C, cmd, state, StringA(), .001, hyperSpeed); //, StringA(), .001, 10.);
+    simthread = make_shared<BotThreadedSim>(C, cmd, state);
     robotL = simthread;
     if(useGripper) gripperL = make_shared<GripperSim>(simthread, "l_gripper");
   }
+
+  startRealTime = rai::realTime();
 
   //-- initialize the control reference
   hold(false, true);
@@ -210,7 +211,7 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
   //gui
   if(rai::getParameter<bool>("bot/raiseWindow",false)) C.viewer()->raiseWindow();
   double ctrlTime = get_t();
-  keypressed = C.view(false, STRING("BotOp sync'ed at time: "<<ctrlTime <<"\n[q or ESC to ABORT]"));
+  keypressed = C.view(false, STRING("BotOp sync ctrl time: "<<ctrlTime <<" (=" <<int(100.*ctrlTime/(rai::realTime()-startRealTime)) <<"% real time)"));
   if(keypressed) C.viewer()->_resetPressedKey();
 //  if(keypressed==13) return false;
 //  if(keypressed=='q' || keypressed==27) return false;

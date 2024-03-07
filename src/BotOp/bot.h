@@ -83,6 +83,7 @@ private:
   std::shared_ptr<rai::CameraAbstraction>& getCamera(const char* sensor);
   template<class T> BotOp& setReference();
   std::shared_ptr<rai::BSplineCtrlReference> getSplineRef();
+  double startRealTime;
 };
 
 //===========================================================================
