@@ -11,14 +11,15 @@ BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
                                const StringA& joints,
                                double _tau, double hyperSpeed)
   : RobotAbstraction(_cmd, _state),
-    Thread("FrankaThread_Emulated", _tau/hyperSpeed),
+    Thread("FrankaThread_Emulated"),
     simConfig(C),
     tau(_tau){
-  //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
-  //        K["panda_finger_joint1"]->joint->makeRigid();
 
   //create a rai Simulator!
   int verbose = rai::getParameter<int>("botsim/verbose", 1);
+  if(tau<0.) tau = rai::getParameter<double>("botsim/tau", .01);
+  if(hyperSpeed<0.) hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
+  Thread::metronome.reset(tau/hyperSpeed);
   rai::String engine = rai::getParameter<rai::String>("botsim/engine", "physx");
   sim=make_shared<rai::Simulation>(simConfig, rai::Enum<rai::Simulation::Engine>(engine), verbose);
 
