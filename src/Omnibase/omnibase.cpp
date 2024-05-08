@@ -1,6 +1,9 @@
 #include "omnibase.h"
 #include "SimplexMotion.h"
 
+
+#define RAI_OMNIBASE 1
+
 #ifdef RAI_OMNIBASE
 
 //#define USE_FAKE
@@ -13,7 +16,7 @@ struct OmnibaseController{
   arr qLast, sLast; //q: joint state; s: motor state
 #endif
 
-  OmnibaseController(const StringA& addresses){
+  OmnibaseController(const StringA& addresses, double Kp, double Kd){
 #ifdef USE_FAKE
     fake_q.resize(3).setZero();
     fake_qDot.resize(3).setZero();
@@ -28,9 +31,10 @@ struct OmnibaseController{
       cout <<"motor temperature: " <<motors(i)->getMotorTemperature() <<endl;
       cout <<"voltage: " <<motors(i)->getVoltage() <<endl;
 
-      //motors(i)->setPID(300, 0, 200, 100, 2, 0);
       motors(i)->runReset(); //resets position counter
       motors(i)->runTorque(0.); //starts torque mode
+
+      LOG(0) << "Motor " << i << " battery reading: " << motors(i)->getVoltage() << "V";
     }
     qLast = zeros(3);
     sLast = zeros(motors.N);
@@ -50,17 +54,21 @@ struct OmnibaseController{
 
   arr getJacobian(){
     //return Jacobian based on qLast
-    double gears = 3.;
+    double gears = 4.2;
     double r = .06;
-    double R = .3;
+    double R = .35;
+//    arr J = {
+//    -.25, -.25, .5,
+//    .25*sqrt(3.), -.25*sqrt(3.), 0.,
+//    1/(3.*R), 1/(3.*R), 1./(3.*R)
+//    };
     arr J = {
-    -.25, -.25, .5,
-    .25*sqrt(3.), -.25*sqrt(3.), 0.,
-    1/(3.*R), 1/(3.*R), 1./(3.*R)
+      -.5,          -.5,            1.,
+      .5*sqrt(3.),  -.5*sqrt(3.),   0.,
+      1/(3.*R),      1/(3.*R),      1./(3.*R)
     };
     J *= r/gears;
     J.reshape(3,3);
-
 
     double phi = qLast(2);
     arr rot = eye(3);
@@ -114,7 +122,7 @@ struct OmnibaseController{
     CHECK_EQ(u_motors.N, motors.N, "control signal has wrong dimensionality");
 
     clip(u_motors, -1., 1.);
-    cout <<"  sending motor torques: " <<u_motors <<endl;
+    //cout <<"  sending motor torques: " <<u_motors <<endl;
     for(uint i=0;i<motors.N;i++){
       motors(i)->setTarget(u_motors(i)/motors(i)->maxTorque*32767);
     }
@@ -140,9 +148,9 @@ void OmnibaseThread::init(uint _robotID, const uintA& _qIndices) {
   qIndices_max = rai::max(qIndices);
 
   //-- basic Kp Kd settings for reference control mode
-  Kp_freq = rai::getParameter<arr>("Omnibase/Kp_freq", arr{10., 10., 10.});
-  Kd_ratio = rai::getParameter<arr>("Omnibase/Kd_ratio", arr{.5, .5, .5});
-  LOG(0) << "Omnibase: Kp_freq:" << Kp_freq << " Kd_ratio:" << Kd_ratio;
+  Kp = rai::getParameter<double>("Omnibase/Kp", .2);
+  Kd = rai::getParameter<double>("Omnibase/Kd", .02);
+  LOG(0) << "Omnibase: Kp:" << Kp << " Kd:" << Kd;
 
   //-- get robot address
   addresses = rai::getParameter<StringA>("Omnibase/addresses", {"/dev/hidraw0", "/dev/hidraw1", "/dev/hidraw2"});
@@ -156,7 +164,7 @@ void OmnibaseThread::init(uint _robotID, const uintA& _qIndices) {
 
 void OmnibaseThread::open(){
   // connect to robot
-   robot = make_shared<OmnibaseController>(addresses);
+   robot = make_shared<OmnibaseController>(addresses, Kp, Kd);
 
    //-- initialize state and ctrl with first state
    arr q_real, qDot_real;
@@ -261,22 +269,6 @@ void OmnibaseThread::step(){
   //-- compute torques from control message depending on the control type
   arr u;
 
-  //-- compute desired torques
-  arr Kp(3), Kd(3);
-  CHECK_EQ(Kp_freq.N, 3,"");
-  CHECK_EQ(Kd_ratio.N, 3,"");
-  for(uint i=0;i<3;i++){
-    double freq = Kp_freq.elem(i);
-    Kp.elem(i) = freq*freq;
-    Kd.elem(i) = 2.*Kd_ratio.elem(i)*freq;
-  }
-
-  if(P_compliance.N){
-    Kp = P_compliance * (Kp % P_compliance);
-  }else{
-    Kp = diag(Kp);
-  }
-
   //-- initialize zero torques
   u.resize(3).setZero();
   qDot_ref.setZero(); //REMOVE LATER!!!
@@ -285,24 +277,15 @@ void OmnibaseThread::step(){
   arr Jinv = pseudoInverse(J, NoArr, 1e-6);
 
   //-- add feedback term
-#if 0
-  if(q_ref.N==3){
-    u += Kp * (q_ref - q_real);
-  }
-  if(qDot_ref.N==3){
-    u += Kd % (qDot_ref - qDot_real);
-  }
-#else
   if(q_ref.N==3){
     arr delta_motor = Jinv * (q_ref - q_real);
-    u += .1 * delta_motor;
+    u += Kp * delta_motor;
   }
   if(qDot_ref.N==3){
     qDot_ref.setZero();
     arr delta_motor = Jinv * (qDot_ref - qDot_real);
-    u += .005 * delta_motor;
+    u += Kd * delta_motor;
   }
-#endif
 
   //-- project with compliance
   if(P_compliance.N) u = P_compliance * u;
