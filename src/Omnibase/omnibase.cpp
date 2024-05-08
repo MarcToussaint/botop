@@ -2,8 +2,6 @@
 #include "SimplexMotion.h"
 
 
-#define RAI_OMNIBASE 1
-
 #ifdef RAI_OMNIBASE
 
 //#define USE_FAKE
