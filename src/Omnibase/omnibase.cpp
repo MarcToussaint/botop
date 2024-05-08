@@ -318,5 +318,7 @@ void OmnibaseThread::close(){
 OmnibaseThread::~OmnibaseThread(){ NICO }
 void OmnibaseThread::init(uint _robotID, const uintA& _qIndices) { NICO }
 void OmnibaseThread::step(){ NICO }
+void OmnibaseThread::open(){ NICO }
+void OmnibaseThread::close(){ NICO }
 
 #endif

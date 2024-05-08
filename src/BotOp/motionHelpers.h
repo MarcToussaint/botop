@@ -12,6 +12,7 @@ arr getBoxPnpKeyframes(const rai::Configuration& C,
                        rai::ArgWord pickDirection, rai::ArgWord placeDirection,
                        const char* boxName, const char* gripperName, const char* palmName, const char* tableName,
                        const arr& qHome);
+arr getBoxPnpKeyframes_new(rai::Configuration& C, str graspDirection, str placeDirection, str box, str gripper, str palm, str table, const arr& qHome);
 
 //===========================================================================
 

@@ -15,7 +15,7 @@ void testDirect(){
   {
     std::shared_ptr<rai::GripperAbstraction> G_ri;
     if(rai::getParameter<bool>("bot/useRobotiq", true)){
-      G_ri = make_shared<RobotiqGripper>(0);
+      G_ri = make_shared<RobotiqGripper>(1);
     }else{
       G_ri = make_shared<FrankaGripper>(0);
     }
@@ -76,35 +76,35 @@ void testBotop(){
   //-- start a robot thread
   BotOp bot(C, rai::getParameter<bool>("BotOp/real", false));
 
-  C.view(true, "press to close gripper");
+//  C.view(true, "press to close gripper");
 
-  bot.gripperClose(rai::_left);
+  bot.gripperClose(rai::_left, 0., 0., 1.);
   while(!bot.gripperDone(rai::_left)){
     bot.sync(C);
-    cout <<"gripper pos: " <<bot.gripperPos(rai::_left) <<endl;
+    cout <<"gripper pos: " <<bot.getGripperPos(rai::_left) <<endl;
   }
 
-  C.view(true, "press to move to different positions with different speed");
+//  C.view(true, "press to move to different positions with different speed");
 
-  bot.gripperMove(rai::_left, .05, 1.);
+  bot.gripperMove(rai::_left, .5, 1.);
   while(!bot.gripperDone(rai::_left)){
     bot.sync(C);
-    cout <<"gripper pos: " <<bot.gripperPos(rai::_left) <<endl;
+    cout <<"gripper pos: " <<bot.getGripperPos(rai::_left) <<endl;
   }
 
-  bot.gripperMove(rai::_left, .02, .01);
+  bot.gripperMove(rai::_left, .1, .01);
   while(!bot.gripperDone(rai::_left)){
     bot.sync(C);
-    cout <<"gripper pos: " <<bot.gripperPos(rai::_left) <<endl;
+    cout <<"gripper pos: " <<bot.getGripperPos(rai::_left) <<endl;
   }
 
-  bot.gripperMove(rai::_left, .1, 1.);
+  bot.gripperMove(rai::_left, 1., 1.);
   while(!bot.gripperDone(rai::_left)){
     bot.sync(C);
-    cout <<"gripper pos: " <<bot.gripperPos(rai::_left) <<endl;
+    cout <<"gripper pos: " <<bot.getGripperPos(rai::_left) <<endl;
   }
 
-  C.view(true, "press to stop");
+//  C.view(true, "press to stop");
 }
 
 //===========================================================================
@@ -112,7 +112,7 @@ void testBotop(){
 int main(int argc,char **argv){
   rai::initCmdLine(argc, argv);
 
-  //testDirect();
+//  testDirect();
   testBotop();
 
   return 0;

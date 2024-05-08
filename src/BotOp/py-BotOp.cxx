@@ -98,15 +98,15 @@ void init_BotOp(pybind11::module& m) {
        pybind11::arg("width") = .05,
        pybind11::arg("speed") = .1)
 
-   .def("gripperCloseGrasp", &BotOp::gripperCloseGrasp,
-        "close gripper and indicate what should be grasped -- makes no different in real, but helps simulation to mimic grasping more reliably",
+  .def("gripperCloseGrasp", &BotOp::gripperCloseGrasp,
+        "close gripper and indicate what should be grasped -- makes no difference in real, but helps simulation to mimic grasping more reliably",
         pybind11::arg("leftRight"),
         pybind11::arg("objName"),
         pybind11::arg("force") = 10.,
         pybind11::arg("width") = .05,
         pybind11::arg("speed") = .1)
 
-  .def("gripperPos", &BotOp::gripperPos,
+  .def("getGripperPos", &BotOp::getGripperPos,
        "returns the gripper pos",
        pybind11::arg("leftRight"))
 
@@ -144,17 +144,18 @@ void init_BotOp(pybind11::module& m) {
        pybind11::arg("C"),
        pybind11::arg("waitTime") = .1)
 
-   .def("wait", &BotOp::wait,
+  .def("wait", &BotOp::wait,
        "repeatedly sync your workspace C until a key is pressed or motion ends (optionally)",
-        pybind11::arg("C"),
-        pybind11::arg("forKeyPressed") = true,
-        pybind11::arg("forTimeToEnd") = true)
+       pybind11::arg("C"),
+       pybind11::arg("forKeyPressed") = true,
+       pybind11::arg("forTimeToEnd") = true,
+       pybind11::arg("forGripper") = false)
 
   .def("home", &BotOp::home,
        "immediately drive the robot home (see get_qHome); keeps argument C synced; same as moveTo(qHome, 1., True); wait(C);",
        pybind11::arg("C"))
 
-  .def("stop", &BotOp::home,
+  .def("stop", &BotOp::stop,
        "immediately stop the robot; keeps argument C synced; same as moveTo(get_q(), 1., True); wait(C);",
        pybind11::arg("C"))
 
@@ -163,12 +164,6 @@ void init_BotOp(pybind11::module& m) {
        pybind11::arg("floating") = false,
        pybind11::arg("damping") = true)
   ;
-
-  //===========================
-
-  m.def("getStartGoalPath", [](rai::Configuration& C, const arr& qTarget, const arr& qHome){
-      return getStartGoalPath(C, qTarget, qHome);
-  } );
 
 }
 

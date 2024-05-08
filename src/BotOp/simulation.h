@@ -8,8 +8,8 @@ struct BotThreadedSim : rai::RobotAbstraction, Thread {
   BotThreadedSim(const rai::Configuration& _sim_config,
                 const Var<rai::CtrlCmdMsg>& _cmd={}, const Var<rai::CtrlStateMsg>& _state={},
                 const StringA& joints={},
-                double _tau=.001,
-                double hyperSpeed=1.);
+                double _tau=-1,
+                double hyperSpeed=-1.);
 
   ~BotThreadedSim();
 
@@ -63,19 +63,23 @@ struct CameraSim : rai::CameraAbstraction {
   std::shared_ptr<BotThreadedSim> simthread;
 
   CameraSim(const std::shared_ptr<BotThreadedSim>& _sim, const char* sensorName) : simthread(_sim) {
+    auto mux = simthread->stepMutex(RAI_HERE);
     name = sensorName;
     simthread->sim->addSensor(name);
   }
 
   virtual void getImageAndDepth(byteA& image, floatA& depth){
+    auto mux = simthread->stepMutex(RAI_HERE);
     simthread->sim->selectSensor(name);
     simthread->sim->getImageAndDepth(image, depth);
   }
   virtual arr getFxycxy(){
+    auto mux = simthread->stepMutex(RAI_HERE);
     simthread->sim->selectSensor(name);
     return simthread->sim->cameraview().currentSensor->getFxycxy();
   }
   virtual rai::Transformation getPose(){
+    auto mux = simthread->stepMutex(RAI_HERE);
     simthread->sim->selectSensor(name);
     return simthread->sim->cameraview().currentSensor->pose();
   }

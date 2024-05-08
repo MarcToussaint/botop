@@ -30,7 +30,7 @@ void test_bot() {
 
   for(;;){
     LOG(0) <<"adding snake";
-    bot.move((q1, q0, q1).reshape(-1,q0.N), {.1, 1., 2.});
+    bot.move((q1, q0, q1).reshape(-1, q0.N), {.5, 1., 2.});
 //    bot.moveTo(q1, 1., false);
     bot.wait(C);
     if(bot.keypressed=='q') break;
@@ -51,7 +51,7 @@ void test_bot() {
 //  bot.wait(C, true, true);
 //  if(bot.keypressed=='q') return;
 
-  rai::wait();
+//  rai::wait();
 }
 
 //===========================================================================
@@ -103,7 +103,7 @@ void test_withoutBotWrapper() {
   sp->report(ctrlTime);
 
   rai::wait(.1);
-  C.viewer()->resetPressedKey();
+  C.viewer()->_resetPressedKey();
   for(;;){
     if(C.view(false, STRING("time: "<<robot->state.get()->ctrlTime))=='q') break;
     C.setJointState(robot->state.get()->q);

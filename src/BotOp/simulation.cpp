@@ -11,21 +11,22 @@ BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
                                const StringA& joints,
                                double _tau, double hyperSpeed)
   : RobotAbstraction(_cmd, _state),
-    Thread("FrankaThread_Emulated", _tau/hyperSpeed),
+    Thread("FrankaThread_Emulated"),
     simConfig(C),
     tau(_tau){
-  //        rai::Configuration K(rai::raiPath("../rai-robotModels/panda/panda.g"));
-  //        K["panda_finger_joint1"]->joint->makeRigid();
 
   //create a rai Simulator!
   int verbose = rai::getParameter<int>("botsim/verbose", 1);
+  if(tau<0.) tau = rai::getParameter<double>("botsim/tau", .01);
+  if(hyperSpeed<0.) hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
+  Thread::metronome.reset(tau/hyperSpeed);
   rai::String engine = rai::getParameter<rai::String>("botsim/engine", "physx");
   sim=make_shared<rai::Simulation>(simConfig, rai::Enum<rai::Simulation::Engine>(engine), verbose);
 
   {
     q_real = C.getJointState();
     qDot_real.resize(q_real.N).setZero();
-    collisionPairs = simConfig.getCollisionAllPairs();
+    //    collisionPairs = simConfig.getCollidablePairs();
     //    cout <<" CollisionPairs:" <<endl;
     //    for(uint i=0;i<collisionPairs.d0;i++) cout <<collisionPairs(i,0)->name <<'-' <<collisionPairs(i,1)->name <<endl;
 
@@ -118,7 +119,7 @@ void BotThreadedSim::step(){
   }
 
   if(cmd_q_ref.N && cmd_qDot_ref.N){
-  sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
+    sim->step((cmd_q_ref, cmd_qDot_ref), tau, sim->_posVel);
   }else{
     sim->step({}, tau, sim->_none);
   }
@@ -133,6 +134,8 @@ void BotThreadedSim::step(){
     simConfig.setJointState(q_real);
     simConfig.view(false, STRING("EMULATION - time " <<ctrlTime));
   }
+
+//  if(!(step_count%100)) cout <<"simulation thread load:" <<timer.report() <<endl;
 
   //-- check for collisions!
 #if 0
@@ -187,6 +190,7 @@ void GripperSim::closeGrasp(const char* objName, double force, double width, dou
 }
 
 double GripperSim::pos(){
+  auto mux = simthread->stepMutex(RAI_HERE);
   return simthread->sim->getGripperWidth(gripperName);
 }
 

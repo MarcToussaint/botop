@@ -16,7 +16,7 @@ jobs:
 
     - name: install ubuntu dependencies
       run: |
-        sudo apt-get install --yes build-essential clang cmake curl git libpoco-dev libeigen3-dev libccd-dev libboost-system-dev portaudio19-dev libglu1-mesa-dev
+        sudo apt-get install --yes build-essential clang cmake curl git libpoco-dev libeigen3-dev libccd-dev libboost-system-dev portaudio19-dev libglu1-mesa-dev libhidapi-dev
         APTGETYES=1 make -C rai -j1 installUbuntuAll
         mkdir -p $HOME/git $HOME/.local
 
@@ -41,8 +41,8 @@ jobs:
 
     - name: setup build files
       run: |
-        export PYTHONVERSION=`python3 -c "import sys; print(str(sys.version_info[0])+'.'+str(sys.version_info[1]))"`
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=$HOME/.local -DUSE_PHYSX=ON -DUSE_REALSENSE=OFF -DUSE_OPENCV=OFF -DUSE_OPENCV_LOCAL=OFF -DPYBIND11_PYTHON_VERSION=$PYTHONVERSION -DUSE_QHULL8=ON
+        export PY_VERSION=`python3 -c "import sys; print(str(sys.version_info[0])+'.'+str(sys.version_info[1]))"`
+        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DCMAKE_INSTALL_PREFIX=$HOME/.local -DUSE_PHYSX=ON -DUSE_REALSENSE=OFF -DUSE_OPENCV=OFF -DUSE_OPENCV_LOCAL=OFF -DPY_VERSION=$PY_VERSION -DUSE_QHULL8=ON
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}

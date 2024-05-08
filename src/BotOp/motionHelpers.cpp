@@ -153,7 +153,7 @@ void addBoxPlaceObjectives_botop(KOMO& komo, double time, rai::ArgWord dir, cons
   //position: fixed
   komo.addObjective({time}, FS_positionDiff, {boxName, "table"}, OT_eq, {1e2}, {-.3, .1, relPos});
 
-  //orientation: Y-up
+  //orientation: z-up
   komo.addObjective({time-.2, time}, zVector, {boxName}, OT_eq, {1e1}, zVectorTarget);
 
   //retract: only longitudial velocity, min distance after grasp
@@ -241,4 +241,18 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, 
 
   return path;
 }
+
+arr getBoxPnpKeyframes_new(rai::Configuration& C, str graspDirection, str placeDirection, str box, str gripper, str palm, str table, const arr& qHome) {
+  auto info = STRING("grasp " <<graspDirection <<" place " <<placeDirection);
+  ManipulationModelling M(C, info);
+  M.setup_pick_and_place_waypoints(gripper, box, 1e-1, 1e-1);
+  M.grasp_box(1., gripper, box, palm, graspDirection, .03);
+  M.place_box(2., box, table, palm, placeDirection);
+//  M.target_relative_xy_position(2., box, table, arr{.2, .2});
+//  M.target_x_orientation(2., box, place_orientation);
+  M.solve(0);
+  cout <<"  " <<info <<" -- " <<*M.ret <<endl;
+  return M.path;
+}
+
 
