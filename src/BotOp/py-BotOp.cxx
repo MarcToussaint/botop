@@ -142,7 +142,8 @@ void init_BotOp(pybind11::module& m) {
   .def("sync", &BotOp::sync,
        "sync your workspace configuration C with the robot state",
        pybind11::arg("C"),
-       pybind11::arg("waitTime") = .1)
+       pybind11::arg("waitTime") = .1,
+       pybind11::arg("viewMsg") = rai::String{})
 
   .def("wait", &BotOp::wait,
        "repeatedly sync your workspace C until a key is pressed or motion ends (optionally)",

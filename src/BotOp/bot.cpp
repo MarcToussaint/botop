@@ -193,7 +193,7 @@ arr BotOp::get_tauExternal(){
   return tau;
 }
 
-int BotOp::sync(rai::Configuration& C, double waitTime){
+int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
   //update q state
   C.setJointState(state.get()->q);
 
@@ -211,7 +211,7 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
   //gui
   if(rai::getParameter<bool>("bot/raiseWindow",false)) C.viewer()->raiseWindow();
   double ctrlTime = get_t();
-  keypressed = C.view(false, STRING("BotOp sync ctrl time: "<<ctrlTime <<" (=" <<int(100.*ctrlTime/(rai::realTime()-startRealTime)) <<"% real time)"));
+  keypressed = C.view(false, STRING("BotOp sync ctrl time: "<<ctrlTime <<" (=" <<int(100.*ctrlTime/(rai::realTime()-startRealTime)) <<"% real time)\n" <<viewMsg));
   if(keypressed) C.viewer()->_resetPressedKey();
 //  if(keypressed==13) return false;
 //  if(keypressed=='q' || keypressed==27) return false;
