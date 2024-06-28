@@ -13,8 +13,8 @@ struct OmnibaseThread : rai::RobotAbstraction, Thread {
 
 private:
   int robotID=0;
-  double outer_Kp;
-  int Kp, Ki, Kd, KdDelay, KiLimit, Friction; //read from rai.cfg
+  double Kp, Kd; //read from rai.cfg
+  arr M_org, friction;
   StringA addresses;
 
   uintA qIndices;

@@ -116,6 +116,7 @@ const char* SimplexMotion_Communication::readString(int regNumber, int n){
   return (char*)buf;
 }
 
+
 #ifdef USE_HIDAPI
 
 //===========================================================================
@@ -357,7 +358,7 @@ bool SimplexMotion_Communication::readBuf(int len){
 // fake (NICO) implementation
 //
 
-#define NICO throw std::runtime_error("not implemented with this compiler options: usually this means that the implementation needs an external library and a corresponding compiler option - see the source code");
+#define NICO throw std::runtime_error("SimplexMotion-com.cpp -- not implemented with this compiler options: usually this means that the implementation needs an external library and a corresponding compiler option - see the source code");
 
 SimplexMotion_Communication::SimplexMotion_Communication(const char* devPath, unsigned short vendor_id, unsigned short product_id){ NICO }
 
