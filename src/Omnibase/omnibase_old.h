@@ -1,3 +1,4 @@
+#if 0
 #pragma once
 
 #include <Core/array.h>
@@ -32,3 +33,5 @@ private:
   void step();
   void close();
 };
+
+#endif

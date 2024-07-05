@@ -1,17 +1,8 @@
 #include "omnibase.h"
 #include "SimplexMotion.h"
 
-#define RAI_OMNIBASE
 
 #ifdef RAI_OMNIBASE
-
-/*
-TODO:
-- change: motors(i)->runTorque(0.);
-- should we keep this:  if(P_compliance.N) u = P_compliance * u;
-- clip velocities at setVelocities: clip(v_motors, -1., 1.); what does clip do?
-- Is this ok? what units is it?: motors(i)->runSpeed(v_motors(i));
-*/
 
 struct OmnibaseController{
   rai::Array<std::shared_ptr<SimplexMotion>> motors; //three motors

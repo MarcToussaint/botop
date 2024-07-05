@@ -1,7 +1,7 @@
+#if 0
 #include "omnibase.h"
 #include "SimplexMotion.h"
 
-#define RAI_OMNIBASE
 
 #ifdef RAI_OMNIBASE
 
@@ -305,4 +305,5 @@ void OmnibaseThread::step(){ NICO }
 void OmnibaseThread::open(){ NICO }
 void OmnibaseThread::close(){ NICO }
 
+#endif
 #endif
