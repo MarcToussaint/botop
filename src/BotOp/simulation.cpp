@@ -64,7 +64,7 @@ void BotThreadedSim::pullDynamicStates(rai::Configuration& C){
   auto mux = stepMutex(RAI_HERE);
   for(rai::Frame *f:C.frames){
     if(f->inertia && f->inertia->type==rai::BT_dynamic){
-      f->set_X() = simConfig.frames(f->ID)->ensure_X();
+//      f->set_X() = simConfig.frames(f->ID)->ensure_X();
     }
     if(f->joint && !f->joint->active && f->joint->dim==1){ //gripper?
       CHECK_EQ(f->joint->qIndex, simConfig.frames(f->ID)->joint->qIndex, "");
@@ -184,7 +184,7 @@ void GripperSim::close(double force, double width, double speed) {
 void GripperSim::closeGrasp(const char* objName, double force, double width, double speed){
   auto mux = simthread->stepMutex(RAI_HERE);
   simthread->sim->closeGripperGrasp(gripperName, objName);
-  //sim->simConfig.attach(gripperName, objName);
+//  simthread->sim->attach(gripperName, objName);
   q=width;
   isOpening=false; isClosing=true;
 }
