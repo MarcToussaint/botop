@@ -1,35 +1,33 @@
+#if 0
 #include "omnibase.h"
 #include "SimplexMotion.h"
 
 
 #ifdef RAI_OMNIBASE
 
+
 struct OmnibaseController{
   rai::Array<std::shared_ptr<SimplexMotion>> motors; //three motors
   arr qLast, sLast; //q: joint state; s: motor state
-  int Kp, Ki, Kd, KiLimit, KdDelay, Friction;
 
-  OmnibaseController(const StringA& addresses, int Kp, int Ki, int Kd, int KiLimit, int KdDelay, int Friction)
-  : Kp(Kp), Ki(Ki), Kd(Kd), KiLimit(KiLimit), KdDelay(KdDelay), Friction(Friction) {
-    //-- launch 3 motors
-    motors.resize(3);
-    
-    for(uint i=0;i<motors.N;i++){
-        motors(i) = make_shared<SimplexMotion>(addresses(i), 0x04d8, 0xf79a);
-        cout <<"model name: '" <<motors(i)->getModelName() <<"'" <<endl;
-        cout <<"serial number: '" <<motors(i)->getSerialNumber() <<"'" <<endl;
-        cout <<"address: '" <<motors(i)->getAddress() <<"'" <<endl;
-        cout <<"motor temperature: " <<motors(i)->getMotorTemperature() <<endl;
-        cout <<"voltage: " <<motors(i)->getVoltage() <<endl;
+  OmnibaseController(const StringA& addresses, double Kp, double Kd){
+  //-- launch 3 motors
+  motors.resize(3);
+  for(uint i=0;i<motors.N;i++){
+    motors(i) = make_shared<SimplexMotion>(addresses(i), 0x04d8, 0xf79a);
+    cout <<"model name: '" <<motors(i)->getModelName() <<"'" <<endl;
+    cout <<"serial number: '" <<motors(i)->getSerialNumber() <<"'" <<endl;
+    cout <<"address: '" <<motors(i)->getAddress() <<"'" <<endl;
+    cout <<"motor temperature: " <<motors(i)->getMotorTemperature() <<endl;
+    cout <<"voltage: " <<motors(i)->getVoltage() <<endl;
 
-        motors(i)->runReset(); //resets position counter
-        motors(i)->setPID(Kp, Ki, Kd, KiLimit, KdDelay, Friction);
-        motors(i)->runSpeed(0.);
+    motors(i)->runReset(); //resets position counter
+    motors(i)->runTorque(0.); //starts torque mode
 
-        LOG(0) << "Motor " << i << " battery reading: " << motors(i)->getVoltage() << "V";
-    }
-    qLast = zeros(3);
-    sLast = zeros(motors.N);
+    LOG(0) << "Motor " << i << " battery reading: " << motors(i)->getVoltage() << "V";
+  }
+  qLast = zeros(3);
+  sLast = zeros(motors.N);
   }
 
   ~OmnibaseController(){
@@ -37,18 +35,21 @@ struct OmnibaseController{
     rai::wait(.1);
     for(uint i=0;i<motors.N;i++) motors(i)->runOff();
     rai::wait(.1);
-    for(uint i=0;i<motors.N;i++) motors(i)->reset();
+    for(uint i=0;i<motors.N;i++) motors(i).reset();
   }
 
   arr getJacobian(){
     //return Jacobian based on qLast
+    double gears = 4.2;
+    double r = .06;
+    double R = .35;
 
     arr J = {
       .5,          .5,            -1.,
       .5*sqrt(3.),  -.5*sqrt(3.),   0.,
-      1/(3.*center2wheel),      1/(3.*center2wheel),      1./(3.*center2wheel)
+      1/(3.*R),      1/(3.*R),      1./(3.*R)
     };
-    J *= wheel_radius/gear_ratio;
+    J *= r/gears;
     J.reshape(3,3);
 
     double phi = qLast(2);
@@ -82,14 +83,13 @@ struct OmnibaseController{
     sLast = s;
   }
 
-  void setVelocities(const arr& v_motors){
+  void setTorques(const arr& u_motors){
     //-- send torques to motors
-    CHECK_EQ(v_motors.N, motors.N, "control signal has wrong dimensionality");
+    CHECK_EQ(u_motors.N, motors.N, "control signal has wrong dimensionality");
 
-    // clip(v_motors, -1., 1.);
+    clip(u_motors, -1., 1.);
     for(uint i=0;i<motors.N;i++){
-      // motors(i)->setPID(Kp, Ki, Kd, KiLimit, KdDelay, Friction);
-      motors(i)->runSpeed(v_motors(i));
+      motors(i)->setTarget(u_motors(i)/motors(i)->maxTorque*32767);
     }
   }
 };
@@ -113,21 +113,12 @@ void OmnibaseThread::init(uint _robotID, const uintA& _qIndices) {
   qIndices_max = rai::max(qIndices);
 
   //-- basic Kp Kd settings for reference control mode
-  outer_Kp = rai::getParameter<double>("Omnibase/outer_Kp", 4.);
-  Kp = rai::getParameter<int>("Omnibase/Kp", 2000);
-  Ki = rai::getParameter<int>("Omnibase/Ki", 0);
-  Kd = rai::getParameter<int>("Omnibase/Kd", 1000);
-  KiLimit = rai::getParameter<int>("Omnibase/KiLimit", 100);
-  KdDelay = rai::getParameter<int>("Omnibase/KdDelay", 2);
-  Friction = rai::getParameter<int>("Omnibase/Friction", 0);
-
-  // Jacobian params
-  gear_ratio = rai::getParameter<double>("Omnibase/gear_ratio", 4.2);
-  center2wheel = rai::getParameter<double>("Omnibase/center2wheel", .35);
-  wheel_radius = rai::getParameter<double>("Omnibase/wheel_radius", .06);
-
-  LOG(0) << "Omnibase/PID: Kp:" << Kp << " Ki:" << Ki << " Kd:" << Kd << "KdDelay:" << KdDelay << "KiLimit:" << KiLimit << " Friction:" << Friction;
-  LOG(0) << "Omnibase/Jacobian: gear_ratio:" << gear_ratio << " center2wheel:" << center2wheel << " wheel_radius:" << wheel_radius;
+  Kp = rai::getParameter<double>("Omnibase/Kp", .7);
+  Kd = rai::getParameter<double>("Omnibase/Kd", .01);
+  M_org = rai::getParameter<arr>("Omnibase/M_org", arr{0., 0., 0., 0., 0., 0., 0., 0., 0.});
+  friction = rai::getParameter<arr>("Omnibase/friction", arr{0., 0., 0.});
+  M_org.reshape(3,3);
+  LOG(0) << "Omnibase: Kp:" << Kp << " Kd:" << Kd << "M_org:" << M_org << "friction:" << friction;
 
   //-- get robot address
   addresses = rai::getParameter<StringA>("Omnibase/addresses", {"/dev/hidraw0", "/dev/hidraw1", "/dev/hidraw2"});
@@ -141,7 +132,7 @@ void OmnibaseThread::init(uint _robotID, const uintA& _qIndices) {
 
 void OmnibaseThread::open(){
   // connect to robot
-  robot = make_shared<OmnibaseController>(addresses, Kp, Ki, Kd, KiLimit, KdDelay, Friction);
+  robot = make_shared<OmnibaseController>(addresses, Kp, Kd);
 
   //-- initialize state and ctrl with first state
   arr q_real, qDot_real;
@@ -164,6 +155,7 @@ void OmnibaseThread::open(){
 
 void OmnibaseThread::step(){
   steps++;
+  auto loop_start = std::chrono::steady_clock::now();
 
   //-- get current state from robot
   arr q_real, qDot_real;
@@ -242,37 +234,63 @@ void OmnibaseThread::step(){
   }
 
   //-- compute torques from control message depending on the control type
-  arr v;
+  arr u;
 
   //-- initialize zero torques
-  v.resize(3).setZero();
+  u.resize(3).setZero();
+
   arr J = robot->getJacobian();
   arr Jinv = pseudoInverse(J, NoArr, 1e-6);
 
+  //-- add feedback term
   if(q_ref.N==3){
     arr delta_motor = Jinv * (q_ref - q_real);
-    v += outer_Kp * delta_motor;
+    u += Kp * delta_motor;
   }
-
   if(qDot_ref.N==3){
-    v += Jinv * qDot_ref;
+    arr delta_motor = Jinv * (qDot_ref - qDot_real);
+    u += Kd * delta_motor;
   }
 
-  //-- data log?
-  if(writeData>0 && !(steps%1)){
+  //-- add feedforward term
+  if(qDDot_ref.N==3 && absMax(qDDot_ref)>0.){
+    arr M = M_org; // + diag(arr{0.3, 0.3, 0.3));
+    u += M*qDDot_ref;
+  }
+
+  //-- add friction term
+  if(friction.N==3 && qDot_ref.N==3){
+    double velThresh=1e-3;
+    for(uint i=0;i<3;i++){
+      double coeff = qDot_ref.elem(i)/velThresh;
+      if(coeff>1.) coeff=1.;
+      if(coeff<-1.) coeff=-1.;
+      u.elem(i) += coeff*friction.elem(i);
+    }
+
+    //-- project with compliance
+    if(P_compliance.N) u = P_compliance * u;
+
+    //-- data log?
+    if(writeData>0 && !(steps%1)){
       if(!dataFile.is_open()) dataFile.open(STRING("z.omnibase"<<robotID <<".dat"));
       dataFile <<ctrlTime <<' '; //single number
       q_real.modRaw().write(dataFile); //3
       q_ref.modRaw().write(dataFile); //3
       if(writeData>1){
-      qDot_real.modRaw().write(dataFile); //3
-      qDot_ref.modRaw().write(dataFile); //3
-      v.modRaw().write(dataFile); //3
-      qDDot_ref.modRaw().write(dataFile);
+        qDot_real.modRaw().write(dataFile); //3
+        qDot_ref.modRaw().write(dataFile); //3
+        u.modRaw().write(dataFile); //3
+        qDDot_ref.modRaw().write(dataFile);
       }
       dataFile <<endl;
+    }
+    auto loop_end = std::chrono::steady_clock::now();
+    //-- send torques
+    robot->setTorques(u);
+    std::chrono::duration<double, std::milli> elapsed_time = loop_end - loop_start;
+    std::cout << "Elapsed time: " << elapsed_time.count() * .001 << " seconds" << std::endl;
   }
-  robot->setVelocities(v);
 }
 
 void OmnibaseThread::close(){
@@ -287,4 +305,5 @@ void OmnibaseThread::step(){ NICO }
 void OmnibaseThread::open(){ NICO }
 void OmnibaseThread::close(){ NICO }
 
+#endif
 #endif
