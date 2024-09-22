@@ -244,8 +244,8 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, 
 
 arr getBoxPnpKeyframes_new(rai::Configuration& C, str graspDirection, str placeDirection, str box, str gripper, str palm, str table, const arr& qHome) {
   auto info = STRING("grasp " <<graspDirection <<" place " <<placeDirection);
-  ManipulationModelling M(C, info);
-  M.setup_pick_and_place_waypoints(gripper, box, 1e-1, 1e-1);
+  ManipulationModelling M(info);
+  M.setup_pick_and_place_waypoints(C, gripper, box, 1e-1, 1e-1);
   M.grasp_box(1., gripper, box, palm, graspDirection, .03);
   M.place_box(2., box, table, palm, placeDirection);
 //  M.target_relative_xy_position(2., box, table, arr{.2, .2});
