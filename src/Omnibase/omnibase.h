@@ -15,6 +15,7 @@ private:
   int robotID=0;
   double outer_Kp;
   int Kp, Ki, Kd, KdDelay, KiLimit, Friction; //read from rai.cfg
+  double gear_ratio, center2wheel, wheel_radius //read from rai.cfg
   StringA addresses;
 
   uintA qIndices;

@@ -42,16 +42,13 @@ struct OmnibaseController{
 
   arr getJacobian(){
     //return Jacobian based on qLast
-    double gears = 4.2;
-    double r = .06;
-    double R = .35;
 
     arr J = {
       .5,          .5,            -1.,
       .5*sqrt(3.),  -.5*sqrt(3.),   0.,
-      1/(3.*R),      1/(3.*R),      1./(3.*R)
+      1/(3.*center2wheel),      1/(3.*center2wheel),      1./(3.*center2wheel)
     };
-    J *= r/gears;
+    J *= wheel_radius/gear_ratio;
     J.reshape(3,3);
 
     double phi = qLast(2);
@@ -124,7 +121,13 @@ void OmnibaseThread::init(uint _robotID, const uintA& _qIndices) {
   KdDelay = rai::getParameter<int>("Omnibase/KdDelay", 2);
   Friction = rai::getParameter<int>("Omnibase/Friction", 0);
 
-  LOG(0) << "Omnibase: Kp:" << Kp << " Ki:" << Ki << " Kd:" << Kd << "KdDelay:" << KdDelay << "KiLimit:" << KiLimit << " Friction:" << Friction;
+  // Jacobian params
+  gear_ratio = rai::getParameter<double>("Omnibase/gear_ratio", 4.2);
+  center2wheel = rai::getParameter<double>("Omnibase/center2wheel", .35);
+  wheel_radius = rai::getParameter<double>("Omnibase/wheel_radius", .06);
+
+  LOG(0) << "Omnibase/PID: Kp:" << Kp << " Ki:" << Ki << " Kd:" << Kd << "KdDelay:" << KdDelay << "KiLimit:" << KiLimit << " Friction:" << Friction;
+  LOG(0) << "Omnibase/Jacobian: gear_ratio:" << gear_ratio << " center2wheel:" << center2wheel << " wheel_radius:" << wheel_radius;
 
   //-- get robot address
   addresses = rai::getParameter<StringA>("Omnibase/addresses", {"/dev/hidraw0", "/dev/hidraw1", "/dev/hidraw2"});
