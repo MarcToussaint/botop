@@ -37,7 +37,7 @@ struct OmnibaseController{
     rai::wait(.1);
     for(uint i=0;i<motors.N;i++) motors(i)->runOff();
     rai::wait(.1);
-    for(uint i=0;i<motors.N;i++) motors(i).reset();
+    for(uint i=0;i<motors.N;i++) motors(i)->reset();
   }
 
   arr getJacobian(){
