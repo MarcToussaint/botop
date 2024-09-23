@@ -64,7 +64,7 @@ void BotThreadedSim::pullDynamicStates(rai::Configuration& C){
   auto mux = stepMutex(RAI_HERE);
   for(rai::Frame *f:C.frames){
     if(f->inertia && f->inertia->type==rai::BT_dynamic){
-      f->set_X() = simConfig.frames(f->ID)->ensure_X();
+      f->set_X() = simConfig.frames(f->ID)->ensure_X(); //THIS IS DEBATABLE! In the real world, one could not just sync with the true state of all dynamic objects... so simulation should also not..?
     }
     if(f->joint && !f->joint->active && f->joint->dim==1){ //gripper?
       CHECK_EQ(f->joint->qIndex, simConfig.frames(f->ID)->joint->qIndex, "");
@@ -135,7 +135,7 @@ void BotThreadedSim::step(){
     simConfig.view(false, STRING("EMULATION - time " <<ctrlTime));
   }
 
-//  if(!(step_count%100)) cout <<"simulation thread load:" <<timer.report() <<endl;
+  //if(!(step_count%100)) cout <<"simulation thread load:" <<timer.report() <<endl;
 
   //-- check for collisions!
 #if 0
@@ -184,7 +184,7 @@ void GripperSim::close(double force, double width, double speed) {
 void GripperSim::closeGrasp(const char* objName, double force, double width, double speed){
   auto mux = simthread->stepMutex(RAI_HERE);
   simthread->sim->closeGripperGrasp(gripperName, objName);
-  //sim->simConfig.attach(gripperName, objName);
+//  simthread->sim->attach(gripperName, objName);
   q=width;
   isOpening=false; isClosing=true;
 }

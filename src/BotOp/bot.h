@@ -68,7 +68,7 @@ struct BotOp{
   arr  getCameraFxycxy(const char* sensor);
 
   //-- sync the user's C with the robot, update the display, return pressed key
-  int sync(rai::Configuration& C, double waitTime=.1);
+  int sync(rai::Configuration& C, double waitTime=.1, rai::String viewMsg={});
   int wait(rai::Configuration& C, bool forKeyPressed=true, bool forTimeToEnd=true, bool forGripper=false);
 
   //-- motion macros

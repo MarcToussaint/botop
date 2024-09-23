@@ -12,10 +12,10 @@ void testGrasp() {
   C.view();
 
   C.addFrame("obj")
-      ->setPosition({-.25,.1,.675})
-      .setShape(rai::ST_ssBox, {.05,.2,.1,.005})
+      ->setPosition({-.25,.1,.7})
+      .setShape(rai::ST_ssBox, {.04,.2,.1,.005})
       .setColor({1,.5,0})
-      .setMass(1.)
+      .setMass(.1)
       .setContact(true);
   C.view();
 
@@ -25,7 +25,7 @@ void testGrasp() {
   way0->setShape(rai::ST_marker, {.1});
   way0->setRelativePose("t(0 0 .2)");
   way1->setShape(rai::ST_marker, {.1});
-  way1->setRelativePose("t(0 .03 .03)");
+  way1->setRelativePose("t(0 .0 .03)");
 
   C.view();
 
@@ -66,14 +66,16 @@ void testGrasp() {
   bot.wait(C, false, true);
   if(bot.keypressed=='q') return;
 
-  bot.gripperMove(rai::_left, .024, .5);
+  bot.gripperMove(rai::_left, .015, .5);
   while(!bot.gripperDone(rai::_left)) bot.sync(C, .1);
 
   for(uint k=0;k<2;k++) bot.sync(C, .1);
 
-  bot.move(path_back, {.05, .5});
+  bot.move(path_back, {.1, .5}); //very fast upward motion!
   bot.wait(C, false, true);
   if(bot.keypressed=='q') return;
+
+  bot.wait(C, true, false);
 
   bot.gripperMove(rai::_left);
   while(!bot.gripperDone(rai::_left)) bot.sync(C, .1);
