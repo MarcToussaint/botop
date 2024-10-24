@@ -4,6 +4,7 @@
 #include <Kin/F_qFeatures.h>
 #include <KOMO/komo.h>
 #include <KOMO/manipTools.h>
+#include <KOMO/skeletonSymbol.h>
 
 //===========================================================================
 
