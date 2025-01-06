@@ -9,11 +9,15 @@ endif()
 
 ## variable default values
 set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
-set(PY_VERSION 3.8 CACHE STRING "python version")
+set(PY_VERSION 3.12 CACHE STRING "python version")
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "..." FORCE)
 endif()
-set(PYTHON_SITE "lib/python${PY_VERSION}/site-packages")
+if(DEFINED ENV{VIRTUAL_ENV})
+  set(PY_LIB_SITE "$ENV{VIRTUAL_ENV}/lib/python${PY_VERSION}/site-packages")
+else()
+  set(PY_LIB_SITE "${CMAKE_INSTALL_PREFIX}/lib/python${PY_VERSION}/site-packages")
+endif()
 set(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE)
 set(CMAKE_INSTALL_RPATH "\$ORIGIN;${CMAKE_INSTALL_PREFIX}/lib")
 #only for testing: python module needs to link to python later!
@@ -30,7 +34,7 @@ option(USE_REALSENSE "link to realsense2 driver library" ON)
 option(USE_LIBFRANKA "link to libfranka" ON)
 option(USE_PCL "link to pcl library" OFF)
 option(USE_H5 "link to h5 library" ON)
-option(USE_QHULL8 "use (newer) version 8 of qhull" OFF)
+option(USE_FREETYPE "link to freetype2 library" ON)
 option(MODULE_Vive "compile the ViveController module" OFF)
 
 ## compile options
@@ -38,6 +42,7 @@ add_compile_options(
   -O3 -g -Wall -Wpedantic -fPIC
   $<$<COMPILE_LANGUAGE:CXX>:-std=c++14>
   $<$<COMPILE_LANGUAGE:CXX>:-Wno-terminate>
+  $<$<COMPILE_LANGUAGE:CXX>:-Wno-array-bounds>
   )
 
 ################################################################################
@@ -47,7 +52,7 @@ add_definitions(
   -DRAI_X11 -DRAI_LAPACK -DRAI_EIGEN -DRAI_PTHREAD
   -DRAI_GL
   -DRAI_GLFW -DRAI_ANN -DRAI_QHULL8 -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
-  -DRAI_GJK -DRAI_CCD -DRAI_FCL -DRAI_Lewiner
+  -DRAI_GJK -DRAI_CCD -DRAI_FCL -DRAI_Lewiner -DRAI_VHACD
   -DRAI_PORTAUDIO
   -BOOST_ERROR_CODE_HEADER_ONLY
   -DRAI_BotOp
@@ -55,10 +60,6 @@ add_definitions(
   -DRAI_OMNIBASE
   -DRAI_OPTITRACK
 )
-
-if(USE_QHULL8)
-  add_definitions( -DRAI_QHULL8 )
-endif()
 
 ################################################################################
 
@@ -76,6 +77,7 @@ link_directories(
 if(USE_PHYSX)
   link_directories($ENV{HOME}/.local/lib/PhysX)
 endif()
+
 if(USE_H5)
   link_directories(/usr/lib/x86_64-linux-gnu/hdf5/serial)
 endif()
@@ -108,8 +110,10 @@ add_library(rai SHARED
   rai/src/Gui/unity.cxx
   rai/src/Kin/unity.cxx
   rai/src/KOMO/unity.cxx
+  rai/src/LGP/unity.cxx
   rai/src/Logic/unity.cxx
   rai/src/Control/unity.cxx
+  rai/src/DataGen/unity.cxx
   rai/src/Perception/unity.cxx
   ${SRC_BotOp}
   ${SRC_Franka}
@@ -133,20 +137,19 @@ endif()
   
 ################################################################################
 #
-# rai include/link external libraries
-
-target_link_libraries(rai
-  # ORDER MATTERS! test with -no-undefined linker flag (above)
-  jsoncpp lapack blas
-  assimp fcl ccd ann qhull
-  glfw GLEW glut GLU GL png
-  portaudio
-  hidapi-hidraw
-  )
+# rai include/link
 
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 #target_link_libraries (rai Eigen3::Eigen)
 find_package(PkgConfig REQUIRED)
+
+if(USE_FREETYPE)
+  find_package(Freetype REQUIRED)
+  add_definitions(-DRAI_FREETYPE)
+  include_directories(rai ${FREETYPE_INCLUDE_DIRS})
+  target_link_libraries(rai ${FREETYPE_LIBRARIES})
+  message(STATUS "[rai] using freetype2 libs: " ${FREETYPE_LIBRARIES})
+endif()
 
 if(USE_H5)
   find_package(HDF5 REQUIRED)
@@ -210,8 +213,16 @@ if(USE_LIBFRANKA)
   message(STATUS "[rai] using libfranka")
 endif()
 
-target_link_libraries(rai 
-  pthread rt X11 boost_system
+# default/required dependencies
+target_link_libraries(rai
+  # ORDER MATTERS! test with -no-undefined linker flag (above)
+  lapack blas
+  glfw GLEW glut GLU GL
+  jsoncpp png assimp
+  fcl ccd ANN qhull
+  portaudio
+  hidapi-hidraw
+  boost_system pthread rt X11
   )
 
 ################################################################################
@@ -226,17 +237,15 @@ if(USE_PYBIND)
   message(STATUS "[rai] using pybind11_DIR " ${pybind11_DIR} )
   
   find_package(pybind11)
-  add_definitions(-DRAI_PYBIND)
-  include_directories(${pybind11_INCLUDE_DIRS})
   
   pybind11_add_module(_robotic SHARED
     rai/src/ry/unity.cxx
     src/BotOp/py-BotOp.cxx
   )
 
-  target_link_libraries(_robotic PRIVATE
-    rai
-  )
+  target_compile_definitions(_robotic PUBLIC RAI_PYBIND)
+  target_include_directories(_robotic PUBLIC ${pybind11_INCLUDE_DIRS})
+  target_link_libraries(_robotic PRIVATE rai)
 endif()
 
 ################################################################################
@@ -250,8 +259,9 @@ message(STATUS "[rai] compiler flags: " "${_defs}")
 
 add_custom_target(docstrings #ALL
   DEPENDS _robotic
-  COMMAND env PYTHONPATH="." pybind11-stubgen --ignore-invalid=all _robotic
-  COMMAND mv stubs/_robotic*/__init__.pyi _robotic.pyi)
+  COMMAND env PYTHONPATH="." pybind11-stubgen --ignore-all-errors _robotic
+  COMMAND mv stubs/_robotic*/__init__.pyi _robotic.pyi
+  COMMAND mv stubs/_robotic*/*.pyi .)
 
 add_executable(kinEdit rai/bin/src_kinEdit/main.cpp)
 target_link_libraries(kinEdit rai)
@@ -264,16 +274,28 @@ target_link_libraries(bot rai)
 
 ################################################################################
 
-message(STATUS "[rai] installing python packages in " ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE}/robotic )
+message(STATUS "[rai] installing python packages in " ${PY_LIB_SITE}/robotic )
 
 file(GLOB SRC_botopSrc rai/src/* src/*)
+
+install(
+  TARGETS _robotic
+  DESTINATION ${PY_LIB_SITE}/robotic)
+
+install(
+  DIRECTORY rai-robotModels
+  DESTINATION ${PY_LIB_SITE}/robotic
+  FILES_MATCHING
+  PATTERN "*.g" PATTERN "*.ply"
+  PATTERN "retired" EXCLUDE
+  )
 
 install(
   DIRECTORY ${SRC_botopSrc}
   DESTINATION ${CMAKE_INSTALL_PREFIX}/include/rai
   FILES_MATCHING
-  PATTERN "*.h" PATTERN "*.hxx" PATTERN "*.ipp"
-  PATTERN "retired" EXCLUDE
+  PATTERN "*.h" PATTERN "*.ipp"
+  PATTERN "*retired*" EXCLUDE
   )
   
 install(
@@ -284,11 +306,3 @@ install(
 install(
   TARGETS kinEdit meshTool bot
   DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
-
-set(PYTHON_SITE "lib/python${PY_VERSION}/site-packages")
-message(STATUS "[rai] installing python packages in " ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE}/robotic )
-
-install(
-  TARGETS _robotic
-  DESTINATION ${CMAKE_INSTALL_PREFIX}/${PYTHON_SITE}/robotic)
-

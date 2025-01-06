@@ -4,6 +4,7 @@
 #include <Kin/F_qFeatures.h>
 #include <KOMO/komo.h>
 #include <KOMO/manipTools.h>
+#include <KOMO/skeletonSymbol.h>
 
 //===========================================================================
 
@@ -165,7 +166,7 @@ void addBoxPlaceObjectives_botop(KOMO& komo, double time, rai::ArgWord dir, cons
 }
 
 
-arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, rai::ArgWord placeDirection, const char* boxName, const char* gripperName, const char* palmName, const char* tableName, const arr& qHome) {
+arr getBoxPnpKeyframes(const rai::Configuration& C, str pickDirection, str placeDirection, const char* boxName, const char* gripperName, const char* palmName, const char* tableName, const arr& qHome) {
   arr q0 = C.getJointState();
 
   KOMO komo;
@@ -189,11 +190,20 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, 
 
   //-- pick
   komo.addModeSwitch({1.,2.}, rai::SY_stable, {gripperName, boxName}, true);
-  addBoxPickObjectives(komo, 1., pickDirection, boxName, boxSize, gripperName, palmName, tableName);
+
+  {
+    ManipulationModelling manip(shared_ptr<KOMO>(&komo, [](KOMO*) -> void{}));
+    manip.grasp_box(1., gripperName, boxName, palmName, pickDirection);
+  }
+//  addBoxPickObjectives(komo, 1., pickDirection, boxName, boxSize, gripperName, palmName, tableName);
 
   //-- place
   komo.addModeSwitch({2.,-1.}, rai::SY_stable, {"table", boxName}, false);
-  addBoxPlaceObjectives(komo, 2., placeDirection, boxName, boxSize, tableName, gripperName, palmName);
+  {
+    ManipulationModelling manip(shared_ptr<KOMO>(&komo, [](KOMO*) -> void{}));
+    manip.place_box(1., boxName, tableName, palmName, placeDirection);
+  }
+//  addBoxPlaceObjectives(komo, 2., placeDirection, boxName, boxSize, tableName, gripperName, palmName);
 
   // explicit collision avoidances
   //  for(const Avoid& a:avoids){

@@ -6,7 +6,7 @@
 #include <OptiTrack/optitrack.h>
 #include <Gui/opengl.h>
 #include <Kin/viewer.h>
-
+#include <Kin/frame.h>
 
 bool SecMPC_Stepper::step(rai::Configuration& C, BotOp& bot, SecMPC& mpc, bool doNotExecute){
   stepCount++;

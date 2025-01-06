@@ -1,4 +1,4 @@
-BASE = ../../../rai
+BASE = ../../rai
 BASE2 = ../..
 
 OPENCV4 = 1

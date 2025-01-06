@@ -59,14 +59,14 @@ void testGrasp() {
   BotOp bot(C, false);
   bot.home(C);
 
-  bot.gripperMove(rai::_left, +1., .5);
+  bot.gripperMove(rai::_left, .075, 1.);
   while(!bot.gripperDone(rai::_left)) bot.sync(C, .1);
 
   bot.move(path, {2., 3.});
   bot.wait(C, false, true);
   if(bot.keypressed=='q') return;
 
-  bot.gripperMove(rai::_left, .015, .5);
+  bot.gripperMove(rai::_left, .0, .2);
   while(!bot.gripperDone(rai::_left)) bot.sync(C, .1);
 
   for(uint k=0;k<2;k++) bot.sync(C, .1);
@@ -77,7 +77,7 @@ void testGrasp() {
 
   bot.wait(C, true, false);
 
-  bot.gripperMove(rai::_left);
+  bot.gripperMove(rai::_left, .075, 1.);
   while(!bot.gripperDone(rai::_left)) bot.sync(C, .1);
 
   for(uint k=0;k<10;k++) bot.sync(C, .1);
@@ -89,6 +89,8 @@ int main(int argc,char **argv){
   rai::initCmdLine(argc, argv);
 
   testGrasp();
+
+  cout <<rai::params() <<endl;
 
   return 0;
 }
