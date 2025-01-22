@@ -1,43 +1,75 @@
+
 #include "omnibase.h"
 #include "SimplexMotion.h"
 
 #define RAI_RANGER
 #ifdef RAI_RANGER
 
+
+#include <iostream>
+#include <cstring>
+#include <linux/can.h>
+#include <linux/can/raw.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <net/if.h>
+#include <fcntl.h>
+#include <arpa/inet.h>
+#include <errno.h>
+#include <sys/ioctl.h>  // Include for ioctl and SIOCGIFINDEX
+
 struct RangerController{
-  rai::Array<std::shared_ptr<SimplexMotion>> motors; //three motors
+  int socket_fd;
+  int ranger_mode;
   arr qLast, sLast; //q: joint state; s: motor state
-  int Kp, Ki, Kd, KiLimit, KdDelay, Friction;
+  struct ifreq ifr;
+  struct sockaddr_can addr;
+  uint32_t id_control_mode;
+  struct can_frame frame_control_mode;
 
-  RangerController(const StringA& addresses, int Kp, int Ki, int Kd, int KiLimit, int KdDelay, int Friction)
-  : Kp(Kp), Ki(Ki), Kd(Kd), KiLimit(KiLimit), KdDelay(KdDelay), Friction(Friction) {
-    //-- launch 3 motors
-    motors.resize(3);
-    
-    for(uint i=0;i<motors.N;i++){
-        motors(i) = make_shared<SimplexMotion>(addresses(i), 0x04d8, 0xf79a);
-        cout <<"model name: '" <<motors(i)->getModelName() <<"'" <<endl;
-        cout <<"serial number: '" <<motors(i)->getSerialNumber() <<"'" <<endl;
-        cout <<"address: '" <<motors(i)->getAddress() <<"'" <<endl;
-        cout <<"motor temperature: " <<motors(i)->getMotorTemperature() <<endl;
-        cout <<"voltage: " <<motors(i)->getVoltage() <<endl;
-
-        motors(i)->runReset(); //resets position counter
-        motors(i)->setPID(Kp, Ki, Kd, KiLimit, KdDelay, Friction);
-        motors(i)->runSpeed(0.);
-
-        LOG(0) << "Motor " << i << " battery reading: " << motors(i)->getVoltage() << "V";
+  RangerController(const String& address, int Kp, int Ki, int Kd)
+  {
+    socket_fd = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+    if (socket_fd < 0) {
+        std::cerr << "Error creating socket: " << strerror(errno) << std::endl;
+        return 1;
     }
-    qLast = zeros(3);
-    sLast = zeros(motors.N);
+
+    std::strncpy(ifr.ifr_name, address, IFNAMSIZ - 1);
+    if (ioctl(socket_fd, SIOCGIFINDEX, &ifr) < 0) {
+        std::cerr << "Error getting interface index: " << strerror(errno) << std::endl;
+        close(socket_fd);
+        return 1;
+    }
+
+    addr.can_family = AF_CAN;
+    addr.can_ifindex = ifr.ifr_ifindex;
+
+    if (bind(socket_fd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+        std::cerr << "Error binding socket: " << strerror(errno) << std::endl;
+        close(socket_fd);
+        return 1;
+    }
+
+    // Send control mode message
+    ranger_mode = 0;
+    id_control_mode = 0x421; 
+    frame_control_mode.can_id = id_control_mode;
+    frame_control_mode.can_dlc = 8; // Data length code (number of bytes)
+    frame_control_mode.data[0] = 0x01; // Byte 0 for control mode
+    std::memset(frame_control_mode.data + 1, 0, 7); // Remaining bytes = 0
+
+    // Send the control mode message
+    if (write(socket_fd, &frame_control_mode, sizeof(frame_control_mode)) != sizeof(frame_control_mode)) {
+        std::cerr << "Error sending control mode message: " << strerror(errno) << std::endl;
+        close(socket_fd);
+        return 1;
+    }
+    std::cout << "Control mode message sent: ID = " << std::hex << id_control_mode << std::endl;
   }
 
   ~RangerController(){
-    for(uint i=0;i<motors.N;i++) motors(i)->runStop();
-    rai::wait(.1);
-    for(uint i=0;i<motors.N;i++) motors(i)->runOff();
-    rai::wait(.1);
-    for(uint i=0;i<motors.N;i++) motors(i)->reset();
+    close(socket_fd);
   }
 
   arr getJacobian(){
@@ -82,20 +114,49 @@ struct RangerController{
     sLast = s;
   }
 
-  void setVelocities(const arr& v_motors){
-    //-- send torques to motors
-    CHECK_EQ(v_motors.N, motors.N, "control signal has wrong dimensionality");
+  void setVelocities(const arr& v)
+  {
+    // v[0] x vel
+    // v[1] y vel
+    // v[2] phi vel
+    // v[3] mode
 
-    // clip(v_motors, -1., 1.);
-    for(uint i=0;i<motors.N;i++){
-      // motors(i)->setPID(Kp, Ki, Kd, KiLimit, KdDelay, Friction);
-      motors(i)->runSpeed(v_motors(i));
+    // Safety
+    v[0] = min(2000, v[0]);
+    v[1] = min(2000, v[1]);
+    v[2] = min(PI_M, v[2]);
+
+    // Step 2: Define motion control command
+    uint32_t id_motion = 0x111; 
+    int16_t linear_speed = v[0]; // Linear speed in mm/s
+    int16_t spin_speed = v[2];       // Spin speed in 0.001 rad/s
+    uint8_t reserved = 0;         // Reserved byte
+
+    // Create the data payload
+    struct can_frame frame_motion;
+    frame_motion.can_id = id_motion;
+    frame_motion.can_dlc = 8; // Data length code (number of bytes)
+
+    // Convert linear speed and spin speed to bytes
+    frame_motion.data[0] = (linear_speed >> 8) & 0xFF; // High byte of linear speed
+    frame_motion.data[1] = linear_speed & 0xFF;        // Low byte of linear speed
+    frame_motion.data[2] = (spin_speed >> 8) & 0xFF;   // High byte of spin speed
+    frame_motion.data[3] = spin_speed & 0xFF;          // Low byte of spin speed
+    frame_motion.data[4] = reserved;                    // Reserved byte
+    std::memset(frame_motion.data + 5, 0, 3);          // Remaining reserved bytes
+
+    // Send the motion command message
+    if (write(socket_fd, &frame_motion, sizeof(frame_motion)) != sizeof(frame_motion)) {
+        std::cerr << "Error sending motion command message: " << strerror(errno) << std::endl;
+        close(socket_fd);
+        return 1;
     }
+    std::cout << "Motion command message sent: ID = " << std::hex << id_motion << std::endl;
   }
 };
 
 RangerThread::RangerThread(uint robotID, const uintA &_qIndices, const Var<rai::CtrlCmdMsg> &_cmd, const Var<rai::CtrlStateMsg> &_state)
-    : RobotAbstraction(_cmd, _state), Thread("OmnibaseThread", .015){
+    : RobotAbstraction(_cmd, _state), Thread("RangerThread", .015){
     init(robotID, _qIndices);
     writeData = 10;
 }
@@ -113,27 +174,17 @@ void RangerThread::init(uint _robotID, const uintA& _qIndices) {
   qIndices_max = rai::max(qIndices);
 
   //-- basic Kp Kd settings for reference control mode
-  outer_Kp = rai::getParameter<double>("Omnibase/outer_Kp", 4.);
-  Kp = rai::getParameter<int>("Omnibase/Kp", 2000);
-  Ki = rai::getParameter<int>("Omnibase/Ki", 0);
-  Kd = rai::getParameter<int>("Omnibase/Kd", 1000);
-  KiLimit = rai::getParameter<int>("Omnibase/KiLimit", 100);
-  KdDelay = rai::getParameter<int>("Omnibase/KdDelay", 2);
-  Friction = rai::getParameter<int>("Omnibase/Friction", 0);
+  Kp = rai::getParameter<int>("Ranger/Kp", 20);
+  Ki = rai::getParameter<int>("Ranger/Ki", 0);
+  Kd = rai::getParameter<int>("Ranger/Kd", 10);
 
-  // Jacobian params
-  gear_ratio = rai::getParameter<double>("Omnibase/gear_ratio", 4.2);
-  center2wheel = rai::getParameter<double>("Omnibase/center2wheel", .35);
-  wheel_radius = rai::getParameter<double>("Omnibase/wheel_radius", .06);
-
-  LOG(0) << "Omnibase/PID: Kp:" << Kp << " Ki:" << Ki << " Kd:" << Kd << "KdDelay:" << KdDelay << "KiLimit:" << KiLimit << " Friction:" << Friction;
-  LOG(0) << "Omnibase/Jacobian: gear_ratio:" << gear_ratio << " center2wheel:" << center2wheel << " wheel_radius:" << wheel_radius;
+  LOG(0) << "Ranger/PID: Kp:" << Kp << " Ki:" << Ki << " Kd:" << Kd;
 
   //-- get robot address
-  addresses = rai::getParameter<StringA>("Omnibase/addresses", {"/dev/hidraw0", "/dev/hidraw1", "/dev/hidraw2"});
+  address = rai::getParameter<String>("Ranger/address", "can0");
 
   //-- start thread and wait for first state signal
-  LOG(0) <<"launching Omnibase " <<robotID <<" at " <<addresses;
+  LOG(0) <<"launching Ranger " <<robotID <<" at " <<address;
 
   threadLoop();
   while(Thread::step_count<2) rai::wait(.01);
@@ -141,7 +192,7 @@ void RangerThread::init(uint _robotID, const uintA& _qIndices) {
 
 void RangerThread::open(){
   // connect to robot
-  robot = make_shared<RangerController>(address, Kp, Ki, Kd, KiLimit, KdDelay, Friction);
+  robot = make_shared<RangerController>(address, Kp, Ki, Kd);
 
   //-- initialize state and ctrl with first state
   arr q_real, qDot_real;
