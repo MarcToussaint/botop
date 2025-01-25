@@ -221,16 +221,17 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
   return keypressed;
 }
 
-int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd, bool forGripper){
+int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd, bool forGripper, double syncFrequency){
   C.get_viewer()->raiseWindow();
   C.get_viewer()->_resetPressedKey();
+  sync(C);
   for(;;){
-    sync(C, .1);
     //if(keypressed=='q') return keypressed;
     if(forKeyPressed && keypressed) return keypressed;
     if(forTimeToEnd && getTimeToEnd()<=0.) return keypressed;
     if(forGripper && gripperDone(rai::_left)) return 'g';
     if(!rai::getInteractivity() && !forTimeToEnd && forKeyPressed) return ' ';
+    sync(C, syncFrequency);
   }
 }
 

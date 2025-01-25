@@ -19,7 +19,11 @@ BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
   int verbose = rai::getParameter<int>("botsim/verbose", 1);
   if(tau<0.) tau = rai::getParameter<double>("botsim/tau", .01);
   if(hyperSpeed<0.) hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
-  Thread::metronome.reset(tau/hyperSpeed);
+  if(hyperSpeed>0.){
+    Thread::metronome.reset(tau/hyperSpeed);
+  }else{
+    Thread::metronome.reset(0.);
+  }
   rai::String engine = rai::getParameter<rai::String>("botsim/engine", "physx");
   sim=make_shared<rai::Simulation>(simConfig, rai::Enum<rai::Simulation::Engine>(engine), verbose);
 

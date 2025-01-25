@@ -39,7 +39,7 @@ arr getLoopPath(rai::Configuration& C){
   komo.addObjective({5.}, make_shared<F_qItself>(C.getCtrlFramesAndScale(), true), {}, OT_eq, {1e2});
   komo.addObjective({5.}, make_shared<F_qItself>(C.getCtrlFramesAndScale()), {}, OT_eq, {1e2}, {}, 1);
 
-  komo.optimize();
+  komo.solve();
   arr q = komo.getPath_qOrg();
   if(C["r_gripper"]){
     CHECK_EQ(q.d1, 14, "");
@@ -225,7 +225,7 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, str pickDirection, str place
     else komo.initWithConstant(q0);
 
     //optimize
-    auto ret = komo.optimize(.01*trial, -1, rai::OptOptions().set_stopTolerance(1e-3)); //trial=0 -> no noise!
+    auto ret = komo.solve(.01*trial, -1, rai::OptOptions().set_stopTolerance(1e-3)); //trial=0 -> no noise!
 
     //is feasible?
     feasible=ret->sos<50. && ret->ineq<.1 && ret->eq<.1;

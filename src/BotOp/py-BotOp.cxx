@@ -150,7 +150,8 @@ void init_BotOp(pybind11::module& m) {
        pybind11::arg("C"),
        pybind11::arg("forKeyPressed") = true,
        pybind11::arg("forTimeToEnd") = true,
-       pybind11::arg("forGripper") = false)
+       pybind11::arg("forGripper") = false,
+       pybind11::arg("syncFrequency") = .05)
 
   .def("home", &BotOp::home,
        "immediately drive the robot home (see get_qHome); keeps argument C synced; same as moveTo(qHome, 1., True); wait(C);",
