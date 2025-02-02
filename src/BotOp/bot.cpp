@@ -305,7 +305,7 @@ void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, dou
         .setSolver(NLPS_newton);
     solver.opt
         .set_stopTolerance(1e-4)
-        .set_maxStep(1e0)
+        .set_stepMax(1e0)
         .set_damping(1e-2);
     auto ret = solver.solve();
     //LOG(1) <<"timing f: " <<ret->f;
