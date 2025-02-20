@@ -383,6 +383,6 @@ void LGPop::sim_addRandomBox(const char* name){
   rai::Quaternion rot;
   rot.setRad(rnd.uni(-RAI_PI,RAI_PI), 0,0,1);
 
-  sim_config.set()->addObject(name, "table", rai::ST_ssBox, size, color, pos, rot.getArr4d());
+  sim_config.set()->addObject(name, "table", rai::ST_ssBox, size, color, pos, rot.getArr());
 }
 
