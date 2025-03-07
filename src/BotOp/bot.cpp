@@ -299,10 +299,10 @@ void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, dou
     arr tauInitial = {};
     if(!optTau) tauInitial = differencing(_times);
     TimingProblem timingProblem(path, {}, q, qDot, 1., 1., optTau, false, {}, tauInitial);
-    NLP_Solver solver;
+    rai::NLP_Solver solver;
     solver
         .setProblem(timingProblem.ptr())
-        .setSolver(NLPS_newton);
+        .setSolver(rai::M_newton);
     solver.opt
         .set_stopTolerance(1e-4)
         .set_stepMax(1e0)

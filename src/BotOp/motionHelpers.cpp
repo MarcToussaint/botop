@@ -192,7 +192,7 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, str pickDirection, str place
   komo.addModeSwitch({1.,2.}, rai::SY_stable, {gripperName, boxName}, true);
 
   {
-    ManipulationModelling manip(shared_ptr<KOMO>(&komo, [](KOMO*) -> void{}));
+    ManipulationHelper manip(shared_ptr<KOMO>(&komo, [](KOMO*) -> void{}));
     manip.grasp_box(1., gripperName, boxName, palmName, pickDirection);
   }
 //  addBoxPickObjectives(komo, 1., pickDirection, boxName, boxSize, gripperName, palmName, tableName);
@@ -200,7 +200,7 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, str pickDirection, str place
   //-- place
   komo.addModeSwitch({2.,-1.}, rai::SY_stable, {"table", boxName}, false);
   {
-    ManipulationModelling manip(shared_ptr<KOMO>(&komo, [](KOMO*) -> void{}));
+    ManipulationHelper manip(shared_ptr<KOMO>(&komo, [](KOMO*) -> void{}));
     manip.place_box(1., boxName, tableName, palmName, placeDirection);
   }
 //  addBoxPlaceObjectives(komo, 2., placeDirection, boxName, boxSize, tableName, gripperName, palmName);
@@ -254,7 +254,7 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, str pickDirection, str place
 
 arr getBoxPnpKeyframes_new(rai::Configuration& C, str graspDirection, str placeDirection, str box, str gripper, str palm, str table, const arr& qHome) {
   auto info = STRING("grasp " <<graspDirection <<" place " <<placeDirection);
-  ManipulationModelling M(info);
+  ManipulationHelper M(info);
   M.setup_pick_and_place_waypoints(C, gripper, box, 1e-1, 1e-1);
   M.grasp_box(1., gripper, box, palm, graspDirection, .03);
   M.place_box(2., box, table, palm, placeDirection);

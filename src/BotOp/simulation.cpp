@@ -16,7 +16,7 @@ BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
     tau(_tau){
 
   //create a rai Simulator!
-  int verbose = rai::getParameter<int>("botsim/verbose", 1);
+  int verbose = rai::getParameter<int>("botsim/verbose", 2);
   if(tau<0.) tau = rai::getParameter<double>("botsim/tau", .01);
   if(hyperSpeed<0.) hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
   if(hyperSpeed>0.){
