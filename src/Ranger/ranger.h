@@ -15,8 +15,8 @@ private:
   int robotID=0;
 
   // Read from rai.cfg
-  int Kp, Ki, Kd;
-  String address;
+  arr Kp, Ki, Kd;
+  rai::String address;
 
   uintA qIndices;
   uint qIndices_max=0;
@@ -25,8 +25,7 @@ private:
   ofstream dataFile;
   double ctrlTime=0.;
 
-  std::shared_ptr<OmnibaseController> robot;
-
+  std::shared_ptr<RangerController> robot;
 
   void init(uint _robotID, const uintA& _qIndices);
   void open();

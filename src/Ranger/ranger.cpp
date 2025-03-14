@@ -4,9 +4,6 @@
 #define RAI_RANGER
 #ifdef RAI_RANGER
 
-// #define FAKE
-#define JOINT_DIM 1
-
 #include <iostream>
 #include <cstring>
 #include <linux/can.h>
@@ -18,30 +15,28 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <sys/ioctl.h>  // Include for ioctl and SIOCGIFINDEX
-#include <chrono> // For time tracking
+#define PI 3.1415926
+#define DEBUG 1
 
 
-const char* ranger_address = "can0";
-
-struct RangerController{
+struct RangerController
+{
   int socket_fd;
-  int ranger_mode;
+  int mode; // 0: Oblique, 1: Spin, 2: Ackermann
   arr qLast, sLast; //q: joint state; s: motor state
-  struct ifreq ifr;
-  struct sockaddr_can addr;
-  uint32_t id_control_mode;
-  struct can_frame frame_control_mode;
-  double position;
-  std::chrono::time_point<std::chrono::steady_clock> last_time;
+  double actual_steering_rad;
 
-
-  RangerController(const char* address, int Kp, int Ki, int Kd)
+  RangerController(const char* address)
   {
-    position = 0.0; // Position in meters
-    last_time = std::chrono::steady_clock::now(); // For time tracking
-    #ifdef FAKE
-    LOG(0) << "Conneted to ranger ;)";
-    #else
+    mode = 0;
+    qLast = zeros(3);
+    actual_steering_rad = 0.0; // CAREFULL!! Only updates when you call "get_qDot_oblique".
+    // sLast = zeros(8); // (FL, FR, BL, BR) Angle, (FL, FR, BL, BR) Wheel
+    sLast = zeros(4); // FL, FR, BL, BR
+
+    //--------- SETTING UP CAN INTERFACE ---------//
+    struct ifreq ifr;
+    struct sockaddr_can addr;
     socket_fd = socket(PF_CAN, SOCK_RAW, CAN_RAW);
     if (socket_fd < 0) {
       LOG(-1) << "Error creating socket: " << strerror(errno) << std::endl;
@@ -61,138 +56,336 @@ struct RangerController{
       close(socket_fd);
     }
 
-    // Send control mode message
-    ranger_mode = 0;
-    id_control_mode = 0x421; 
+    // CAN stuff
+    struct can_frame frame_control_mode;
+    uint32_t id_control_mode = 0x421;
     frame_control_mode.can_id = id_control_mode;
     frame_control_mode.can_dlc = 8; // Data length code (number of bytes)
     frame_control_mode.data[0] = 0x01; // Byte 0 for control mode
     std::memset(frame_control_mode.data + 1, 0, 7); // Remaining bytes = 0
 
-    // Send the control mode message
-    if (write(socket_fd, &frame_control_mode, sizeof(frame_control_mode)) != sizeof(frame_control_mode)) {
-      LOG(-1) << "Error sending control mode message: " << strerror(errno) << std::endl;
-      close(socket_fd);
-    }
+    send_package(frame_control_mode);
+
+    // Control mode stuff
+    set_control_mode(0x01);
+    // 0x00 front and rear Ackerman mode
+    // 0x01 oblique motion mode
+    // 0x02 spin mode
+    // 0x03 Parking mode
+    
     std::cout << "Control mode message sent: ID = " << std::hex << id_control_mode << std::endl;
-    #endif
-    qLast = zeros(JOINT_DIM);
-    sLast = zeros(1);
+    
+    sLast = get_s();
   }
 
   ~RangerController(){
-    #ifdef FAKE
-    #else
     close(socket_fd);
+  }
+
+  void set_control_mode(canid_t type) {
+    struct can_frame frame_control_mode;
+    uint32_t id_control_mode = 0x141; 
+    frame_control_mode.can_id = id_control_mode;
+    frame_control_mode.can_dlc = 1; // Data length code (number of bytes)
+    frame_control_mode.data[0] = type;
+    std::memset(frame_control_mode.data + 1, 0, 7); // Remaining bytes = 0
+
+    send_package(frame_control_mode);
+  }
+
+  arr get_s()
+  {
+    struct can_frame recv_frame;
+
+    // Front Wheels
+    recv_frame = recv_package(0x311);
+
+    int32_t front_left_wheel_odom_mm = (recv_frame.data[0] << 24) | (recv_frame.data[1] << 16) | (recv_frame.data[2] << 8) | recv_frame.data[3];
+    int32_t front_right_wheel_odom_mm = (recv_frame.data[4] << 24) | (recv_frame.data[5] << 16) | (recv_frame.data[6] << 8) | recv_frame.data[7];
+    
+    double front_left_wheel_odom = static_cast<double>(front_left_wheel_odom_mm) / 1000;
+    double front_right_wheel_odom = static_cast<double>(front_right_wheel_odom_mm) / 1000;
+
+    // Rear Wheels
+    recv_frame = recv_package(0x312);
+
+    int32_t rear_left_wheel_odom_mm = (recv_frame.data[0] << 24) | (recv_frame.data[1] << 16) | (recv_frame.data[2] << 8) | recv_frame.data[3];
+    int32_t rear_right_wheel_odom_mm = (recv_frame.data[4] << 24) | (recv_frame.data[5] << 16) | (recv_frame.data[6] << 8) | recv_frame.data[7];
+    
+    double rear_left_wheel_odom = static_cast<double>(rear_left_wheel_odom_mm) / 1000;
+    double rear_right_wheel_odom = static_cast<double>(rear_right_wheel_odom_mm) / 1000;
+
+    #if DEBUG
+      std::cout << "------------- Odometry -------------" << std::endl;
+      std::cout << "Front Left Wheel Odometer: " << front_left_wheel_odom << " m" << std::endl;
+      std::cout << "Front Right Wheel Odometer: " << front_right_wheel_odom << " m" << std::endl;
+      std::cout << "Rear Left Wheel Odometer: " << rear_left_wheel_odom << " m" << std::endl;
+      std::cout << "Rear Right Wheel Odometer: " << rear_right_wheel_odom << " m" << std::endl;
     #endif
+
+    return arr{front_left_wheel_odom, front_right_wheel_odom, rear_left_wheel_odom, rear_right_wheel_odom};
   }
 
-  arr wheelVelToJointVel(arr s){
-    //return Jacobian based on qLast
-    double wheel_radius = .2;
-    arr q_vel(JOINT_DIM);
-    q_vel = s;
-    return q_vel;
+  arr get_qDot_oblique()
+  {
+    struct can_frame recv_frame = recv_package(0x221);
+    
+    // Extract actual speed and steering angle
+    int16_t actual_speed = (recv_frame.data[0] << 8) | recv_frame.data[1];
+    int16_t actual_steering_angle = (recv_frame.data[6] << 8) | recv_frame.data[7];
+
+    double actual_speed_mps = actual_speed / 1000.0; // Convert mm/s to m/s
+    actual_steering_rad = actual_steering_angle / 1000.0; // Convert mrad to rad
+    #if DEBUG
+      std::cout << "Actual Steering Angle before: " << actual_steering_rad << " rad" << std::endl;
+    #endif
+
+    actual_steering_rad *= -1;
+    if (actual_speed_mps < 0) { // Lower side
+      actual_steering_rad += PI;
+    }
+
+    // Compute X-Y velocity components
+    double velocity_x = actual_speed_mps *  cos(actual_steering_rad);
+    double velocity_y = actual_speed_mps * -sin(actual_steering_rad);
+
+    #if DEBUG
+      std::cout << "Actual Linear Speed: " << actual_speed_mps << " m/s" << std::endl;
+      std::cout << "Actual Steering Angle: " << actual_steering_rad << " rad" << std::endl;
+      std::cout << "Velocity X: " << velocity_x << " m/s, Velocity Y: " << velocity_y << " m/s" << std::endl;
+      std::cout << "---------------------------------" << std::endl;
+    #endif
+
+    return arr{velocity_x, velocity_y, 0.};
   }
 
-  arr jointVelToWheelVel(arr q){
-    //return Jacobian based on qLast
-    double wheel_radius = .2;
-    arr s_vel(JOINT_DIM);
-    s_vel = q;
-    return s_vel;
+  arr get_qDot_spin()
+  {
+    struct can_frame recv_frame = recv_package(0x221);
+
+    // TODO: Translate wheel speed to actual q speed
+    int16_t actual_spin_speed = (recv_frame.data[2] << 8) | recv_frame.data[3];
+    double actual_spin_speed_mps = actual_spin_speed / 1000.0; // Convert mm/s to m/s
+
+    #if DEBUG
+      std::cout << "Actual Angular Speed: " << actual_spin_speed_mps << " m/s" << std::endl;
+    #endif
+    return arr{0., 0., actual_spin_speed_mps};
   }
 
-  double getLinearVelocity(){
-    while (true) {
-      struct can_frame recv_frame;
+  struct can_frame recv_package(canid_t type)
+  {
+    struct can_frame recv_frame;
+    while (true)
+    {
       int nbytes = read(socket_fd, &recv_frame, sizeof(recv_frame));
       if (nbytes < 0) {
-          LOG(-1) << "Error reading message: " << strerror(errno) << std::endl;
-          break;
+        LOG(-1) << "Error reading CAN frame: " << strerror(errno) << std::endl;
       }
-
-      if (nbytes < sizeof(struct can_frame)) {
-          LOG(-1) << "Incomplete CAN frame received" << std::endl;
-          continue;
-      }
-
-      if (recv_frame.can_id == 0x221) {
-        // Extract the linear velocity (bytes 0 and 1)
-        int16_t linear_velocity = (recv_frame.data[0] << 8) | recv_frame.data[1];
-        // Convert to m/s (unit in feedback is 0.001 m/s)
-        double linear_velocity_mps = linear_velocity / 1000.0;
-
-        std::cout << "Current Linear Velocity: " << linear_velocity_mps << " m/s" << std::endl;
-
-        return linear_velocity_mps;
+      if (recv_frame.can_id == type) {
+        break;
       }
     }
-    return 0.0;
+    return recv_frame;
   }
 
-  void getState(arr& q, arr& qDot){
-    //-- get motor state
-    arr s(1);
-    arr sDot(1);
-
-    double linear_vel = getLinearVelocity();
-
-    auto current_time = std::chrono::steady_clock::now();
-    std::chrono::duration<double> elapsed_time = current_time - last_time;
-    last_time = current_time;
-
-    // Integrate velocity to estimate position
-    position += linear_vel * elapsed_time.count();
-
-    s = arr{position}; // Wheel positions
-    sDot = linear_vel; // Wheel velocities
-
+  void getState(arr& q, arr& qDot)
+  {
+    arr s = get_s();
     arr sDelta = s - sLast;
 
-    //-- convert to joint state
-    // DO MAGIC HERE: convert the sDelta (change in motor positions) to a qDelta (change in joint state)
-    arr qDelta = wheelVelToJointVel(sDelta);
+    arr qDelta = zeros(3);
+    qDot = zeros(3);
+    switch (mode)
+    {
+      case 1: {
+        // Spin mode
+        double mean_delta_s = (-1.*sDelta.elem(0) +
+                                  sDelta.elem(1) +
+                               -1.*sDelta.elem(2) +
+                                  sDelta.elem(3)) * .25; // m
+        #if DEBUG
+          std::cout << "Mean delta s: " << mean_delta_s << " mDelta" << std::endl;
+        #endif
+        qDot = get_qDot_spin();
+        double base_radious = .31;
+        double angle_traveled = atan(mean_delta_s/base_radious);
+        qDelta = arr{0., 0., angle_traveled};
+        break;
+      }
+     
+      case 0: {
+        // Oblique mode
+        double mean_delta_s = (sDelta.elem(0) +
+                               sDelta.elem(1) +
+                               sDelta.elem(2) +
+                               sDelta.elem(3)) * .25; // m
+        mean_delta_s = abs(mean_delta_s);
+        qDot = get_qDot_oblique();
+        double xDelta =  cos(actual_steering_rad) * mean_delta_s;
+        double yDelta = -sin(actual_steering_rad) * mean_delta_s;
+        qDelta = arr{xDelta, yDelta, 0.};
+        break;
+      }
+
+      default: {
+        break;
+      }
+    }
 
     q = qLast + qDelta;
-    qDot = wheelVelToJointVel(sDot);
     qLast = q;
     sLast = s;
   }
 
-  void setVelocities(const arr& qDotTarget)
+  void setVelocitiesOblique(double dir_angle, double dir_magnitude)
   {
-    #ifdef FAKE
-    #else
-    // Safety
-    // TODO: Check if velocities are too high
-
-    // Step 2: Define motion control command
-    uint32_t id_motion = 0x111; 
-    int16_t linear_speed = qDotTarget.elem(0) * 1000; // Linear speed in mm/s
-    int16_t spin_speed = 0;       // Spin speed in 0.001 rad/s
-    uint8_t reserved = 0;         // Reserved byte
-
-    // Create the data payload
     struct can_frame frame_motion;
-    frame_motion.can_id = id_motion;
     frame_motion.can_dlc = 8; // Data length code (number of bytes)
+    frame_motion.can_id = 0x111;
 
-    // Convert linear speed and spin speed to bytes
-    frame_motion.data[0] = (linear_speed >> 8) & 0xFF; // High byte of linear speed
-    frame_motion.data[1] = linear_speed & 0xFF;        // Low byte of linear speed
-    frame_motion.data[2] = (spin_speed >> 8) & 0xFF;   // High byte of spin speed
-    frame_motion.data[3] = spin_speed & 0xFF;          // Low byte of spin speed
-    frame_motion.data[4] = reserved;                   // Reserved byte
-    std::memset(frame_motion.data + 5, 0, 3);          // Remaining reserved bytes
+    if (dir_angle > PI*.5 && dir_angle < 1.5*PI) { // Lower half
+      if (dir_angle > PI) { // Lower left
+        dir_angle -= PI;
+        dir_angle *=-1;
+        std::cout << "Lower left" << std::endl;
+      } else { // Lower right
+        dir_angle = PI - dir_angle;
+        std::cout << "Lower right" << std::endl;
+      }
+      dir_magnitude *= -1;
+    } else { // Upper half
+      if (dir_angle >= 1.5*PI) { // Upper left
+        dir_angle = 2*PI - dir_angle;
+        std::cout << "Upper left" << std::endl;
+      } else { // Upper right
+        dir_angle *=-1;
+        std::cout << "Upper right" << std::endl;
+      }
+    }
 
-    // Send the motion command message
+    #if DEBUG
+      std::cout << "---------- Oblique mode velocities ----------" << std::endl;
+      std::cout << "New Mag: " << dir_magnitude << " m/s" << std::endl;
+      std::cout << "New Angle: " << dir_angle << " rad" << std::endl;
+    #endif
+
+    int16_t linear_speed = dir_magnitude * 1000; // mm/s
+    int16_t spin_speed = 0;                      // No rotation
+    int16_t steering_angle = dir_angle * 1000;   // 0.001 rad
+
+    frame_motion.data[0] = (linear_speed >> 8) & 0xFF;
+    frame_motion.data[1] = linear_speed & 0xFF;
+    frame_motion.data[2] = (spin_speed >> 8) & 0xFF;
+    frame_motion.data[3] = spin_speed & 0xFF;
+    frame_motion.data[4] = 0x00; // Reserved
+    frame_motion.data[5] = 0x00; // Reserved
+    frame_motion.data[6] = (steering_angle >> 8) & 0xFF;
+    frame_motion.data[7] = steering_angle & 0xFF;
+
+    send_package(frame_motion);
+  }
+
+  void setVelocitiesSpin(double spin_speed)
+  {
+    struct can_frame frame_motion;
+    frame_motion.can_dlc = 8; // Data length code (number of bytes)
+    frame_motion.can_id = 0x111;
+
+    #if DEBUG
+      std::cout << "---------- Spin mode velocities ----------" << std::endl;
+      std::cout << "New Speed: " << spin_speed << " rad/s" << std::endl;
+    #endif
+
+    int16_t linear_speed = 0;
+    int16_t spin_speed_ = spin_speed * 1000;
+    int16_t steering_angle = 0;
+
+    frame_motion.data[0] = (linear_speed >> 8) & 0xFF;
+    frame_motion.data[1] = linear_speed & 0xFF;
+    frame_motion.data[2] = (spin_speed_ >> 8) & 0xFF;
+    frame_motion.data[3] = spin_speed_ & 0xFF;
+    frame_motion.data[4] = 0x00; // Reserved
+    frame_motion.data[5] = 0x00; // Reserved
+    frame_motion.data[6] = (steering_angle >> 8) & 0xFF;
+    frame_motion.data[7] = steering_angle & 0xFF;
+
+    send_package(frame_motion);
+  }
+
+  void send_package(struct can_frame frame_motion)
+  {
     if (write(socket_fd, &frame_motion, sizeof(frame_motion)) != sizeof(frame_motion)) {
       LOG(-1) << "Error sending motion command message: " << strerror(errno) << std::endl;
       close(socket_fd);
     }
-    std::cout << "Motion command message sent: ID = " << std::hex << id_motion << std::endl;
-    #endif
+  }
+
+  void setVelocities(const arr& qDotTarget)
+  {
+    int prev_mode = mode;
+    // Check which mode should be active
+    double thresh = 2e-2; // 2cm error
+    bool is_spin_mode = abs(qDotTarget.elem(0)) <= thresh &&
+                        abs(qDotTarget.elem(1)) <= thresh &&
+                        abs(qDotTarget.elem(2)) >= thresh;
+
+    bool is_oblique_mode = (abs(qDotTarget.elem(0)) >= thresh ||
+                            abs(qDotTarget.elem(1)) >= thresh) &&
+                            abs(qDotTarget.elem(2)) <= thresh;
+
+    bool is_still = abs(qDotTarget.elem(0)) <= thresh &&
+                    abs(qDotTarget.elem(1)) <= thresh &&
+                    abs(qDotTarget.elem(2)) <= thresh;
+
+    if (is_spin_mode) {
+      mode = 1;
+    } else if (is_oblique_mode) {
+      mode = 0;
+    } else if (is_still) {
+      return;
+    } else {
+      LOG(-1) << "Impossible qDotTarget! " << qDotTarget << " >:(" << std::endl;
+      return;
+    }
+
+    // Safety
+    // TODO: Check if velocities are too high
+    switch (mode)
+    {
+      case 1: {
+        // Spin mode
+        if (mode != prev_mode) {
+          set_control_mode(0x02);
+        }
+        double spin_speed = qDotTarget.elem(2);
+        setVelocitiesSpin(spin_speed);
+        break;
+      }
+     
+      case 0: {
+        // Oblique mode
+        if (mode != prev_mode) {
+          set_control_mode(0x01);
+        }
+
+        double dir_magnitude = ::sqrt(::pow(qDotTarget.elem(0), 2) + ::pow(qDotTarget.elem(1), 2));
+        double oblique_dir = ::acos(qDotTarget.elem(0) / dir_magnitude);
+        if (qDotTarget.elem(1) > 0) {
+          oblique_dir = PI*2-oblique_dir;
+        }
+
+        std::cout << "Mag: " << dir_magnitude << " m/s" << std::endl;
+        std::cout << "Angle: " << oblique_dir << " rad" << std::endl;
+
+        setVelocitiesOblique(oblique_dir, dir_magnitude);
+        break;
+      }
+
+      default: {
+        break;
+      }
+    }
   }
 };
 
@@ -211,19 +404,18 @@ void RangerThread::init(uint _robotID, const uintA& _qIndices) {
   robotID=_robotID;
   qIndices=_qIndices;
 
-  CHECK_EQ(qIndices.N, JOINT_DIM, "");
+  CHECK_EQ(qIndices.N, 3, "");
   qIndices_max = rai::max(qIndices);
 
   //-- basic Kp Kd settings for reference control mode
-  Kp = rai::getParameter<int>("Ranger/Kp", 20);
-  Ki = rai::getParameter<int>("Ranger/Ki", 0);
-  Kd = rai::getParameter<int>("Ranger/Kd", 10);
+  Kp = rai::getParameter<arr>("Ranger/Kp", arr{20., 20., 20.});
+  Ki = rai::getParameter<arr>("Ranger/Ki", arr{0., 0., 0.});
+  Kd = rai::getParameter<arr>("Ranger/Kd", arr{10., 10., 10.});
 
   LOG(0) << "Ranger/PID: Kp:" << Kp << " Ki:" << Ki << " Kd:" << Kd;
 
   //-- get robot address
-  // address = rai::getParameter<rai::String>("Ranger/address", "can0");
-  address = ranger_address;
+  address = rai::getParameter<rai::String>("Ranger/address", "can0");
 
   //-- start thread and wait for first state signal
   LOG(0) <<"launching Ranger " <<robotID <<" at " <<address;
@@ -234,7 +426,7 @@ void RangerThread::init(uint _robotID, const uintA& _qIndices) {
 
 void RangerThread::open(){
   // connect to robot
-  robot = make_shared<RangerController>(address, Kp, Ki, Kd);
+  robot = make_shared<RangerController>(address);
 
   //-- initialize state and ctrl with first state
   arr q_real, qDot_real;
@@ -247,7 +439,7 @@ void RangerThread::open(){
   while(stateSet->qDot.N<=qIndices_max) stateSet->qDot.append(0.);
   while(stateSet->tauExternalIntegral.N<=qIndices_max) stateSet->tauExternalIntegral.append(0.);
 
-  for(uint i=0; i<JOINT_DIM; i++){
+  for(uint i=0; i<3; i++){
     stateSet->q.elem(qIndices(i)) = q_real(i);
     stateSet->qDot.elem(qIndices(i)) = qDot_real(i);
     stateSet->tauExternalIntegral.elem(qIndices(i)) = 0.;
@@ -271,7 +463,7 @@ void RangerThread::step(){
       else stateSet->stall--;
     }
     ctrlTime = stateSet->ctrlTime;
-    for(uint i=0;i<JOINT_DIM;i++){
+    for(uint i=0;i<3;i++){
       stateSet->q.elem(qIndices(i)) = q_real.elem(i);
       stateSet->qDot.elem(qIndices(i)) = qDot_real.elem(i);
     }
@@ -295,20 +487,20 @@ void RangerThread::step(){
 
     //pick qIndices for this particular robot
     if(cmd_q_ref.N){
-      q_ref.resize(JOINT_DIM);
-      for(uint i=0; i<JOINT_DIM; i++) q_ref.elem(i) = cmd_q_ref.elem(qIndices(i));
+      q_ref.resize(3);
+      for(uint i=0; i<3; i++) q_ref.elem(i) = cmd_q_ref.elem(qIndices(i));
     }
     if(cmd_qDot_ref.N){
-      qDot_ref.resize(JOINT_DIM);
-      for(uint i=0; i<JOINT_DIM; i++) qDot_ref.elem(i) = cmd_qDot_ref.elem(qIndices(i));
+      qDot_ref.resize(3);
+      for(uint i=0; i<3; i++) qDot_ref.elem(i) = cmd_qDot_ref.elem(qIndices(i));
     }
     if(cmd_qDDot_ref.N){
-      qDDot_ref.resize(JOINT_DIM);
-      for(uint i=0; i<JOINT_DIM; i++) qDDot_ref.elem(i) = cmd_qDDot_ref.elem(qIndices(i));
+      qDDot_ref.resize(3);
+      for(uint i=0; i<3; i++) qDDot_ref.elem(i) = cmd_qDDot_ref.elem(qIndices(i));
     }
     if(cmdGet->P_compliance.N) {
-      P_compliance.resize(JOINT_DIM,JOINT_DIM);
-      for(uint i=0; i<JOINT_DIM; i++) for(uint j=0; j<JOINT_DIM; j++) P_compliance(i,j) = cmdGet->P_compliance(qIndices(i), qIndices(j));
+      P_compliance.resize(3,3);
+      for(uint i=0; i<3; i++) for(uint j=0; j<3; j++) P_compliance(i,j) = cmdGet->P_compliance(qIndices(i), qIndices(j));
     }
   }
   LOG(0) << "q_real" << q_real;
@@ -317,7 +509,7 @@ void RangerThread::step(){
   LOG(0) << "qDot_ref" << qDot_ref;
 
   //-- cap the reference difference
-  if(q_ref.N==JOINT_DIM){
+  if(q_ref.N==3){
     double err = length(q_ref - q_real);
     if(P_compliance.N){
       arr del = q_ref - q_real;
@@ -330,15 +522,16 @@ void RangerThread::step(){
   }
 
   //-- compute torques from control message depending on the control type
-  arr sDotTarget;
-  sDotTarget.resize(3).setZero();
+  arr qDotTarget;
+  qDotTarget.resize(3).setZero();
   
-  if(q_ref.N==JOINT_DIM && qDot_ref.N==JOINT_DIM)
+  if(q_ref.N==3 && qDot_ref.N==3)
   {
-    arr p_term = Kp * (q_ref - q_real);
-    arr d_term = Kd * qDot_ref;
-    arr qDotTarget = p_term + d_term;
-    sDotTarget = robot->jointVelToWheelVel(qDotTarget);
+    arr p_term = q_ref - q_real;
+    p_term *= Kp;
+    arr d_term(qDot_ref);
+    d_term *= Kd;
+    qDotTarget = p_term + d_term;
   }
 
   //-- data log
@@ -350,13 +543,12 @@ void RangerThread::step(){
       if(writeData>1){
       qDot_real.modRaw().write(dataFile);
       qDot_ref.modRaw().write(dataFile);
-      sDotTarget.modRaw().write(dataFile);
       qDDot_ref.modRaw().write(dataFile);
       }
       dataFile <<endl;
   }
 
-  robot->setVelocities(sDotTarget);
+  robot->setVelocities(qDotTarget);
 }
 
 void RangerThread::close(){
