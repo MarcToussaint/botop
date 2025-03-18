@@ -18,6 +18,7 @@
 #define PI 3.1415926
 #define DEBUG 1
 
+// TODO: setLights func in botop (also like flashing lights or so)
 
 struct RangerController
 {
@@ -146,12 +147,14 @@ struct RangerController
     }
 
     // Compute X-Y velocity components
-    double velocity_x = actual_speed_mps *  cos(actual_steering_rad);
-    double velocity_y = actual_speed_mps * -sin(actual_steering_rad);
+    double angle = actual_steering_rad - qLast.elem(2);
+    double velocity_x = actual_speed_mps *  cos(angle);
+    double velocity_y = actual_speed_mps * -sin(angle);
 
     #if DEBUG
       std::cout << "Actual Linear Speed: " << actual_speed_mps << " m/s" << std::endl;
       std::cout << "Actual Steering Angle: " << actual_steering_rad << " rad" << std::endl;
+      std::cout << "qLast.z: " << qLast.elem(2) << " rad" << std::endl;
       std::cout << "Velocity X: " << velocity_x << " m/s, Velocity Y: " << velocity_y << " m/s" << std::endl;
       std::cout << "---------------------------------" << std::endl;
     #endif
@@ -201,9 +204,9 @@ struct RangerController
       case 1: {
         // Spin mode
         double mean_delta_s = (-1.*sDelta.elem(0) +
-                                  sDelta.elem(1) +
+                                   sDelta.elem(1) +
                                -1.*sDelta.elem(2) +
-                                  sDelta.elem(3)) * .25; // m
+                                   sDelta.elem(3)) * .25; // m
         #if DEBUG
           std::cout << "Mean delta s: " << mean_delta_s << " mDelta" << std::endl;
         #endif
@@ -222,8 +225,9 @@ struct RangerController
                                sDelta.elem(3)) * .25; // m
         mean_delta_s = abs(mean_delta_s);
         qDot = get_qDot_oblique();
-        double xDelta =  cos(actual_steering_rad) * mean_delta_s;
-        double yDelta = -sin(actual_steering_rad) * mean_delta_s;
+        double steering_angle = actual_steering_rad - qLast.elem(2);
+        double xDelta =  cos(steering_angle) * mean_delta_s;
+        double yDelta = -sin(steering_angle) * mean_delta_s;
         qDelta = arr{xDelta, yDelta, 0.};
         break;
       }
@@ -375,8 +379,20 @@ struct RangerController
           oblique_dir = PI*2-oblique_dir;
         }
 
-        std::cout << "Mag: " << dir_magnitude << " m/s" << std::endl;
-        std::cout << "Angle: " << oblique_dir << " rad" << std::endl;
+        // Adjust for current rotation
+        oblique_dir += qLast.elem(2);
+
+        if (oblique_dir < 0) {
+          oblique_dir += PI*2;
+        } else if (oblique_dir >= PI*2) {
+          oblique_dir -= PI*2;
+        }
+
+        #if DEBUG
+          std::cout << "qLast.z: " << qLast.elem(2) << " rad" << std::endl;
+          std::cout << "Mag: " << dir_magnitude << " m/s" << std::endl;
+          std::cout << "Angle: " << oblique_dir << " rad" << std::endl;
+        #endif
 
         setVelocitiesOblique(oblique_dir, dir_magnitude);
         break;
