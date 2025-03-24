@@ -67,7 +67,7 @@ BotThreadedSim::~BotThreadedSim(){
 void BotThreadedSim::pullDynamicStates(rai::Configuration& C){
   auto mux = stepMutex(RAI_HERE);
   for(rai::Frame *f:C.frames){
-    if(f->inertia && f->inertia->type==rai::BT_dynamic){
+    if(f->inertia && !f->parent){ //inertia->type==rai::BT_dynamic){
       f->set_X() = simConfig.frames(f->ID)->ensure_X(); //THIS IS DEBATABLE! In the real world, one could not just sync with the true state of all dynamic objects... so simulation should also not..?
     }
     if(f->joint && !f->joint->active && f->joint->dim==1){ //gripper?
