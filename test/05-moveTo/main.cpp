@@ -103,7 +103,7 @@ void test_withoutBotWrapper() {
   sp->report(ctrlTime);
 
   rai::wait(.1);
-  C.viewer()->_resetPressedKey();
+  C.get_viewer()->_resetPressedKey();
   for(;;){
     if(C.view(false, STRING("time: "<<robot->state.get()->ctrlTime))=='q') break;
     C.setJointState(robot->state.get()->q);

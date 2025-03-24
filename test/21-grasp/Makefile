@@ -1,7 +1,9 @@
-BASE = ../../../botop/rai
-BASE2 = ../../../botop/src
+BASE = ../../rai
+BASE2 = ../..
 
 OPENCV4 = 1
+
+CMAKE = 1
 
 include $(BASE)/_make/generic.mk
 

@@ -4,6 +4,7 @@
 #include <Kin/F_qFeatures.h>
 #include <KOMO/komo.h>
 #include <KOMO/manipTools.h>
+#include <KOMO/skeletonSymbol.h>
 
 //===========================================================================
 
@@ -165,7 +166,7 @@ void addBoxPlaceObjectives_botop(KOMO& komo, double time, rai::ArgWord dir, cons
 }
 
 
-arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, rai::ArgWord placeDirection, const char* boxName, const char* gripperName, const char* palmName, const char* tableName, const arr& qHome) {
+arr getBoxPnpKeyframes(const rai::Configuration& C, str pickDirection, str placeDirection, const char* boxName, const char* gripperName, const char* palmName, const char* tableName, const arr& qHome) {
   arr q0 = C.getJointState();
 
   KOMO komo;
@@ -189,11 +190,20 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, 
 
   //-- pick
   komo.addModeSwitch({1.,2.}, rai::SY_stable, {gripperName, boxName}, true);
-  addBoxPickObjectives(komo, 1., pickDirection, boxName, boxSize, gripperName, palmName, tableName);
+
+  {
+    ManipulationModelling manip(shared_ptr<KOMO>(&komo, [](KOMO*) -> void{}));
+    manip.grasp_box(1., gripperName, boxName, palmName, pickDirection);
+  }
+//  addBoxPickObjectives(komo, 1., pickDirection, boxName, boxSize, gripperName, palmName, tableName);
 
   //-- place
   komo.addModeSwitch({2.,-1.}, rai::SY_stable, {"table", boxName}, false);
-  addBoxPlaceObjectives(komo, 2., placeDirection, boxName, boxSize, tableName, gripperName, palmName);
+  {
+    ManipulationModelling manip(shared_ptr<KOMO>(&komo, [](KOMO*) -> void{}));
+    manip.place_box(1., boxName, tableName, palmName, placeDirection);
+  }
+//  addBoxPlaceObjectives(komo, 2., placeDirection, boxName, boxSize, tableName, gripperName, palmName);
 
   // explicit collision avoidances
   //  for(const Avoid& a:avoids){
@@ -215,10 +225,10 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, 
     else komo.initWithConstant(q0);
 
     //optimize
-    komo.optimize(.01*trial, rai::OptOptions().set_stopTolerance(1e-3)); //trial=0 -> no noise!
+    auto ret = komo.optimize(.01*trial, -1, rai::OptOptions().set_stopTolerance(1e-3)); //trial=0 -> no noise!
 
     //is feasible?
-    feasible=komo.sos<50. && komo.ineq<.1 && komo.eq<.1;
+    feasible=ret->sos<50. && ret->ineq<.1 && ret->eq<.1;
 
     //if not feasible -> add explicit collision pairs (from proxies presently in komo.pathConfig)
     if(!feasible){
@@ -230,7 +240,7 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, 
       }
     }
 
-    cout <<"  seq  trial " <<trial <<(feasible?" good":" FAIL") <<" -- time:" <<komo.timeTotal <<"\t sos:" <<komo.sos <<"\t ineq:" <<komo.ineq <<"\t eq:" <<komo.eq <<endl;
+    cout <<"  seq  trial " <<trial <<(feasible?" good":" FAIL") <<" -- time:" <<komo.timeTotal <<"\t sos:" <<ret->sos <<"\t ineq:" <<ret->ineq <<"\t eq:" <<ret->eq <<endl;
     if(feasible) break;
   }
 
@@ -244,8 +254,8 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, rai::ArgWord pickDirection, 
 
 arr getBoxPnpKeyframes_new(rai::Configuration& C, str graspDirection, str placeDirection, str box, str gripper, str palm, str table, const arr& qHome) {
   auto info = STRING("grasp " <<graspDirection <<" place " <<placeDirection);
-  ManipulationModelling M(C, info);
-  M.setup_pick_and_place_waypoints(gripper, box, 1e-1, 1e-1);
+  ManipulationModelling M(info);
+  M.setup_pick_and_place_waypoints(C, gripper, box, 1e-1, 1e-1);
   M.grasp_box(1., gripper, box, palm, graspDirection, .03);
   M.place_box(2., box, table, palm, placeDirection);
 //  M.target_relative_xy_position(2., box, table, arr{.2, .2});

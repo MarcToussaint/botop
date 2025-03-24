@@ -25,7 +25,7 @@ void poseFilter(rai::Transformation& X, double alpha, const rai::Transformation&
 //      return;
     }
     X.pos = alpha*X.pos + (1.-alpha)*signal.pos;
-    X.rot.setInterpolate(1.-alpha, X.rot, signal.rot);
+    X.rot.setInterpolateEmbedded(1.-alpha, X.rot, signal.rot);
   }else{
     X = signal;
   }

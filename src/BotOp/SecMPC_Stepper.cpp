@@ -6,7 +6,7 @@
 #include <OptiTrack/optitrack.h>
 #include <Gui/opengl.h>
 #include <Kin/viewer.h>
-
+#include <Kin/frame.h>
 
 bool SecMPC_Stepper::step(rai::Configuration& C, BotOp& bot, SecMPC& mpc, bool doNotExecute){
   stepCount++;
@@ -89,9 +89,9 @@ void setCamera(OpenGL& gl, rai::Frame* camF){
 
 SecMPC_Viewer::SecMPC_Viewer(const rai::Configuration& _C)
   : C(_C){
-  C.gl().clear();
-  C.gl().add(glStandardLight);
-  C.gl().add(*this);
+//  C.gl().clear();
+//  C.gl().add(glStandardLight);
+//  C.gl().add(*this);
   if(C["camera_gl"]) setCamera(C.gl(), C["camera_gl"]);
 }
 
@@ -117,12 +117,12 @@ void SecMPC_Viewer::glDraw(OpenGL& gl){
 //  C.glDraw(gl);
 
   //waypoints
-  double a = .6/(waypoints.d0-1);
+  //double a = .6/(waypoints.d0-1);
   gl.drawOptions.drawColors=false;
   for(uint t=0;t<waypoints.d0;t++){
-    glColor(1., 1.-a*t, .4+a*t);
+//    glColor(1., 1.-a*t, .4+a*t);
     C.setJointState(waypoints[t]);
-    C.glDraw(gl);
+    NIY //C.glDraw(gl);
   }
 
   //shortPath
@@ -136,12 +136,12 @@ void SecMPC_Viewer::glDraw(OpenGL& gl){
   //text
   rai::String text;
   text <<"phase: " <<phase <<" ctrlTime:" <<ctrlTime <<"\ntau: " <<tau;
-  glColor(.2,.2,.2,.5);
+  NIY; //glColor(.2,.2,.2,.5);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   glMatrixMode(GL_MODELVIEW);
   glOrtho(0., (double)gl.width, (double)gl.height, .0, -1., 1.);
-  glDrawText(text, 20, +20, 0, true);
+  NIY; //glDrawText(text, 20, +20, 0, true);
 }
 
 //===========================================================================
@@ -154,7 +154,7 @@ void playLog(const rai::String& logfile){
   OpenGL gl;
 
   SecMPC_Viewer viewer(C);
-  gl.add(viewer);
+  NIY; //gl.add(viewer);
 
   ifstream fil(logfile);
   for(uint k=1;;k++){

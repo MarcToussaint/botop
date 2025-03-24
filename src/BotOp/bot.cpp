@@ -203,7 +203,7 @@ arr BotOp::get_tauExternal(){
   return tau;
 }
 
-int BotOp::sync(rai::Configuration& C, double waitTime){
+int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
   //update q state
   C.setJointState(state.get()->q);
 
@@ -219,10 +219,10 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
   if(simthread) simthread->pullDynamicStates(C);
 
   //gui
-  if(rai::getParameter<bool>("bot/raiseWindow",false)) C.viewer()->raiseWindow();
+  if(rai::getParameter<bool>("bot/raiseWindow",false)) C.get_viewer()->raiseWindow();
   double ctrlTime = get_t();
-  keypressed = C.view(false, STRING("BotOp sync ctrl time: "<<ctrlTime <<" (=" <<int(100.*ctrlTime/(rai::realTime()-startRealTime)) <<"% real time)"));
-  if(keypressed) C.viewer()->_resetPressedKey();
+  keypressed = C.view(false, STRING("BotOp sync ctrl time: "<<ctrlTime <<" (=" <<int(100.*ctrlTime/(rai::realTime()-startRealTime)) <<"% real time)\n" <<viewMsg));
+  if(keypressed) C.get_viewer()->_resetPressedKey();
 //  if(keypressed==13) return false;
 //  if(keypressed=='q' || keypressed==27) return false;
 //  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
@@ -232,8 +232,8 @@ int BotOp::sync(rai::Configuration& C, double waitTime){
 }
 
 int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd, bool forGripper){
-  C.viewer()->raiseWindow();
-  C.viewer()->_resetPressedKey();
+  C.get_viewer()->raiseWindow();
+  C.get_viewer()->_resetPressedKey();
   for(;;){
     sync(C, .1);
     //if(keypressed=='q') return keypressed;
@@ -440,13 +440,13 @@ void BotOp::getImageDepthPcl(byteA& image, floatA& depth, arr& points, const cha
 }
 
 void BotOp::home(rai::Configuration& C){
-  C.viewer()->raiseWindow();
+  C.get_viewer()->raiseWindow();
   moveTo(qHome, 1., true);
   wait(C);
 }
 
 void BotOp::stop(rai::Configuration& C){
-  C.viewer()->raiseWindow();
+  C.get_viewer()->raiseWindow();
   moveTo(get_q(), .01, true);
   wait(C);
 }

@@ -22,7 +22,7 @@ struct SecMPC_Stepper{
 
 //===========================================================================
 
-struct SecMPC_Viewer : GLDrawer {
+struct SecMPC_Viewer {
   uint stepCount, phase;
   double ctrlTime;
   arr q_real, waypoints, tau, shortPath, poses;
