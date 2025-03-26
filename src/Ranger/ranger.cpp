@@ -25,13 +25,17 @@ struct RangerController
   int socket_fd;
   int mode; // 0: Oblique, 1: Spin, 2: Ackermann
   arr qLast, sLast; //q: joint state; s: motor state
-  double actual_steering_rad;
+  double real_steering_rad;
+  double real_steering_rad_s;
+  double target_steering_rad_s;
 
   RangerController(const char* address)
   {
     mode = 0;
     qLast = zeros(3);
-    actual_steering_rad = 0.0; // CAREFULL!! Only updates when you call "get_qDot_oblique".
+    real_steering_rad = 0.0; // CAREFULL!! Only updates when you call "get_qDot_oblique".
+    real_steering_rad_s = 0.0; // CAREFULL!! Only updates when you call "get_qDot_oblique".
+    target_steering_rad_s = 0.0; // CAREFULL!! Only updates when you call "setVelocities".
     // sLast = zeros(8); // (FL, FR, BL, BR) Angle, (FL, FR, BL, BR) Wheel
     sLast = zeros(4); // FL, FR, BL, BR
 
@@ -136,24 +140,53 @@ struct RangerController
     int16_t actual_steering_angle = (recv_frame.data[6] << 8) | recv_frame.data[7];
 
     double actual_speed_mps = actual_speed / 1000.0; // Convert mm/s to m/s
-    actual_steering_rad = actual_steering_angle / 1000.0; // Convert mrad to rad
+    real_steering_rad = actual_steering_angle / 1000.0; // Convert mrad to rad
+    real_steering_rad_s = real_steering_rad;
     #if DEBUG
-      std::cout << "Actual Steering Angle before: " << actual_steering_rad << " rad" << std::endl;
+      std::cout << "Actual Steering Angle before: " << real_steering_rad << " rad" << std::endl;
     #endif
 
-    actual_steering_rad *= -1;
+    real_steering_rad *= -1;
     if (actual_speed_mps < 0) { // Lower side
-      actual_steering_rad += PI;
+      real_steering_rad += PI;
     }
 
     // Compute X-Y velocity components
-    double angle = actual_steering_rad - qLast.elem(2);
+    double angle = real_steering_rad - qLast.elem(2);
     double velocity_x = actual_speed_mps *  cos(angle);
     double velocity_y = actual_speed_mps * -sin(angle);
 
     #if DEBUG
       std::cout << "Actual Linear Speed: " << actual_speed_mps << " m/s" << std::endl;
-      std::cout << "Actual Steering Angle: " << actual_steering_rad << " rad" << std::endl;
+      std::cout << "Actual Steering Angle: " << real_steering_rad << " rad" << std::endl;
+      std::cout << "qLast.z: " << qLast.elem(2) << " rad" << std::endl;
+      std::cout << "Velocity X: " << velocity_x << " m/s, Velocity Y: " << velocity_y << " m/s" << std::endl;
+      std::cout << "---------------------------------" << std::endl;
+    #endif
+
+    return arr{velocity_x, velocity_y, 0.};
+  }
+
+  arr get_qDot_ackerman()
+  {
+    struct can_frame recv_frame = recv_package(0x221);
+    
+    // Extract actual speed and steering angle
+    int16_t actual_speed = (recv_frame.data[0] << 8) | recv_frame.data[1];
+    int16_t actual_steering_angle = (recv_frame.data[6] << 8) | recv_frame.data[7];
+
+    double actual_speed_mps = actual_speed / 1000.0;
+    real_steering_rad = actual_steering_angle / 1000.0;
+
+    // Compute X-Y velocity components
+    double angle = real_steering_rad - qLast.elem(2);
+    double velocity_x = actual_speed_mps *  cos(real_steering_rad);
+    double velocity_y = actual_speed_mps * -sin(real_steering_rad);
+    double velocity_phi = 
+
+    #if DEBUG
+      std::cout << "Actual Linear Speed: " << actual_speed_mps << " m/s" << std::endl;
+      std::cout << "Actual Steering Angle: " << real_steering_rad << " rad" << std::endl;
       std::cout << "qLast.z: " << qLast.elem(2) << " rad" << std::endl;
       std::cout << "Velocity X: " << velocity_x << " m/s, Velocity Y: " << velocity_y << " m/s" << std::endl;
       std::cout << "---------------------------------" << std::endl;
@@ -219,16 +252,32 @@ struct RangerController
      
       case 0: {
         // Oblique mode
+        qDot = get_qDot_oblique();
         double mean_delta_s = (sDelta.elem(0) +
                                sDelta.elem(1) +
                                sDelta.elem(2) +
                                sDelta.elem(3)) * .25; // m
         mean_delta_s = abs(mean_delta_s);
-        qDot = get_qDot_oblique();
-        double steering_angle = actual_steering_rad - qLast.elem(2);
+        double steering_angle = real_steering_rad - qLast.elem(2);
         double xDelta =  cos(steering_angle) * mean_delta_s;
         double yDelta = -sin(steering_angle) * mean_delta_s;
         qDelta = arr{xDelta, yDelta, 0.};
+        break;
+      }
+
+      case 2: {
+        // Ackerman mode
+        qDot = get_qDot_ackerman();
+        double mean_delta_s = (sDelta.elem(0) +
+                               sDelta.elem(1) +
+                               sDelta.elem(2) +
+                               sDelta.elem(3)) * .25; // m
+        mean_delta_s = abs(mean_delta_s);
+        double steering_angle = real_steering_rad - qLast.elem(2);
+        double xDelta =  cos(steering_angle) * mean_delta_s;
+        double yDelta = -sin(steering_angle) * mean_delta_s;
+        double phiDelta = 0.0;
+        qDelta = arr{xDelta, yDelta, phiDelta};
         break;
       }
 
@@ -268,6 +317,8 @@ struct RangerController
       }
     }
 
+    target_steering_rad_s = dir_angle;
+
     #if DEBUG
       std::cout << "---------- Oblique mode velocities ----------" << std::endl;
       std::cout << "New Mag: " << dir_magnitude << " m/s" << std::endl;
@@ -286,6 +337,56 @@ struct RangerController
     frame_motion.data[5] = 0x00; // Reserved
     frame_motion.data[6] = (steering_angle >> 8) & 0xFF;
     frame_motion.data[7] = steering_angle & 0xFF;
+
+    send_package(frame_motion);
+  }
+
+  void setSteeringAngle(double dir_angle)
+  {
+    struct can_frame frame_motion;
+    frame_motion.can_dlc = 8; // Data length code (number of bytes)
+    frame_motion.can_id = 0x111;
+
+    int16_t linear_speed = 0;
+    int16_t spin_speed = 0;
+    int16_t steering_angle = dir_angle * 1000;  // 0.001 rad
+
+    frame_motion.data[0] = (linear_speed >> 8) & 0xFF;
+    frame_motion.data[1] = linear_speed & 0xFF;
+    frame_motion.data[2] = (spin_speed >> 8) & 0xFF;
+    frame_motion.data[3] = spin_speed & 0xFF;
+    frame_motion.data[4] = 0x00; // Reserved
+    frame_motion.data[5] = 0x00; // Reserved
+    frame_motion.data[6] = (steering_angle >> 8) & 0xFF;
+    frame_motion.data[7] = steering_angle & 0xFF;
+
+    send_package(frame_motion);
+  }
+
+  void setVelocitiesAckerman(double linear_vel, double steering_angle)
+  {
+    struct can_frame frame_motion;
+    frame_motion.can_dlc = 8;
+    frame_motion.can_id = 0x111;
+
+    #if DEBUG
+      std::cout << "---------- Ackerman mode inputs ----------" << std::endl;
+      std::cout << "Linear velocity: " << linear_vel << " m/s" << std::endl;
+      std::cout << "Steering angle: " << steering_angle << " m/s" << std::endl;
+    #endif
+
+    int16_t linear_vel_ = linear_vel * 1000;
+    int16_t spin_speed_ = 0;
+    int16_t steering_angle_ = steering_angle * 1000;
+
+    frame_motion.data[0] = (linear_vel_ >> 8) & 0xFF;
+    frame_motion.data[1] = linear_vel_ & 0xFF;
+    frame_motion.data[2] = (spin_speed_ >> 8) & 0xFF;
+    frame_motion.data[3] = spin_speed_ & 0xFF;
+    frame_motion.data[4] = 0x00; // Reserved
+    frame_motion.data[5] = 0x00; // Reserved
+    frame_motion.data[6] = (steering_angle_ >> 8) & 0xFF;
+    frame_motion.data[7] = steering_angle_ & 0xFF;
 
     send_package(frame_motion);
   }
@@ -342,10 +443,14 @@ struct RangerController
                     abs(qDotTarget.elem(1)) <= thresh &&
                     abs(qDotTarget.elem(2)) <= thresh;
 
+    bool is_ackerman_mode = false;
+
     if (is_spin_mode) {
       mode = 1;
     } else if (is_oblique_mode) {
       mode = 0;
+    } else if (is_ackerman_mode) {
+      mode = 2;
     } else if (is_still) {
       return;
     } else {
@@ -374,27 +479,40 @@ struct RangerController
         }
 
         double dir_magnitude = ::sqrt(::pow(qDotTarget.elem(0), 2) + ::pow(qDotTarget.elem(1), 2));
-        double oblique_dir = ::acos(qDotTarget.elem(0) / dir_magnitude);
+        double target_steering_rad = ::acos(qDotTarget.elem(0) / dir_magnitude);
         if (qDotTarget.elem(1) > 0) {
-          oblique_dir = PI*2-oblique_dir;
+          target_steering_rad = PI*2-target_steering_rad;
         }
 
         // Adjust for current rotation
-        oblique_dir += qLast.elem(2);
+        target_steering_rad += qLast.elem(2);
 
-        if (oblique_dir < 0) {
-          oblique_dir += PI*2;
-        } else if (oblique_dir >= PI*2) {
-          oblique_dir -= PI*2;
+        if (target_steering_rad < 0) {
+          target_steering_rad += PI*2;
+        } else if (target_steering_rad >= PI*2) {
+          target_steering_rad -= PI*2;
         }
 
         #if DEBUG
           std::cout << "qLast.z: " << qLast.elem(2) << " rad" << std::endl;
           std::cout << "Mag: " << dir_magnitude << " m/s" << std::endl;
-          std::cout << "Angle: " << oblique_dir << " rad" << std::endl;
+          std::cout << "Angle: " << target_steering_rad << " rad" << std::endl;
         #endif
 
-        setVelocitiesOblique(oblique_dir, dir_magnitude);
+        setVelocitiesOblique(target_steering_rad, dir_magnitude);
+        break;
+      }
+
+      case 2: {
+        // Ackerman mode
+        if (mode != prev_mode) {
+          set_control_mode(0x00);
+        }
+
+        double linear_vel = sqrt(pow(qDotTarget.elem(0), 2) + pow(qDotTarget.elem(1), 2));
+        double steering_angle = 0.0;
+
+        setVelocitiesAckerman(linear_vel, steering_angle);
         break;
       }
 
@@ -519,10 +637,12 @@ void RangerThread::step(){
       for(uint i=0; i<3; i++) for(uint j=0; j<3; j++) P_compliance(i,j) = cmdGet->P_compliance(qIndices(i), qIndices(j));
     }
   }
-  LOG(0) << "q_real" << q_real;
-  LOG(0) << "qDot_real" << qDot_real;
-  LOG(0) << "q_ref" << q_ref;
-  LOG(0) << "qDot_ref" << qDot_ref;
+  #if DEBUG
+    LOG(0) << "q_real" << q_real;
+    LOG(0) << "qDot_real" << qDot_real;
+    LOG(0) << "q_ref" << q_ref;
+    LOG(0) << "qDot_ref" << qDot_ref;
+  #endif
 
   //-- cap the reference difference
   if(q_ref.N==3){
@@ -531,9 +651,18 @@ void RangerThread::step(){
       arr del = q_ref - q_real;
       err = ::sqrt(scalarProduct(del, P_compliance*del));
     }
-    if(err>.3){ //stall!
+    double steering_error = abs(robot->real_steering_rad_s-robot->target_steering_rad_s);
+    if(err>.3 || steering_error > .1){ //stall!
       state.set()->stall = 2; //no progress in reference time! for at least 2 iterations (to ensure continuous stall with multiple threads)
       cout <<"STALLING - step:" <<steps <<" err: " <<err <<endl;
+      if (steering_error > .1) {
+        robot->setSteeringAngle(robot->target_steering_rad_s);
+        #if DEBUG
+          std::cout << "Stalling due to steering error:" << std::endl;
+          std::cout << "- Real steering rad: " << robot->real_steering_rad_s << std::endl;
+          std::cout << "- Target steering rad: " << robot->target_steering_rad_s << std::endl;
+        #endif
+      }
     }
   }
 
