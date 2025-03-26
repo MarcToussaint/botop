@@ -89,10 +89,10 @@ namespace rai{
 
   void Livox::pull(rai::Configuration& C){
     //-- Update configuration
-    const char* name = "livox_point_cloud";
+    const char* name = "livox_lidar";
     rai::Frame *base = C.getFrame(name, false);
     if(!base){
-      LOG(0) << "Creating new frame 'livox_point_cloud'";
+      LOG(0) << "Creating new frame 'livox_lidar'";
       base = C.addFrame(name);
       base->setColor({0., 1., 0.});
     }
@@ -103,7 +103,9 @@ namespace rai{
   }
 
   void Livox::step(){
-    points = zeros(max_points*3);
+    
+    std::lock_guard<std::mutex> lock(mux);
+
     int counter = 0;
     for (const auto& point : points_message.points) {
       points.elem(counter) = point.x;

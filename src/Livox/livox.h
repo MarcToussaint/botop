@@ -15,26 +15,24 @@ struct PointCloudData {
     int max_points;
 };
 
-namespace rai {
-
-    struct Livox : Thread {
-
-        int max_points;
-        arr points;
-        PointCloudData points_message;
-
+namespace rai
+{
+    struct Livox : Thread
+    {    
         RAI_PARAM("livox/", double, filter, .9)
-
+        
         Livox();
         ~Livox();
-
+        
         void pull(rai::Configuration& C);
-
+        
         void step();
-
+        
         private:
             std::mutex mux;
-            std::map<std::string, rai::Transformation> poses;
+            int max_points;
+            arr points;
+            PointCloudData points_message;
     };
 
 } //namespace
