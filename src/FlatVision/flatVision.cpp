@@ -47,10 +47,10 @@ void FlatVisionThread::step(){
   uintA _camCrop = cam_crop.get();
   uint cL = _camCrop(0), cR = _camCrop(1), cT = _camCrop(2), cB = _camCrop(3);
 
-  _cam_color = _cam_color.sub(cT,-cB,cL,-cR,0,-1);
-  _cam_depth = _cam_depth.sub(cT,-cB,cL,-cR);
-  _model_segments = _model_segments.sub(cT,-cB,cL,-cR);
-  _model_depth = _model_depth.sub(cT,-cB,cL,-cR);
+  _cam_color = _cam_color.sub({cT,-cB+1},{cL,-cR+1},{0,-1+1});
+  _cam_depth = _cam_depth.sub({cT,-cB+1},{cL,-cR+1});
+  _model_segments = _model_segments.sub({cT,-cB+1},{cL,-cR+1});
+  _model_depth = _model_depth.sub({cT,-cB+1},{cL,-cR+1});
 
   // TODO this assumes that the calibration was done with the already cropped image!
   // This of course can be fixed easily in the project method, which should get the cropping parameters

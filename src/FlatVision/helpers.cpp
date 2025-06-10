@@ -65,7 +65,7 @@ void recomputeObjMinMaxAvgDepthSize(std::shared_ptr<Object> obj){
   uint indexL = floor(lowerPercentile*(float)depthTmp.N);
   uint indexU = floor(upperPercentile*(float)depthTmp.N);
   if(depthTmp.N) {
-    floatA tmpA = depthTmp.sub(indexL, indexU);
+    floatA tmpA = depthTmp.sub({indexL, indexU+1});
     float smallestDepthFiltered = sum(tmpA)/float(tmpA.N);
     obj->depth_minFiltered = smallestDepthFiltered;
   } else {

@@ -127,8 +127,8 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     audio = make_shared<rai::Sound>();
   }
 
-  C.gl().setTitle("BotOp associated Configuration");
   C.view(false, STRING("time: 0"));
+  C.gl().setTitle("BotOp associated Configuration");
 }
 
 BotOp::~BotOp(){
@@ -221,16 +221,17 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
   return keypressed;
 }
 
-int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd, bool forGripper){
+int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd, bool forGripper, double syncFrequency){
   C.get_viewer()->raiseWindow();
   C.get_viewer()->_resetPressedKey();
+  sync(C);
   for(;;){
-    sync(C, .1);
     //if(keypressed=='q') return keypressed;
     if(forKeyPressed && keypressed) return keypressed;
     if(forTimeToEnd && getTimeToEnd()<=0.) return keypressed;
     if(forGripper && gripperDone(rai::_left)) return 'g';
     if(!rai::getInteractivity() && !forTimeToEnd && forKeyPressed) return ' ';
+    sync(C, syncFrequency);
   }
 }
 
@@ -298,13 +299,13 @@ void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, dou
     arr tauInitial = {};
     if(!optTau) tauInitial = differencing(_times);
     TimingProblem timingProblem(path, {}, q, qDot, 1., 1., optTau, false, {}, tauInitial);
-    NLP_Solver solver;
+    rai::NLP_Solver solver;
     solver
         .setProblem(timingProblem.ptr())
-        .setSolver(NLPS_newton);
+        .setSolver(rai::M_newton);
     solver.opt
         .set_stopTolerance(1e-4)
-        .set_maxStep(1e0)
+        .set_stepMax(1e0)
         .set_damping(1e-2);
     auto ret = solver.solve();
     //LOG(1) <<"timing f: " <<ret->f;
@@ -465,6 +466,22 @@ void BotOp::hold(bool floating, bool damping){
 void BotOp::sound(int noteRelToC, float a, float decay){
   if(audio){
     audio->addNote(noteRelToC, a, decay);
+  }
+}
+
+void BotOp::attach(str gripper, str obj) {
+  if(!simthread){
+    LOG(-1) <<"attach only works in sim";
+  }else{
+    simthread->attach(gripper, obj);
+  }
+}
+
+void BotOp::detach(str obj){
+  if(!simthread){
+    LOG(-1) <<"attach only works in sim";
+  }else{
+    simthread->detach(obj);
   }
 }
 

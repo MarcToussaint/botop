@@ -168,8 +168,8 @@ double CameraCalibration::computeError(const arr &X, const arr &x, const arr &PI
 
 arr CameraCalibration::extractPixelCoordinate(const byteA& _rgb, const floatA& _depth, const arr& hsvFilter, bool blurring) {
   uint cL = cameraCrop(0), cR = cameraCrop(1), cT = cameraCrop(2), cB = cameraCrop(3);
-  byteA rgbTmp = _rgb.sub(cT,-cB,cL,-cR,0,-1);
-  floatA depthTmp = _depth.sub(cT,-cB,cL,-cR);
+  byteA rgbTmp = _rgb.sub({cT,-cB+1},{cL,-cR+1},{0,-1+1});
+  floatA depthTmp = _depth.sub({cT,-cB+1},{cL,-cR+1});
 
   cv::Mat rgb = CV(rgbTmp).clone();
   cv::Mat depth = CV(depthTmp).clone();

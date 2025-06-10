@@ -6,6 +6,8 @@
 
 #include <KOMO/komo.h>
 
+#include <Optim/NLP.h>
+
 #include <iomanip>
 
 //===========================================================================
@@ -218,7 +220,7 @@ void makeRndScene(){
 
   rai::Simulation S(C, S._physx, 2);
 //  rai::Simulation S(C, S._physx);
-  S.cameraview().addSensor("camera");
+  S.cameraview().addSensor(C.getFrame("camera"));
 
   byteA rgb;
   floatA depth;
@@ -249,7 +251,7 @@ void testFriction(){
     obj->setShape(rai::ST_ssBox, size);
     obj->setPosition({(i-5)*.2,0.,1.});
     obj->setMass(.2);
-    obj->addAttribute("friction", .01*i);
+    obj->setAttribute("friction", .01*i);
   }
 
   for(int i=0;i<10;i++){
@@ -260,17 +262,17 @@ void testFriction(){
     obj->setMass(.2);
 //    obj->addAttribute("restitution", 10.);
 //    obj->addAttribute("friction", .0*i);
-    obj->addAttribute("angularDamping", 1.*i);
+    obj->setAttribute("angularDamping", 1.*i);
   }
 
   C.addFile("../../rai-robotModels/scenarios/pandasTable.g");
 
   C["table"]->setQuaternion({1.,-.1,0.,0.}); //tilt the table!!
-  C["table"]->addAttribute("friction", .5);
+  C["table"]->setAttribute("friction", .5);
 //  C["table"]->addAttribute("restitution", 10.);
 
   rai::Simulation S(C, S._physx, 2);
-  S.cameraview().addSensor("camera");
+  S.cameraview().addSensor(C.getFrame("camera"));
 
   double tau=.01;
   Metronome tic(tau);
@@ -360,7 +362,7 @@ void testNoPenetrationImp(){
   C0.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable.g"));
   rai::Frame* stick = C0.addFrame("stick");
   stick->setShape(rai::ST_capsule, {0.5, 0.025});
-  stick->setPosition({0,0,.63}).set_X()->addRelativeRotationDeg(90.,0,1,0);
+  stick->setPosition({0,0,.63}).set_X()->appendRelativeRotationDeg(90.,0,1,0);
   stick->setContact(1);
   stick->setMass(0.1);
 

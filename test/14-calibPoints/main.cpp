@@ -279,7 +279,7 @@ void komoCalibrate(){
 
   //setup KOMO, one slice for each datapoint
   KOMO komo(C, data.N, 1, 0, false);
-  komo.setupPathConfig();
+  //komo.setupPathConfig();0
   komo.addQuaternionNorms();
 
   //add objectives for each data point

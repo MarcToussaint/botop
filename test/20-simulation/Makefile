@@ -1,3 +1,3 @@
-BASE = ../../../rai
+BASE = ../../rai
 
 include $(BASE)/_make/generic.mk

@@ -10,7 +10,7 @@ void makeHomogeneousImageCoordinate(arr& u){
 
 void decomposeInvProjectionMatrix(arr& K, arr& R, arr& t, const arr& P){
   t = P.col(3); t.resizeCopy(3);
-  arr KRt = inverse(P.sub(0,2,0,2));
+  arr KRt = inverse(P.sub({0,2+1},{0,2+1}));
   lapack_RQ(K, R, KRt);
   //cout <<"K*R" <<K*R <<"\nKR:" <<KRt <<endl;
   transpose(R);

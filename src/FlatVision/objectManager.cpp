@@ -223,8 +223,8 @@ void ObjectManager::adaptFlatObjects(byteA& pixelLabels,
       arr v2 = projectPointFromCameraToWorld(ARR(obj->rotatedBBox(4), obj->rotatedBBox(5), obj->depth_avg), cam_PInv);
       arr v3 = projectPointFromCameraToWorld(ARR(obj->rotatedBBox(6), obj->rotatedBBox(7), obj->depth_avg), cam_PInv);
 
-      double h = length(v1.sub(0,1)-v2.sub(0,1));
-      double w = length(v2.sub(0,1)-v3.sub(0,1));
+      double h = length(v1.sub({0,1+1})-v2.sub({0,1+1}));
+      double w = length(v2.sub({0,1+1})-v3.sub({0,1+1}));
 
       double rotDeg = -obj->rotatedBBox(8);
 

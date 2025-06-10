@@ -8,7 +8,7 @@ if(NOT DEFINED CMAKE_CACHE_MAJOR_VERSION)
 endif()
 
 ## variable default values
-set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ version selection")
+set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ version selection")
 set(PY_VERSION 3.12 CACHE STRING "python version")
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local" CACHE PATH "..." FORCE)
@@ -40,7 +40,7 @@ option(MODULE_Vive "compile the ViveController module" OFF)
 ## compile options
 add_compile_options(
   -O3 -g -Wall -Wpedantic -fPIC
-  $<$<COMPILE_LANGUAGE:CXX>:-std=c++14>
+  $<$<COMPILE_LANGUAGE:CXX>:-std=c++17>
   $<$<COMPILE_LANGUAGE:CXX>:-Wno-terminate>
   $<$<COMPILE_LANGUAGE:CXX>:-Wno-array-bounds>
   )
@@ -74,12 +74,12 @@ link_directories(
   $ENV{HOME}/.local/lib
   )
 
-if(USE_PHYSX)
-  link_directories($ENV{HOME}/.local/lib/PhysX)
-endif()
-
 if(USE_H5)
   link_directories(/usr/lib/x86_64-linux-gnu/hdf5/serial)
+endif()
+
+if(USE_PHYSX)
+  link_directories($ENV{HOME}/.local/lib/PhysX)
 endif()
 
 file(GLOB SRC_GeoGJK rai/src/Geo/GJK/*.c)
@@ -217,12 +217,12 @@ endif()
 target_link_libraries(rai
   # ORDER MATTERS! test with -no-undefined linker flag (above)
   lapack blas
-  glfw GLEW glut GLU GL
-  jsoncpp png assimp
+  glfw GLEW glut Xrandr Xxf86vm Xi GLU GL
+  jsoncpp png assimp z
   fcl ccd ANN qhull
   portaudio
   hidapi-hidraw
-  boost_system pthread rt X11
+  boost_system pthread rt X11 dl
   )
 
 ################################################################################
@@ -249,11 +249,10 @@ if(USE_PYBIND)
 endif()
 
 ################################################################################
-#
-# verbosity: info on eventual compiler flags
 
 get_property(_defs DIRECTORY PROPERTY COMPILE_DEFINITIONS)
 message(STATUS "[rai] compiler flags: " "${_defs}")
+message(STATUS "[rai] source dir: " "${CMAKE_SOURCE_DIR}")
 
 ################################################################################
 
