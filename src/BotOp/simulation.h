@@ -30,6 +30,16 @@ protected:
 
   void step();
 
+  void attach(str gripper, str obj){
+    CHECK(sim, "");
+    sim->attach(simConfig.getFrame(gripper), simConfig.getFrame(obj));
+  }
+  void detach(str obj){
+    CHECK(sim, "");
+    sim->detach(simConfig.getFrame(obj));
+  }
+
+  friend struct BotOp;
   friend struct GripperSim;
   friend struct CameraSim;
 };

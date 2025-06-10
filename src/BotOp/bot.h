@@ -79,6 +79,10 @@ struct BotOp{
   //-- audio
   void sound(int noteRelToC=0, float a=.5, float decay=0.0007);
 
+  //-- cheating in sim
+  void attach(str gripper, str obj);
+  void detach(str obj);
+
 private:
   std::shared_ptr<rai::CameraAbstraction>& getCamera(const char* sensor);
   template<class T> BotOp& setReference();

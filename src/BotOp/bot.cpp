@@ -127,8 +127,8 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     audio = make_shared<rai::Sound>();
   }
 
-  C.gl().setTitle("BotOp associated Configuration");
   C.view(false, STRING("time: 0"));
+  C.gl().setTitle("BotOp associated Configuration");
 }
 
 BotOp::~BotOp(){
@@ -466,6 +466,22 @@ void BotOp::hold(bool floating, bool damping){
 void BotOp::sound(int noteRelToC, float a, float decay){
   if(audio){
     audio->addNote(noteRelToC, a, decay);
+  }
+}
+
+void BotOp::attach(str gripper, str obj) {
+  if(!simthread){
+    LOG(-1) <<"attach only works in sim";
+  }else{
+    simthread->attach(gripper, obj);
+  }
+}
+
+void BotOp::detach(str obj){
+  if(!simthread){
+    LOG(-1) <<"attach only works in sim";
+  }else{
+    simthread->detach(obj);
   }
 }
 
