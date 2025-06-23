@@ -469,19 +469,19 @@ void BotOp::sound(int noteRelToC, float a, float decay){
   }
 }
 
-void BotOp::attach(str gripper, str obj) {
+void BotOp::attach(str from, str to) {
   if(!simthread){
     LOG(-1) <<"attach only works in sim";
   }else{
-    simthread->attach(gripper, obj);
+    simthread->attach(from, to);
   }
 }
 
-void BotOp::detach(str obj){
+void BotOp::detach(str from, str to){
   if(!simthread){
     LOG(-1) <<"attach only works in sim";
   }else{
-    simthread->detach(obj);
+    simthread->detach(from, to);
   }
 }
 

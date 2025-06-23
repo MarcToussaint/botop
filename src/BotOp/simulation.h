@@ -30,13 +30,13 @@ protected:
 
   void step();
 
-  void attach(str gripper, str obj){
+  void attach(str from, str to){
     CHECK(sim, "");
-    sim->attach(simConfig.getFrame(gripper), simConfig.getFrame(obj));
+    sim->attach(simConfig.getFrame(from), simConfig.getFrame(to));
   }
-  void detach(str obj){
+  void detach(str from, str to){
     CHECK(sim, "");
-    sim->detach(simConfig.getFrame(obj));
+    sim->detach(simConfig.getFrame(from), simConfig.getFrame(to));
   }
 
   friend struct BotOp;

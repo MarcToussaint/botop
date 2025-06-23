@@ -166,8 +166,8 @@ void init_BotOp(pybind11::module& m) {
        pybind11::arg("floating") = false,
        pybind11::arg("damping") = true)
 
-  .def("attach", &BotOp::attach, "cheating: attach two objects kinematically", pybind11::arg("gripper"), pybind11::arg("obj"))
-  .def("detach", &BotOp::detach, "cheating: detach two previously attached objects", pybind11::arg("obj"))
+  .def("attach", &BotOp::attach, "cheating: attach two objects kinematically", pybind11::arg("from"), pybind11::arg("to"))
+  .def("detach", &BotOp::detach, "cheating: detach two previously attached objects", pybind11::arg("from"), pybind11::arg("to"))
 
   ;
 
