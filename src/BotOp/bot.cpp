@@ -13,6 +13,7 @@
 #include <Franka/FrankaGripper.h>
 #include "simulation.h"
 #include <Omnibase/omnibase.h>
+#include <Ranger/ranger.h>
 #include <Robotiq/RobotiqGripper.h>
 #include <OptiTrack/optitrack.h>
 #include <RealSense/RealSenseThread.h>
@@ -91,6 +92,15 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       }
     } catch(const std::exception& ex) {
       LOG(-1) <<"Starting the omnibase failed! Error msg: " <<ex.what();
+    }
+
+    try{
+      if(C.getFrame("ranger_world", false)){
+        LOG(0) <<"CONNECTING TO RANGER";
+        robotL = make_shared<RangerThread>(robotID++, uintA{0,1,2}, cmd, state);
+      }
+    } catch(const std::exception& ex) {
+      LOG(-1) <<"Starting the ranger failed! Error msg: " <<ex.what();
     }
 
   }else{
