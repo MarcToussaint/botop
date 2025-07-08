@@ -48,7 +48,6 @@ void PointCloudCallback(uint32_t handle, const uint8_t dev_type, LivoxLidarEther
         // Add the point to the vector in the struct
         pcData->points.push_back(point);
       }
-
     }
   }
   else if (data->data_type == kLivoxLidarCartesianCoordinateLowData) {

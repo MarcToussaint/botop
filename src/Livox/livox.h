@@ -28,11 +28,11 @@ namespace rai
         
         void step();
         
+        PointCloudData points_message;
         private:
             std::mutex mux;
             int max_points;
             arr points;
-            PointCloudData points_message;
     };
 
 } //namespace

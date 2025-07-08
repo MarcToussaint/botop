@@ -4,10 +4,14 @@
 #ifdef RAI_SLAM
 
 #include <Kin/frame.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
 
 
 const char* slam_base_frame_name = "slam_graph_base";
 const char* mobile_base_frame = "ranger_coll";
+const char* point_cloud_frame_name = "livox_lidar";
+
 
 void set_new_node_frame(rai::Configuration& C, int node_id)
 {
@@ -22,6 +26,29 @@ void set_new_node_frame(rai::Configuration& C, int node_id)
   new_node_frame->setColor({.0, .0, .7});
   new_pose.elem(2) += .75;
   new_node_frame->setPose(new_pose);
+}
+
+void store_point_cloud(rai::Configuration& C, int node_id)
+{
+  rai::Frame *point_cloud_frame = C.getFrame(point_cloud_frame_name);
+  arr pc = point_cloud_frame->getMeshPoints();
+
+  cout << pc << endl;
+  PointCloud<PointXYZ>::Ptr cloud(new PointCloud<PointXYZ>());
+
+  int point_len = pc.N / 3;
+  for (int i = 0; i < point_len; i++) {
+    cloud->points.push_back(PointXYZ(point1[0], point1[1], point1[2]));
+  }
+
+  // Step 3: Save the PointCloud to a PCD file
+  const std::string intials = "pgo_node";
+  const std::string file_type = ".pcd";
+  const std::string filename = intials + std::to_string(node_id) + file_type;
+  if (io::savePCDFileASCII(filename, *cloud) == -1) {
+      PCL_ERROR("Couldn't write the PCD file\n");
+      return -1;
+  }
 }
 
 namespace rai{

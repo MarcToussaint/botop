@@ -167,34 +167,6 @@ struct RangerController
     return arr{velocity_x, velocity_y, 0.};
   }
 
-  arr get_qDot_ackerman()
-  {
-    struct can_frame recv_frame = recv_package(0x221);
-    
-    // Extract actual speed and steering angle
-    int16_t actual_speed = (recv_frame.data[0] << 8) | recv_frame.data[1];
-    int16_t actual_steering_angle = (recv_frame.data[6] << 8) | recv_frame.data[7];
-
-    double actual_speed_mps = actual_speed / 1000.0;
-    real_steering_rad = actual_steering_angle / 1000.0;
-
-    // Compute X-Y velocity components
-    double angle = real_steering_rad - qLast.elem(2);
-    double velocity_x = actual_speed_mps *  cos(real_steering_rad);
-    double velocity_y = actual_speed_mps * -sin(real_steering_rad);
-    double velocity_phi = 
-
-    #if DEBUG
-      std::cout << "Actual Linear Speed: " << actual_speed_mps << " m/s" << std::endl;
-      std::cout << "Actual Steering Angle: " << real_steering_rad << " rad" << std::endl;
-      std::cout << "qLast.z: " << qLast.elem(2) << " rad" << std::endl;
-      std::cout << "Velocity X: " << velocity_x << " m/s, Velocity Y: " << velocity_y << " m/s" << std::endl;
-      std::cout << "---------------------------------" << std::endl;
-    #endif
-
-    return arr{velocity_x, velocity_y, 0.};
-  }
-
   arr get_qDot_spin()
   {
     struct can_frame recv_frame = recv_package(0x221);
@@ -267,17 +239,6 @@ struct RangerController
 
       case 2: {
         // Ackerman mode
-        qDot = get_qDot_ackerman();
-        double mean_delta_s = (sDelta.elem(0) +
-                               sDelta.elem(1) +
-                               sDelta.elem(2) +
-                               sDelta.elem(3)) * .25; // m
-        mean_delta_s = abs(mean_delta_s);
-        double steering_angle = real_steering_rad - qLast.elem(2);
-        double xDelta =  cos(steering_angle) * mean_delta_s;
-        double yDelta = -sin(steering_angle) * mean_delta_s;
-        double phiDelta = 0.0;
-        qDelta = arr{xDelta, yDelta, phiDelta};
         break;
       }
 
@@ -359,34 +320,6 @@ struct RangerController
     frame_motion.data[5] = 0x00; // Reserved
     frame_motion.data[6] = (steering_angle >> 8) & 0xFF;
     frame_motion.data[7] = steering_angle & 0xFF;
-
-    send_package(frame_motion);
-  }
-
-  void setVelocitiesAckerman(double linear_vel, double steering_angle)
-  {
-    struct can_frame frame_motion;
-    frame_motion.can_dlc = 8;
-    frame_motion.can_id = 0x111;
-
-    #if DEBUG
-      std::cout << "---------- Ackerman mode inputs ----------" << std::endl;
-      std::cout << "Linear velocity: " << linear_vel << " m/s" << std::endl;
-      std::cout << "Steering angle: " << steering_angle << " m/s" << std::endl;
-    #endif
-
-    int16_t linear_vel_ = linear_vel * 1000;
-    int16_t spin_speed_ = 0;
-    int16_t steering_angle_ = steering_angle * 1000;
-
-    frame_motion.data[0] = (linear_vel_ >> 8) & 0xFF;
-    frame_motion.data[1] = linear_vel_ & 0xFF;
-    frame_motion.data[2] = (spin_speed_ >> 8) & 0xFF;
-    frame_motion.data[3] = spin_speed_ & 0xFF;
-    frame_motion.data[4] = 0x00; // Reserved
-    frame_motion.data[5] = 0x00; // Reserved
-    frame_motion.data[6] = (steering_angle_ >> 8) & 0xFF;
-    frame_motion.data[7] = steering_angle_ & 0xFF;
 
     send_package(frame_motion);
   }
@@ -504,15 +437,6 @@ struct RangerController
       }
 
       case 2: {
-        // Ackerman mode
-        if (mode != prev_mode) {
-          set_control_mode(0x00);
-        }
-
-        double linear_vel = sqrt(pow(qDotTarget.elem(0), 2) + pow(qDotTarget.elem(1), 2));
-        double steering_angle = 0.0;
-
-        setVelocitiesAckerman(linear_vel, steering_angle);
         break;
       }
 
