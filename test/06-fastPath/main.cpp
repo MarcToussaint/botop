@@ -9,7 +9,11 @@ int main(int argc, char * argv[]){
 
   //-- setup a configuration
   rai::Configuration C;
+  if(rai::getParameter<rai::String>("bot/useArm", "left")=="left"){
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+  }else{
+    C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable-calibrated.g"));
+  }
 
   arr path = getLoopPath(C);
 
@@ -45,11 +49,13 @@ int main(int argc, char * argv[]){
         }
       }
     }else{
-      bot.wait(C, false, true);
+      bot.wait(C, true, true);
     }
     if(bot.keypressed=='q' || bot.keypressed==27) break;
   }
   fil.close();
+  bot.home(C);
+  bot.wait(C);
 
   LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
 
