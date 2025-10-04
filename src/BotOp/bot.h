@@ -80,9 +80,8 @@ struct BotOp{
   void sound(int noteRelToC=0, float a=.5, float decay=0.0007);
 
   //-- cheating in sim
-  void attach(str gripper, str obj);
-  void detach(str obj);
-
+  void attach(str from, str to);
+  void detach(str from, str to);
 
 private:
   std::shared_ptr<rai::CameraAbstraction>& getCamera(const char* sensor);

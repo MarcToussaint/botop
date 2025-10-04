@@ -42,12 +42,12 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   if(useRealRobot && useGripper){
     LOG(0) <<"CONNECTING TO GRIPPERS";
     try{
-      if(C.getFrame("l_panda_hand", false) && C.getFrame("r_panda_hand", false)){
+      if(C.getFrame("l_panda_finger_joint1", false) && C.getFrame("r_panda_finger_joint1", false)){
         gripperL = make_shared<FrankaGripper>(0);
         gripperR = make_shared<FrankaGripper>(1);
-      }else if(C.getFrame("l_panda_hand", false)){
+      }else if(C.getFrame("l_panda_finger_joint1", false)){
         gripperL = make_shared<FrankaGripper>(0);
-      }else if(C.getFrame("r_panda_hand", false)){
+      }else if(C.getFrame("r_panda_finger_joint1", false)){
         gripperR = make_shared<FrankaGripper>(1);
 
       }else if(C.getFrame("l_robotiq_base", false) && C.getFrame("r_robotiq_base", false)){
@@ -60,6 +60,10 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       }
     } catch(const std::exception& ex) {
       LOG(-1) <<"Starting the gripper(s) failed! Error msg: " <<ex.what();
+    }
+    
+    if(!gripperL && !gripperR){
+      LOG(0) <<"WARNING: no grippers created (no frames l_panda_finger_joint1 or l_robotiq_base found in config)";
     }
   }
 
@@ -469,19 +473,19 @@ void BotOp::sound(int noteRelToC, float a, float decay){
   }
 }
 
-void BotOp::attach(str gripper, str obj) {
+void BotOp::attach(str from, str to) {
   if(!simthread){
     LOG(-1) <<"attach only works in sim";
   }else{
-    simthread->attach(gripper, obj);
+    simthread->attach(from, to);
   }
 }
 
-void BotOp::detach(str obj){
+void BotOp::detach(str from, str to){
   if(!simthread){
     LOG(-1) <<"attach only works in sim";
   }else{
-    simthread->detach(obj);
+    simthread->detach(from, to);
   }
 }
 

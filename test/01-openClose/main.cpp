@@ -15,7 +15,7 @@ void testDirect(){
   {
     std::shared_ptr<rai::GripperAbstraction> G_ri;
     if(rai::getParameter<bool>("bot/useRobotiq", true)){
-      G_ri = make_shared<RobotiqGripper>(1);
+      G_ri = make_shared<RobotiqGripper>(0);
     }else{
       G_ri = make_shared<FrankaGripper>(0);
     }

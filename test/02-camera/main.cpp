@@ -1,7 +1,6 @@
 #include <Core/array.h>
 #include <Gui/opengl.h>
 #include <RealSense/RealSenseThread.h>
-//#include <Gui/viewer.h>
 #include <Geo/depth2PointCloud.h>
 #include <Core/thread.h>
 #include <Kin/frame.h>

@@ -165,6 +165,10 @@ void init_BotOp(pybind11::module& m) {
        "hold the robot with a trivial PD controller, floating means reference = real, without damping the robot is free floating",
        pybind11::arg("floating") = false,
        pybind11::arg("damping") = true)
+
+  .def("attach", &BotOp::attach, "cheating: attach two objects kinematically", pybind11::arg("from"), pybind11::arg("to"))
+  .def("detach", &BotOp::detach, "cheating: detach two previously attached objects", pybind11::arg("from"), pybind11::arg("to"))
+
   ;
 
 }
