@@ -306,9 +306,9 @@ void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, dou
     rai::NLP_Solver solver;
     solver
         .setProblem(timingProblem.ptr())
-        .setSolver(rai::M_newton);
+        .setSolver(rai::M_Newton);
     solver.opt
-        .set_stopTolerance(1e-4)
+        ->set_stopTolerance(1e-4)
         .set_stepMax(1e0)
         .set_damping(1e-2);
     auto ret = solver.solve();
