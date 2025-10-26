@@ -3,6 +3,7 @@
 #include <Core/thread.h>
 #include <Control/CtrlMsgs.h>
 #include <Kin/simulation.h>
+#include <Kin/frame.h>
 
 struct BotThreadedSim : rai::RobotAbstraction, Thread {
   BotThreadedSim(const rai::Configuration& _sim_config,
@@ -86,11 +87,11 @@ struct CameraSim : rai::CameraAbstraction {
   virtual arr getFxycxy(){
     auto mux = simthread->stepMutex(RAI_HERE);
     simthread->sim->selectSensor(name);
-    return simthread->sim->cameraview().currentSensor->getFxycxy();
+    return simthread->sim->cameraview().currentCamera->cam.getFxycxy();
   }
   virtual rai::Transformation getPose(){
     auto mux = simthread->stepMutex(RAI_HERE);
     simthread->sim->selectSensor(name);
-    return simthread->sim->cameraview().currentSensor->pose();
+    return simthread->sim->cameraview().currentCamera->frame.ensure_X();
   }
 };
