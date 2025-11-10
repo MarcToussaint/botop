@@ -1,3 +1,4 @@
+#if 0
 #pragma once
 
 #include <Core/array.h>
@@ -13,9 +14,8 @@ struct OmnibaseThread : rai::RobotAbstraction, Thread {
 
 private:
   int robotID=0;
-  double outer_Kp;
-  int Kp, Ki, Kd, KdDelay, KiLimit, Friction; //read from rai.cfg
-  double gear_ratio, center2wheel, wheel_radius //read from rai.cfg
+  double Kp, Kd; //read from rai.cfg
+  arr M_org, friction;
   StringA addresses;
 
   uintA qIndices;
@@ -33,3 +33,5 @@ private:
   void step();
   void close();
 };
+
+#endif
