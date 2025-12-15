@@ -16,7 +16,7 @@
 #include <errno.h>
 #include <sys/ioctl.h>  // Include for ioctl and SIOCGIFINDEX
 #define PI 3.1415926
-#define DEBUG 1
+#define DEBUG 0
 
 // TODO: setLights func in botop (also like flashing lights or so)
 
@@ -262,19 +262,19 @@ struct RangerController
       if (dir_angle > PI) { // Lower left
         dir_angle -= PI;
         dir_angle *=-1;
-        std::cout << "Lower left" << std::endl;
+        // std::cout << "Lower left" << std::endl;
       } else { // Lower right
         dir_angle = PI - dir_angle;
-        std::cout << "Lower right" << std::endl;
+        // std::cout << "Lower right" << std::endl;
       }
       dir_magnitude *= -1;
     } else { // Upper half
       if (dir_angle >= 1.5*PI) { // Upper left
         dir_angle = 2*PI - dir_angle;
-        std::cout << "Upper left" << std::endl;
+        // std::cout << "Upper left" << std::endl;
       } else { // Upper right
         dir_angle *=-1;
-        std::cout << "Upper right" << std::endl;
+        // std::cout << "Upper right" << std::endl;
       }
     }
 
@@ -466,9 +466,9 @@ void RangerThread::init(uint _robotID, const uintA& _qIndices) {
   qIndices_max = rai::max(qIndices);
 
   //-- basic Kp Kd settings for reference control mode
-  Kp = rai::getParameter<arr>("Ranger/Kp", arr{20., 20., 20.});
+  Kp = rai::getParameter<arr>("Ranger/Kp", arr{1., 1., 1.});
   Ki = rai::getParameter<arr>("Ranger/Ki", arr{0., 0., 0.});
-  Kd = rai::getParameter<arr>("Ranger/Kd", arr{10., 10., 10.});
+  Kd = rai::getParameter<arr>("Ranger/Kd", arr{0., 0., 0.});
 
   LOG(0) << "Ranger/PID: Kp:" << Kp << " Ki:" << Ki << " Kd:" << Kd;
 
