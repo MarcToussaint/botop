@@ -16,6 +16,7 @@
 #include <Ranger/ranger.h>
 #include <Robotiq/RobotiqGripper.h>
 #include <OptiTrack/optitrack.h>
+#include <Livox/livox.h>
 #include <RealSense/RealSenseThread.h>
 #ifdef RAI_VIVE
 #  include <ViveController/vivecontroller.h>
@@ -43,12 +44,12 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   if(useRealRobot && useGripper){
     LOG(0) <<"CONNECTING TO GRIPPERS";
     try{
-      if(C.getFrame("l_panda_hand", false) && C.getFrame("r_panda_hand", false)){
+      if(C.getFrame("l_panda_finger_joint1", false) && C.getFrame("r_panda_finger_joint1", false)){
         gripperL = make_shared<FrankaGripper>(0);
         gripperR = make_shared<FrankaGripper>(1);
-      }else if(C.getFrame("l_panda_hand", false)){
+      }else if(C.getFrame("l_panda_finger_joint1", false)){
         gripperL = make_shared<FrankaGripper>(0);
-      }else if(C.getFrame("r_panda_hand", false)){
+      }else if(C.getFrame("r_panda_finger_joint1", false)){
         gripperR = make_shared<FrankaGripper>(1);
 
       }else if(C.getFrame("l_robotiq_base", false) && C.getFrame("r_robotiq_base", false)){
@@ -62,6 +63,10 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     } catch(const std::exception& ex) {
       LOG(-1) <<"Starting the gripper(s) failed! Error msg: " <<ex.what();
     }
+    
+    if(!gripperL && !gripperR){
+      LOG(0) <<"WARNING: no grippers created (no frames l_panda_finger_joint1 or l_robotiq_base found in config)";
+    }
   }
 
   if(useRealRobot){
@@ -72,6 +77,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
         robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
         robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
       } else if(C.getFrame("l_panda_base", false)){
+        std::cout << franka_getJointIndices(C,'l') << std::endl;
         robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
       } else if(C.getFrame("r_panda_base", false)){
         robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
@@ -95,9 +101,9 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     }
 
     try{
-      if(C.getFrame("ranger_world", false)){
+      if(C.getFrame("ranger_base", false)){
         LOG(0) <<"CONNECTING TO RANGER";
-        robotL = make_shared<RangerThread>(robotID++, uintA{0,1,2}, cmd, state);
+        robotR = make_shared<RangerThread>(robotID++, uintA{0,1,2}, cmd, state);
       }
     } catch(const std::exception& ex) {
       LOG(-1) <<"Starting the ranger failed! Error msg: " <<ex.what();
@@ -122,6 +128,13 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     optitrack->pull(C);
   }
 
+  if(rai::getParameter<bool>("bot/useLivox", false)){
+    LOG(0) <<"OPENING LIVOX";
+    if(!useRealRobot) LOG(-1) <<"useLivox with real:false -- that's usually wrong!";
+    livox = make_shared<rai::Livox>();
+    livox->pull(C);
+  }
+
 #ifdef RAI_VIVE
   //-- launch ViveController
   if(rai::getParameter<bool>("bot/useViveController", false)){
@@ -137,8 +150,8 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     audio = make_shared<rai::Sound>();
   }
 
-  C.gl().setTitle("BotOp associated Configuration");
   C.view(false, STRING("time: 0"));
+  C.gl().setTitle("BotOp associated Configuration");
 }
 
 BotOp::~BotOp(){
@@ -209,6 +222,7 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
 
   //update optitrack state
   if(optitrack) optitrack->pull(C);
+  if(livox) livox->pull(C);
 
 #ifdef RAI_VIVE
   //update vivecontroller state
@@ -231,16 +245,17 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
   return keypressed;
 }
 
-int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd, bool forGripper){
+int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd, bool forGripper, double syncFrequency){
   C.get_viewer()->raiseWindow();
   C.get_viewer()->_resetPressedKey();
+  sync(C);
   for(;;){
-    sync(C, .1);
     //if(keypressed=='q') return keypressed;
     if(forKeyPressed && keypressed) return keypressed;
     if(forTimeToEnd && getTimeToEnd()<=0.) return keypressed;
     if(forGripper && gripperDone(rai::_left)) return 'g';
     if(!rai::getInteractivity() && !forTimeToEnd && forKeyPressed) return ' ';
+    sync(C, syncFrequency);
   }
 }
 
@@ -308,13 +323,13 @@ void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, dou
     arr tauInitial = {};
     if(!optTau) tauInitial = differencing(_times);
     TimingProblem timingProblem(path, {}, q, qDot, 1., 1., optTau, false, {}, tauInitial);
-    NLP_Solver solver;
+    rai::NLP_Solver solver;
     solver
         .setProblem(timingProblem.ptr())
-        .setSolver(NLPS_newton);
+        .setSolver(rai::M_Newton);
     solver.opt
-        .set_stopTolerance(1e-4)
-        .set_maxStep(1e0)
+        ->set_stopTolerance(1e-4)
+        .set_stepMax(1e0)
         .set_damping(1e-2);
     auto ret = solver.solve();
     //LOG(1) <<"timing f: " <<ret->f;
@@ -475,6 +490,22 @@ void BotOp::hold(bool floating, bool damping){
 void BotOp::sound(int noteRelToC, float a, float decay){
   if(audio){
     audio->addNote(noteRelToC, a, decay);
+  }
+}
+
+void BotOp::attach(str from, str to) {
+  if(!simthread){
+    LOG(-1) <<"attach only works in sim";
+  }else{
+    simthread->attach(from, to);
+  }
+}
+
+void BotOp::detach(str from, str to){
+  if(!simthread){
+    LOG(-1) <<"attach only works in sim";
+  }else{
+    simthread->detach(from, to);
   }
 }
 

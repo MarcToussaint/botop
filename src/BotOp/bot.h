@@ -7,6 +7,7 @@
 namespace rai{
   struct GripperAbstraction;
   struct OptiTrack;
+  struct Livox;
   struct ViveController;
   struct Sound;
 }
@@ -24,6 +25,7 @@ struct BotOp{
   std::shared_ptr<rai::GripperAbstraction> gripperR;
   std::shared_ptr<rai::ReferenceFeed> ref;
   std::shared_ptr<rai::OptiTrack> optitrack;
+  std::shared_ptr<rai::Livox> livox;
   std::shared_ptr<rai::ViveController> vivecontroller;
   std::shared_ptr<rai::Sound> audio;
   std::shared_ptr<BotThreadedSim> simthread;
@@ -68,8 +70,8 @@ struct BotOp{
   arr  getCameraFxycxy(const char* sensor);
 
   //-- sync the user's C with the robot, update the display, return pressed key
-  int sync(rai::Configuration& C, double waitTime=.1, rai::String viewMsg={});
-  int wait(rai::Configuration& C, bool forKeyPressed=true, bool forTimeToEnd=true, bool forGripper=false);
+  int sync(rai::Configuration& C, double waitTime=.05, rai::String viewMsg={});
+  int wait(rai::Configuration& C, bool forKeyPressed=true, bool forTimeToEnd=true, bool forGripper=false, double syncFrequency=.05);
 
   //-- motion macros
   void home(rai::Configuration& C);
@@ -78,6 +80,10 @@ struct BotOp{
 
   //-- audio
   void sound(int noteRelToC=0, float a=.5, float decay=0.0007);
+
+  //-- cheating in sim
+  void attach(str from, str to);
+  void detach(str from, str to);
 
 private:
   std::shared_ptr<rai::CameraAbstraction>& getCamera(const char* sensor);
