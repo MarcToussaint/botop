@@ -1,4 +1,4 @@
-BASE = ../../../botop/rai
+BASE = ../../../rai
 BASE2 = ../../../botop
 
 DEPEND = KOMO Core Geo Kin Gui Optim
