@@ -34,7 +34,7 @@ bool SecMPC_Stepper::step(rai::Configuration& C, BotOp& bot, SecMPC& mpc, bool d
     mpc.waypointMPC.path.writeTagged(fil, "waypoints", true);
     mpc.timingMPC.tau.writeTagged(fil, "tau", true);
     mpc.shortMPC.path.writeTagged(fil, "shortPath", true);
-    C.getFrameState(logPoses).writeTagged(fil, "poses", true);
+    rai::getFrameState(logPoses).writeTagged(fil, "poses", true);
   }
 
   //-- send spline update
