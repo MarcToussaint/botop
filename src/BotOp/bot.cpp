@@ -349,14 +349,14 @@ void BotOp::moveTo(const arr& q_target, double timeCost, bool overwrite){
   }
 }
 
-ActionObservation BotOp::getActionObservation(){
-  ActionObservation obs;
+StepObservation BotOp::stepObservation(){
+  StepObservation obs;
   getState(obs.qpos, obs.qvel, obs.ctrlTime);
   getReference(obs.qref, NoArr, NoArr, obs.qpos, obs.qvel, obs.ctrlTime);
   return obs;
 }
 
-void BotOp::stepAction(const arr& delta, const ActionObservation& obs, double lambda, double xi, double maxAccel){
+void BotOp::stepAction(const arr& delta, const StepObservation& obs, double lambda, double maxAccel, double xi){
   arr x0 = obs.qref; //reference!!
   arr v0 = obs.qvel; //real!!
   arr accel = (delta-2.*xi*lambda*v0)/(lambda*lambda);

@@ -257,6 +257,8 @@ void FrankaThread::step(){
           if(coeff>1.) coeff=1.;
           if(coeff<-1.) coeff=-1.;
           u.elem(i) += coeff*friction.elem(i);
+//          if(qDot_ref.elem(i)>1e-4) u.elem(i) += friction.elem(i);
+//          if(qDot_ref.elem(i)<-1e-4) u.elem(i) -= friction.elem(i);
         }
       }
 

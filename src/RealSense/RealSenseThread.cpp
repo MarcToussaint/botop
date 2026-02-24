@@ -34,7 +34,8 @@ RealSenseThread::~RealSenseThread(){
 }
 
 void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){
-  uint n=60;
+  uint n=cfg.startupSkipImages;
+  if(!cfg.autoExposure) n=1;
   if(image.getRevision()<n){
     LOG(0) <<"waiting to get " <<n <<" images from RealSense for autoexposure settling";
     image.waitForRevisionGreaterThan(n); //need many starting images for autoexposure to get settled!!
@@ -45,27 +46,21 @@ void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){
 }
 
 void RealSenseThread::open(){
-  bool longCable = rai::getParameter<bool>("RealSense/longCable", false);
-  int resolution = rai::getParameter<int>("RealSense/resolution", 640);
-  bool alignToDepth = rai::getParameter<bool>("RealSense/alignToDepth", true);
-  bool autoExposure = rai::getParameter<bool>("RealSense/autoExposure", true);
-  double exposure = rai::getParameter<double>("RealSense/exposure", 500);
-  double white = rai::getParameter<double>("RealSense/white", 4000);
 
   s = new sRealSenseThread;
 
   s->cfg = std::make_shared<rs2::config>();
-  if(resolution==480){
+  if(cfg.resolution==480){
     s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 424, 240, rs2_format::RS2_FORMAT_RGB8, 0);
     s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 480, 270, rs2_format::RS2_FORMAT_Z16, 15);
-  }else if(resolution==640){
+  }else if(cfg.resolution==640){
     s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 640, 360, rs2_format::RS2_FORMAT_RGB8, 30);
     s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 30);
-  }else if(resolution==1280){
+  }else if(cfg.resolution==1280){
     s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 1280, 720, rs2_format::RS2_FORMAT_RGB8, 30);
     s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 1280, 720, rs2_format::RS2_FORMAT_Z16, 30);
   }else{
-    LOG(-2) <<"RealSense Driver: resolution=" <<resolution <<" option not available (avaiable: 480, 640, 1280)";
+    LOG(-2) <<"RealSense Driver: resolution=" <<cfg.resolution <<" option not available (avaiable: 480, 640, 1280)";
   }
 
   rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
@@ -77,7 +72,7 @@ void RealSenseThread::open(){
   rs2::device dev = profile.get_device();
   for (rs2::sensor& sensor:dev.query_sensors()){
     LOG(1) <<"sensor " <<sensor.get_info(RS2_CAMERA_INFO_NAME);
-    if(!longCable){ //crashes with long cable
+    if(!cfg.longCable){ //crashes with long cable
       for (int i = 0; i < static_cast<int>(RS2_OPTION_COUNT); i++)  {
         rs2_option option_type = static_cast<rs2_option>(i);
         if (sensor.supports(option_type)){
@@ -85,20 +80,20 @@ void RealSenseThread::open(){
         }
       }
     }
-    if(!autoExposure){
+    if(!cfg.autoExposure){
       if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"RGB Camera")){
         if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
           sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
-          sensor.set_option(RS2_OPTION_EXPOSURE, exposure);
+          sensor.set_option(RS2_OPTION_EXPOSURE, cfg.exposure);
           LOG(1) <<"  I disabled auto exposure";
         }
         if(sensor.supports(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE)){
           sensor.set_option(RS2_OPTION_ENABLE_AUTO_WHITE_BALANCE, 0);
-          sensor.set_option(RS2_OPTION_WHITE_BALANCE, white);
+          sensor.set_option(RS2_OPTION_WHITE_BALANCE, cfg.white);
           LOG(1) <<"  I disabled auto white balance";
         }
       }
-      if(false && !longCable){ //auto exposure works pretty bad for depth module //crashes with long cable
+      if(false && !cfg.longCable){ //auto exposure works pretty bad for depth module //crashes with long cable
         if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")){
           if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
             sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 0);
@@ -118,7 +113,7 @@ void RealSenseThread::open(){
           LOG(1) <<"  I enabled auto white balance";
         }
       }
-      if(!longCable){ //crashes with long cable
+      if(!cfg.longCable){ //crashes with long cable
         if(!strcmp(sensor.get_info(RS2_CAMERA_INFO_NAME),"Stereo Module")){
           if(sensor.supports(RS2_OPTION_ENABLE_AUTO_EXPOSURE)){
             sensor.set_option(RS2_OPTION_ENABLE_AUTO_EXPOSURE, 1);
@@ -148,7 +143,7 @@ void RealSenseThread::open(){
   LOG(1) <<"depth scale: " <<s->depth_scale;
 
   //-- align with depth or color?
-  if(alignToDepth){
+  if(cfg.alignToDepth){
     s->align = std::make_shared<rs2::align>(RS2_STREAM_DEPTH);
     fxycxy = depth_fxycxy;
   }else{

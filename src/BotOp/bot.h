@@ -12,7 +12,7 @@ namespace rai{
 }
 struct BotThreadedSim;
 
-struct ActionObservation{
+struct StepObservation{
   double ctrlTime;
   arr qpos;
   arr qvel;
@@ -59,8 +59,8 @@ struct BotOp{
   void move_oldCubic(const arr& path, const arr& times, bool overwrite=false, double overwriteCtrlTime=-1.);
   void moveAutoTimed(const arr& path, double maxVel=1., double maxAcc=1.); //double timeCost);
   void moveTo(const arr& q_target, double timeCost=1., bool overwrite=false);
-  ActionObservation getActionObservation();
-  void stepAction(const arr& delta, const ActionObservation& obs, double lambda, double xi=1., double maxAccel=5.);
+  StepObservation stepObservation();
+  void stepAction(const arr& delta, const StepObservation& obs, double lambda, double maxAccel=5., double xi=1.);
   void setControllerWriteData(int _writeData);
   void setCompliance(const arr& J, double compliance=.5);
 

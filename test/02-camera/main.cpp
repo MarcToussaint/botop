@@ -19,7 +19,6 @@ int testDirect(){
     RS.depth.waitForNextRevision();
     RS.image.waitForNextRevision();
     Depth2PointCloud cvt2pcl(RS.depth, RS.fxycxy(0), RS.fxycxy(1), RS.fxycxy(2), RS.fxycxy(3));
-    PointCloudViewer pcview(cvt2pcl.points, RS.image);
 
     cout <<"Camera fxycxy: " <<RS.fxycxy <<endl;
 
@@ -64,6 +63,33 @@ int testDirect(){
 //===========================================================================
 
 void testBotop(){
+  rai::Configuration C;
+  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+
+  //-- start a robot
+  BotOp bot(C, rai::getParameter<bool>("BotOp/real", false));
+
+  OpenGL gl, gl2;
+  byteA image;
+  floatA depth;
+  arr points;
+  for(uint k=0;k<100;){
+    bot.sync(C, .1);
+    if(bot.keypressed=='q'){ LOG(0) <<"HERE"; break; }
+
+    bot.getImageDepthPcl(image, depth, points, "cameraWrist", false);
+
+    for(float& d:depth) d *= 128.f;
+    int key=0;
+    key |= gl.watchImage(depth, false, 1.);
+    key |= gl2.watchImage(image, false, 1.);
+    if(key=='q') break;
+  }
+}
+
+//===========================================================================
+
+void testBotopPcl(){
   //-- setup a configuration
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
@@ -139,5 +165,6 @@ int main(int argc, char * argv[]){
 
 //  testDirect();
   testBotop();
+//  testBotopPcl();
 //  testMini();
 }
