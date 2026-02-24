@@ -3,7 +3,9 @@
 #include <Franka/help.h>
 #include <Algo/SplineCtrlFeed.h>
 #include <Kin/viewer.h>
-
+#include <Kin/frame.h>
+#include <KOMO/komo.h>
+#include <Optim/NLP_Solver.h>
 #include <BotOp/bot.h>
 
 const char *USAGE =
@@ -15,8 +17,8 @@ const char *USAGE =
 void test_bot() {
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
-  C.view(false);
+  C.addFile("$RAI_PATH/scenarios/pandaSingle.g");
+  C.view(true);
 
   //-- start a robot thread
   BotOp bot(C, rai::getParameter<bool>("real", false));
@@ -114,13 +116,105 @@ void test_withoutBotWrapper() {
 
 //===========================================================================
 
+void test_mini() {
+  rai::Configuration C;
+  C.addFile("$RAI_PATH/scenarios/pandaSingle.g");
+  C.view(false);
+  BotOp bot(C, rai::getParameter<bool>("real", false));
+
+  bot.setControllerWriteData(1);
+
+  //-- create 3 simple reference configurations
+  arr q0 = bot.get_qHome();
+  arr q1 = q0;
+  q1(1) += .1;
+  cout <<q0(1) <<' ' <<q1(1) <<endl;
+
+#if 0
+  bot.move(q1.reshape(-1, q0.N), {.5});
+#else
+  ActionObservation obs;
+  double tau_step = .05, lambda=.2;
+  for(uint t=0;t<2./tau_step;t++){
+    obs = bot.getActionObservation();
+    arr delta = q1 - obs.qpos;
+    cout <<obs.ctrlTime <<' ' <<q1(1) <<' ' <<obs.qpos(1) <<' ' <<obs.qref(1) <<' ' <<delta(1) <<endl;
+    bot.stepAction(delta, obs, lambda, 1.);
+    bot.sync(C,tau_step);
+  }
+#endif
+
+  // bot.wait(C);
+}
+
+//===========================================================================
+
+auto mini_IK(rai::Configuration& C, const arr& pos, const arr& qHome){
+  arr q0 = C.getJointState();
+  KOMO komo(C, 1, 1, 0, false);
+  komo.addObjective({}, FS_jointState, {}, OT_sos, {1e-1}, q0); //cost: close to 'current state'
+  komo.addObjective({}, FS_jointState, {}, OT_sos, {1e-1}, qHome); //cost: close to qHome
+  komo.addObjective({}, FS_positionDiff, {"l_gripper", "target"}, OT_eq, {1e1}); //constraint: gripper position
+
+  auto ret = rai::NLP_Solver(komo.nlp(), 0) .solve();
+
+  return ret;
+}
+
+void test_reactive_control(){
+  //-- setup a configuration
+  rai::Configuration C;
+  C.addFile("$RAI_PATH/scenarios/pandaSingle.g");
+  arr qHome = C.getJointState();
+  C.view(false);
+
+  rai::Frame* target = C.addFrame("target", "table");
+  target->setShape(rai::ST_marker, {.1});
+  target->setRelativePosition({0., .3, .3});
+  arr pos = target->getPosition();
+  arr cen = pos;
+  C.view(true);
+
+  for(uint t=0;t<0;t++){
+    rai::wait(.1);
+    pos = cen + .98 * (pos-cen) + 0.02 * randn(3);
+    target->setPosition(pos);
+
+    auto ret = mini_IK(C, pos, qHome);
+    cout <<*ret <<endl;
+    C.setJointState(ret->x);
+    C.view();
+  }
+
+  BotOp bot(C, rai::getParameter<bool>("real", false));
+  ActionObservation obs;
+
+  double tau_step = .05, lambda = .1;
+  for(uint t=0;t<100;t++){
+    bot.sync(C, tau_step); // #keep the workspace C sync'ed to real/sim, and idle .1 sec
+    pos = cen + .98 * (pos-cen) + 0.02 * randn(3);
+    target->setPosition(pos);
+
+    auto ret = mini_IK(C, pos, qHome);
+    if(ret->feasible){
+      bot.moveTo(ret->x, 5., true);
+      // obs = bot.getActionObservation();
+      // bot.stepAction(ret->x - obs.qpos, obs, lambda, 1.);
+    }
+  }
+}
+
+//===========================================================================
+
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
   cout <<USAGE <<endl;
 
-  test_bot();
-  //test_withoutBotWrapper();
+  // test_mini();
+  // test_bot();
+  // test_withoutBotWrapper();
+  test_reactive_control();
 
   LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
 

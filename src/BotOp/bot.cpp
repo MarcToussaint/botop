@@ -306,9 +306,9 @@ void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, dou
     rai::NLP_Solver solver;
     solver
         .setProblem(timingProblem.ptr())
-        .setSolver(rai::M_newton);
+        .setSolver(rai::M_Newton);
     solver.opt
-        .set_stopTolerance(1e-4)
+        ->set_stopTolerance(1e-4)
         .set_stepMax(1e0)
         .set_damping(1e-2);
     auto ret = solver.solve();
@@ -346,6 +346,25 @@ void BotOp::moveTo(const arr& q_target, double timeCost, bool overwrite){
     move(~q_target, {T}, true, ctrlTime);
   }else{
     move(~q_target, {T}, false);
+  }
+}
+
+ActionObservation BotOp::getActionObservation(){
+  ActionObservation obs;
+  getState(obs.qpos, obs.qvel, obs.ctrlTime);
+  getReference(obs.qref, NoArr, NoArr, obs.qpos, obs.qvel, obs.ctrlTime);
+  return obs;
+}
+
+void BotOp::stepAction(const arr& delta, const ActionObservation& obs, double lambda, double xi){
+  arr x0 = obs.qref; //reference!!
+  arr v0 = obs.qvel; //real!!
+  arr accel = (delta-2.*xi*lambda*v0)/(lambda*lambda);
+  double time = obs.ctrlTime;
+
+  {
+    auto splineSet = getSplineRef()->spline.set(); //mutexed for threading
+    splineSet->setConstAccelPiece(time, x0, v0, accel, lambda);
   }
 }
 

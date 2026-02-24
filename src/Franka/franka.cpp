@@ -211,7 +211,7 @@ void FrankaThread::step(){
       //check for compliance objective
       if(P_compliance.N){
         if(!(P_compliance.nd==2 && P_compliance.d0==7 && P_compliance.d1==7)){
-          cerr << "FRANKA: inconsistent ctrl P_compliance message" << endl;
+          cout << "FRANKA: inconsistent ctrl P_compliance message" << endl;
           P_compliance.clear();
         }
       }

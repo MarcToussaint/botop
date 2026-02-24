@@ -37,7 +37,7 @@ inline byteA franka_getFrameMaskMap(const rai::Configuration& K){
       }
       if(f->getUpwardLink()->name.startsWith("perc_")){
         int id;
-        f->getUpwardLink()->name >>"perc_" >>id;
+        f->getUpwardLink()->name >>rai::PARSE("perc_") >>id;
         frameMaskMap(f->ID)=PixelLabel(PL_robot+id);
       }
 //      cout <<f->ID <<' ' <<f->name <<' ' <<frameMaskMap(f->ID) <<endl;

@@ -20,7 +20,7 @@ BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
   if(tau<0.) tau = rai::getParameter<double>("botsim/tau", .01);
   if(hyperSpeed<0.) hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
   if(hyperSpeed>0.){
-  Thread::metronome.reset(tau/hyperSpeed);
+    Thread::metronome.reset(tau/hyperSpeed);
   }else{
     Thread::metronome.reset(0.);
   }

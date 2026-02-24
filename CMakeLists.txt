@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.14)
 
 project(LISRobotOperation)
 
@@ -8,6 +8,7 @@ if(NOT DEFINED CMAKE_CACHE_MAJOR_VERSION)
 endif()
 
 ## variable default values
+set(CMAKE_INSTALL_MESSAGE LAZY)
 set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ version selection")
 set(PY_VERSION 3.12 CACHE STRING "python version")
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -51,7 +52,7 @@ add_definitions(
   -DRAI_ROOT_PATH=\"${CMAKE_SOURCE_DIR}/rai\"
   -DRAI_X11 -DRAI_LAPACK -DRAI_EIGEN -DRAI_PTHREAD
   -DRAI_GL
-  -DRAI_GLFW -DRAI_ANN -DRAI_QHULL8 -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY
+  -DRAI_GLFW -DRAI_ANN -DRAI_QHULL8 -DRAI_ASSIMP -DNO_CYCLE_DETECTION -DRAI_PNG -DRAI_PLY -DRAI_YAML
   -DRAI_GJK -DRAI_CCD -DRAI_FCL -DRAI_Lewiner -DRAI_VHACD
   -DRAI_PORTAUDIO
   -BOOST_ERROR_CODE_HEADER_ONLY
@@ -82,10 +83,12 @@ if(USE_PHYSX)
   link_directories($ENV{HOME}/.local/lib/PhysX)
 endif()
 
+file(GLOB SRC_AlgoLewiner rai/src/Algo/Lewiner/*.cpp)
 file(GLOB SRC_GeoGJK rai/src/Geo/GJK/*.c)
 file(GLOB SRC_GeoPly rai/src/Geo/ply/*.c)
 file(GLOB SRC_GeoCcd rai/src/Geo/ccd_rai/*.c)
-file(GLOB SRC_GeoLewiner rai/src/Geo/Lewiner/*.cpp)
+file(GLOB SRC_OptLBFGS rai/src/Optim/liblbfgs/*.c)
+file(GLOB SRC_OptCMA rai/src/Optim/CMA/*.c)
 
 file(GLOB SRC_BotOp src/BotOp/*.cpp)
 file(GLOB SRC_Franka src/Franka/*.cpp)
@@ -100,10 +103,12 @@ add_library(rai SHARED
   rai/src/Core/unity.cxx
   rai/src/Optim/unity.cxx
   rai/src/Geo/unity.cxx
+  ${SRC_AlgoLewiner}
   ${SRC_GeoGJK}
   ${SRC_GeoPly}
   ${SRC_GeoCcd}
-  ${SRC_GeoLewiner}
+  ${SRC_OptLBFGS}
+  ${SRC_OptCMA}
   rai/src/Algo/unity.cxx
   rai/src/Search/unity.cxx
   rai/src/PathAlgos/unity.cxx
@@ -218,7 +223,7 @@ target_link_libraries(rai
   # ORDER MATTERS! test with -no-undefined linker flag (above)
   lapack blas
   glfw GLEW glut Xrandr Xxf86vm Xi GLU GL
-  jsoncpp png assimp z
+  jsoncpp yaml png assimp z
   fcl ccd ANN qhull
   portaudio
   hidapi-hidraw
@@ -229,6 +234,8 @@ target_link_libraries(rai
 
 if(USE_PYBIND)
   set(PYTHON_EXECUTABLE "python${PY_VERSION}")
+  find_package(Python3 ${PY_VERSION} EXACT COMPONENTS Interpreter Development)
+  message(STATUS "[rai] requested python version " ${PY_VERSION} )
   message(STATUS "[rai] using python executable " ${PYTHON_EXECUTABLE} )
   execute_process(
     COMMAND bash "-c" "${PYTHON_EXECUTABLE} -m pybind11 --cmakedir" 
@@ -258,7 +265,7 @@ message(STATUS "[rai] source dir: " "${CMAKE_SOURCE_DIR}")
 
 add_custom_target(docstrings #ALL
   DEPENDS _robotic
-  COMMAND env PYTHONPATH="." pybind11-stubgen --ignore-all-errors _robotic
+  COMMAND env PYTHONPATH="." ${PYTHON_EXECUTABLE} -m pybind11_stubgen --ignore-all-errors _robotic
   COMMAND mv stubs/_robotic*/__init__.pyi _robotic.pyi
   COMMAND mv stubs/_robotic*/*.pyi .)
 

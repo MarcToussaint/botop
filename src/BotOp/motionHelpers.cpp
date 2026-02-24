@@ -36,8 +36,8 @@ arr getLoopPath(rai::Configuration& C){
   komo.addObjective({2.}, FS_positionDiff, {"l_gripper", "target2"}, OT_eq, {1e2});
   komo.addObjective({3.}, FS_positionDiff, {"l_gripper", "target3"}, OT_eq, {1e2});
   komo.addObjective({4.}, FS_positionDiff, {"l_gripper", "target4"}, OT_eq, {1e2});
-  komo.addObjective({5.}, make_shared<F_qItself>(C.getCtrlFramesAndScale(), true), {}, OT_eq, {1e2});
-  komo.addObjective({5.}, make_shared<F_qItself>(C.getCtrlFramesAndScale()), {}, OT_eq, {1e2}, {}, 1);
+  komo.addObjective({5.}, make_shared<F_qItself>(rai::getCtrlFramesAndScale(NoArr, C.frames), true), {}, OT_eq, {1e2});
+  komo.addObjective({5.}, make_shared<F_qItself>(rai::getCtrlFramesAndScale(NoArr, C.frames)), {}, OT_eq, {1e2}, {}, 1);
 
   komo.solve();
   arr q = komo.getPath_qOrg();
@@ -240,7 +240,7 @@ arr getBoxPnpKeyframes(const rai::Configuration& C, str pickDirection, str place
       }
     }
 
-    cout <<"  seq  trial " <<trial <<(feasible?" good":" FAIL") <<" -- time:" <<komo.timeTotal <<"\t sos:" <<ret->sos <<"\t ineq:" <<ret->ineq <<"\t eq:" <<ret->eq <<endl;
+    cout <<"  seq  trial " <<trial <<(feasible?" good":" FAIL") <<" -- time:" <<komo.timeSolve <<"\t sos:" <<ret->sos <<"\t ineq:" <<ret->ineq <<"\t eq:" <<ret->eq <<endl;
     if(feasible) break;
   }
 
