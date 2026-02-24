@@ -356,10 +356,12 @@ ActionObservation BotOp::getActionObservation(){
   return obs;
 }
 
-void BotOp::stepAction(const arr& delta, const ActionObservation& obs, double lambda, double xi){
+void BotOp::stepAction(const arr& delta, const ActionObservation& obs, double lambda, double xi, double maxAccel){
   arr x0 = obs.qref; //reference!!
   arr v0 = obs.qvel; //real!!
   arr accel = (delta-2.*xi*lambda*v0)/(lambda*lambda);
+  double a = absMax(accel);
+  if(a>maxAccel) accel *= maxAccel/a;
   double time = obs.ctrlTime;
 
   {

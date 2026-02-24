@@ -6,29 +6,27 @@
 //===========================================================================
 
 void collectJointData(){
-  rai::Configuration C("../../rai-robotModels/scenarios/pandasTable.g");
+//  rai::Configuration C("../../rai-robotModels/scenarios/pandasTable.g");
+  rai::Configuration C("../../rai-robotModels/scenarios/pandaSingle.g");
   arr qHome = C.getJointState();
-  arr qLimits = C.getLimits();
+  arr qLimits = C.getJointLimits();
 
   uint jointID = rai::getParameter<int>("joint", 6);
   CHECK_LE(jointID, qHome.N, "");
 
-
-  BotOp bot(C, rai::getParameter<bool>("real", false));
-  bot.home(C);
-
   double q0 = qHome(jointID);
-  double lo = qLimits(jointID, 0)+.1;
-  double up = qLimits(jointID, 1)-.1;
+  double margin = .2;
+  double lo = qLimits(0, jointID)+margin;
+  double up = qLimits(1, jointID)-margin;
   if(jointID==1) up -= 1.2;
 
   uint k=30;
   arr path = ~qHome;
-  arr times = ARR(0.);
+  arr times = arr{0.};
   double q = lo;
   double v = 0.;
   double t = 10.;
-  double vstep = .005;
+  double vstep = .01;
 
   for(uint s=0;;s++){
     for(uint j=0;j<k;j++){
@@ -85,13 +83,14 @@ void collectJointData(){
   times.append(t+10.);
   times *= .5;
 
-  rai::wait();
-
+  BotOp bot(C, rai::getParameter<bool>("real", false));
   bot.robotL->writeData=2;
-  bot.move(path, times);
-  while(bot.sync(C)){}
-  bot.robotL->writeData=0;
 
+  bot.home(C);
+
+  bot.move(path, times);
+  bot.wait(C, true, true);
+  bot.robotL->writeData=0;
 
   rai::wait();
 }
@@ -100,7 +99,6 @@ void collectJointData(){
 
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
-
 
   collectJointData();
 

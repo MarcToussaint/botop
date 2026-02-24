@@ -27,8 +27,8 @@ void FrankaThread::init(uint _robotID, const uintA& _qIndices) {
   qIndices_max = rai::max(qIndices);
 
   //-- basic Kp Kd settings for reference control mode
-  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", arr{20., 20., 20., 20., 10., 15., 10.}); //18., 18., 18., 13., 8., 8., 6.));
-  Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", arr{.6, .6, .4, .4, .1, .5, .1}); //.8, .8, .7, .7, .1, .1, .1));
+  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", arr{20., 20., 20., 20., 10., 10., 10.}); //18., 18., 18., 13., 8., 8., 6.));
+  Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", arr{.6, .6, .4, .4, .1, .1, .1}); //.8, .8, .7, .7, .1, .1, .1));
   friction = rai::getParameter<arr>("Franka/friction", zeros(7));  //Franka/friction: arr{0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4}
   //friction = rai::getParameter<arr>("Franka/friction", arr{0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4});
   LOG(0) << "FRANKA: Kp_freq:" << Kp_freq << " Kd_ratio:" << Kd_ratio <<" friction:" <<friction;
@@ -257,8 +257,6 @@ void FrankaThread::step(){
           if(coeff>1.) coeff=1.;
           if(coeff<-1.) coeff=-1.;
           u.elem(i) += coeff*friction.elem(i);
-//          if(qDot_ref.elem(i)>1e-4) u.elem(i) += friction.elem(i);
-//          if(qDot_ref.elem(i)<-1e-4) u.elem(i) -= friction.elem(i);
         }
       }
 

@@ -60,7 +60,7 @@ struct BotOp{
   void moveAutoTimed(const arr& path, double maxVel=1., double maxAcc=1.); //double timeCost);
   void moveTo(const arr& q_target, double timeCost=1., bool overwrite=false);
   ActionObservation getActionObservation();
-  void stepAction(const arr& delta, const ActionObservation& obs, double lambda, double xi=1.);
+  void stepAction(const arr& delta, const ActionObservation& obs, double lambda, double xi=1., double maxAccel=5.);
   void setControllerWriteData(int _writeData);
   void setCompliance(const arr& J, double compliance=.5);
 

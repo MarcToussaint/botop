@@ -189,7 +189,7 @@ void test_reactive_control(){
   BotOp bot(C, rai::getParameter<bool>("real", false));
   ActionObservation obs;
 
-  double tau_step = .05, lambda = .1;
+  double tau_step = .05, lambda = .2;
   for(uint t=0;t<100;t++){
     bot.sync(C, tau_step); // #keep the workspace C sync'ed to real/sim, and idle .1 sec
     pos = cen + .98 * (pos-cen) + 0.02 * randn(3);
@@ -197,11 +197,15 @@ void test_reactive_control(){
 
     auto ret = mini_IK(C, pos, qHome);
     if(ret->feasible){
-      bot.moveTo(ret->x, 5., true);
-      // obs = bot.getActionObservation();
-      // bot.stepAction(ret->x - obs.qpos, obs, lambda, 1.);
+//      bot.moveTo(ret->x, 5., true);
+       obs = bot.getActionObservation();
+       bot.stepAction(ret->x - obs.qpos, obs, lambda);
     }
   }
+
+  rai::wait(.1);
+  bot.home(C);
+  rai::wait(.1);
 }
 
 //===========================================================================
