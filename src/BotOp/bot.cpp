@@ -349,6 +349,27 @@ void BotOp::moveTo(const arr& q_target, double timeCost, bool overwrite){
   }
 }
 
+StepObservation BotOp::stepObservation(){
+  StepObservation obs;
+  getState(obs.qpos, obs.qvel, obs.ctrlTime);
+  getReference(obs.qref, NoArr, NoArr, obs.qpos, obs.qvel, obs.ctrlTime);
+  return obs;
+}
+
+void BotOp::stepAction(const arr& delta, const StepObservation& obs, double lambda, double maxAccel, double xi){
+  arr x0 = obs.qref; //reference!!
+  arr v0 = obs.qvel; //real!!
+  arr accel = (delta-2.*xi*lambda*v0)/(lambda*lambda);
+  double a = absMax(accel);
+  if(a>maxAccel) accel *= maxAccel/a;
+  double time = obs.ctrlTime;
+
+  {
+    auto splineSet = getSplineRef()->spline.set(); //mutexed for threading
+    splineSet->setConstAccelPiece(time, x0, v0, accel, lambda);
+  }
+}
+
 void BotOp::setControllerWriteData(int _writeData){
   if(robotL) robotL->writeData=_writeData;
   if(robotR) robotR->writeData=_writeData;

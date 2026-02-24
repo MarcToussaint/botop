@@ -23,7 +23,15 @@
 //}
 
 void init_BotOp(pybind11::module& m) {
-  
+
+  pybind11::class_<StepObservation, std::shared_ptr<StepObservation>>(m, "StepObservation", "observation struct for the stepObservation stepAction methods")
+    .def(pybind11::init<>())
+    .def_readwrite("ctrlTime", &StepObservation::ctrlTime)
+    .def_readwrite("qpos", &StepObservation::qpos)
+    .def_readwrite("qvel", &StepObservation::qvel)
+    .def_readwrite("qref", &StepObservation::qref)
+          ;
+
   pybind11::class_<BotOp, shared_ptr<BotOp>>(m, "BotOp", "Robot Operation interface -- see https://marctoussaint.github.io/robotics-course/tutorials/1b-botop.html")
 
   .def(pybind11::init<rai::Configuration&, bool>(),
@@ -76,6 +84,16 @@ void init_BotOp(pybind11::module& m) {
        pybind11::arg("q_target"),
        pybind11::arg("timeCost") = 1.,
        pybind11::arg("overwrite") = false)
+
+  .def("stepObservation", &BotOp::stepObservation,  "get basic observations, from which the agent observation should be build and which needs to be passed to stepAction")
+
+  .def("stepAction", &BotOp::stepAction,
+       "",
+       pybind11::arg("delta"),
+       pybind11::arg("obs"),
+       pybind11::arg("lmbda"),
+       pybind11::arg("maxAccel")=5.,
+       pybind11::arg("xi")=1.)
 
   .def("setCompliance", &BotOp::setCompliance,
        "set a task space compliant, where J defines the task space Jacobian, and compliance goes from 0 (no compliance) to 1 (full compliance, but still some damping)",
