@@ -13,8 +13,10 @@
 #include <Franka/FrankaGripper.h>
 #include "simulation.h"
 #include <Omnibase/omnibase.h>
+#include <Ranger/ranger.h>
 #include <Robotiq/RobotiqGripper.h>
 #include <OptiTrack/optitrack.h>
+#include <Livox/livox.h>
 #include <RealSense/RealSenseThread.h>
 #ifdef RAI_VIVE
 #  include <ViveController/vivecontroller.h>
@@ -75,6 +77,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
         robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
         robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
       } else if(C.getFrame("l_panda_base", false)){
+        std::cout << franka_getJointIndices(C,'l') << std::endl;
         robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
       } else if(C.getFrame("r_panda_base", false)){
         robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
@@ -97,6 +100,15 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
       LOG(-1) <<"Starting the omnibase failed! Error msg: " <<ex.what();
     }
 
+    try{
+      if(C.getFrame("ranger_base", false)){
+        LOG(0) <<"CONNECTING TO RANGER";
+        robotR = make_shared<RangerThread>(robotID++, uintA{0,1,2}, cmd, state);
+      }
+    } catch(const std::exception& ex) {
+      LOG(-1) <<"Starting the ranger failed! Error msg: " <<ex.what();
+    }
+
   }else{
     simthread = make_shared<BotThreadedSim>(C, cmd, state);
     robotL = simthread;
@@ -114,6 +126,13 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     if(!useRealRobot) LOG(-1) <<"useOptitrack with real:false -- that's usually wrong!";
     optitrack = make_shared<rai::OptiTrack>();
     optitrack->pull(C);
+  }
+
+  if(rai::getParameter<bool>("bot/useLivox", false)){
+    LOG(0) <<"OPENING LIVOX";
+    if(!useRealRobot) LOG(-1) <<"useLivox with real:false -- that's usually wrong!";
+    livox = make_shared<rai::Livox>();
+    livox->pull(C);
   }
 
 #ifdef RAI_VIVE
@@ -203,6 +222,7 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
 
   //update optitrack state
   if(optitrack) optitrack->pull(C);
+  if(livox) livox->pull(C);
 
 #ifdef RAI_VIVE
   //update vivecontroller state
