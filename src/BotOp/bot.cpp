@@ -359,7 +359,7 @@ StepObservation BotOp::stepObservation(){
 void BotOp::stepAction(const arr& delta, const StepObservation& obs, double lambda, double maxAccel, double xi){
   arr x0 = obs.qref; //reference!!
   arr v0 = obs.qvel; //real!!
-  arr accel = (delta-2.*xi*lambda*v0)/(lambda*lambda);
+  arr accel = (delta-2.*xi*lambda*v0)/(lambda*lambda); // accel = 2.*coeff (in comparison to python SecondOrderPolyRef)!
   double a = absMax(accel);
   if(a>maxAccel) accel *= maxAccel/a;
   double time = obs.ctrlTime;
@@ -430,7 +430,12 @@ std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
   if(simthread){
     cameras.append( make_shared<CameraSim>(simthread, sensor) );
   }else{
-    cameras.append( make_shared<RealSenseThread>(sensor) );
+    int cameraID = -1;
+    str name = sensor;
+    if(name.startsWith("RealSense_")){
+      name.sub(10,-1) >>cameraID;
+    }
+    cameras.append( make_shared<RealSenseThread>(sensor, cameraID) );
   }
   return cameras(-1);
 }

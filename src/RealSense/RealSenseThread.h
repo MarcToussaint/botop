@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Core/array.h>
-#include <Core/util.h>
 #include <Core/thread.h>
 #include <Control/CtrlMsgs.h>
 
@@ -10,6 +9,8 @@ namespace rs2 { class pipeline; }
 struct RealSenseCfg{
   RAI_PARAM("RealSense/", int, startupSkipImages, 30)
   RAI_PARAM("RealSense/", int, resolution, 640)
+  RAI_PARAM("RealSense/", bool, captureColor, true)
+  RAI_PARAM("RealSense/", bool, captureDepth, true)
   RAI_PARAM("RealSense/", bool, alignToDepth, true)
   RAI_PARAM("RealSense/", bool, autoExposure, true)
   RAI_PARAM("RealSense/", double, exposure, 500)
@@ -19,12 +20,14 @@ struct RealSenseCfg{
 
 struct RealSenseThread : Thread, rai::CameraAbstraction {
   struct sRealSenseThread *s=0;
+
   RealSenseCfg cfg;
+  int cameraID;
   Var<byteA> image;
   Var<floatA> depth;
   arr fxycxy, color_fxycxy, depth_fxycxy;
 
-  RealSenseThread(const char *_name);
+  RealSenseThread(const char *_name, int _cameraID=-1);
   ~RealSenseThread();
 
   virtual void getImageAndDepth(byteA& _image, floatA& _depth);

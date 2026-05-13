@@ -12,17 +12,17 @@
 
 int testDirect(){
 
-  RealSenseThread RS("realsense");
+  RealSenseThread RS("realsense", 0);
   OpenGL gl, gl2;
 
   {
-    RS.depth.waitForNextRevision();
     RS.image.waitForNextRevision();
-    Depth2PointCloud cvt2pcl(RS.depth, RS.fxycxy(0), RS.fxycxy(1), RS.fxycxy(2), RS.fxycxy(3));
+    if(RS.cfg.captureDepth) RS.depth.waitForNextRevision();
+    // Depth2PointCloud cvt2pcl(RS.depth, RS.fxycxy(0), RS.fxycxy(1), RS.fxycxy(2), RS.fxycxy(3));
 
     cout <<"Camera fxycxy: " <<RS.fxycxy <<endl;
 
-    {
+    if(RS.cfg.captureDepth){
       auto depthGet = RS.depth.get();
       gl.resize(depthGet->d1, depthGet->d0);
     }
@@ -33,20 +33,20 @@ int testDirect(){
 
     CycleTimer tim;
     for(;;){
-      RS.depth.waitForNextRevision();
+      RS.image.waitForNextRevision();
 
       tim.cycleStart();
       int key=0;
       {
+        auto colorGet = RS.image.get();
+        key = gl2.watchImage(colorGet(), false, 1.);
+      }
+      if(RS.cfg.captureDepth){
         floatA depth = RS.depth.get();
         for(float& d:depth) d *= 128.f;
         key = gl.watchImage(depth, false, 1.);
       }
 
-      {
-        auto colorGet = RS.image.get();
-        key = gl2.watchImage(colorGet(), false, 1.);
-      }
       tim.cycleDone();
 
       if(key=='q') break;
@@ -163,8 +163,8 @@ void testMini(){
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
-//  testDirect();
-  testBotop();
+ testDirect();
+  // testBotop();
 //  testBotopPcl();
 //  testMini();
 }

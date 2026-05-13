@@ -1,7 +1,7 @@
 #include <Core/array.h>
 #include <Gui/opengl.h>
 #include <RealSense/MultiRealSenseThread.h>
-#include <Gui/viewer.h>
+// #include <Gui/viewer.h>
 #include <Core/thread.h>
 
 int main(int argc, char** argv) {

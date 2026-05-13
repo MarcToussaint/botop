@@ -9,6 +9,8 @@
 rs2_stream find_stream_to_align(const std::vector<rs2::stream_profile>& streams);
 
 struct sRealSenseThread{
+  bool captureColor;
+  bool captureDepth;
   std::shared_ptr<rs2::config> cfg;
   std::shared_ptr<rs2::pipeline> pipe;
   std::shared_ptr<rs2::align> align;
@@ -19,11 +21,12 @@ struct sRealSenseThread{
   rs2::hole_filling_filter hole_filter;
 };
 
-RealSenseThread::RealSenseThread(const char *_name)
+RealSenseThread::RealSenseThread(const char *_name, int _cameraID)
   : Thread("RealSenseThread"),
     image(this),
     depth(this){
   if(_name) CameraAbstraction::name=_name;
+  cameraID = _cameraID;
   threadOpen(true);
   threadLoop();
 }
@@ -50,15 +53,21 @@ void RealSenseThread::open(){
   s = new sRealSenseThread;
 
   s->cfg = std::make_shared<rs2::config>();
+  if(cameraID>=0){
+    str serial_number = rai::getParameter<str>(STRING("RealSense/serial_number_" <<cameraID));
+    LOG(1) <<"choosing camera " <<cameraID <<" with serial number " <<serial_number;
+    s->cfg->enable_device(serial_number.p);
+  }
+
   if(cfg.resolution==480){
-    s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 424, 240, rs2_format::RS2_FORMAT_RGB8, 0);
-    s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 480, 270, rs2_format::RS2_FORMAT_Z16, 15);
+    if(cfg.captureColor) s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 424, 240, rs2_format::RS2_FORMAT_RGB8, 0);
+    if(cfg.captureDepth) s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 480, 270, rs2_format::RS2_FORMAT_Z16, 15);
   }else if(cfg.resolution==640){
-    s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 640, 360, rs2_format::RS2_FORMAT_RGB8, 30);
-    s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 30);
+    if(cfg.captureColor) s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 640, 360, rs2_format::RS2_FORMAT_RGB8, 30);
+    if(cfg.captureDepth) s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 640, 360, rs2_format::RS2_FORMAT_Z16, 30);
   }else if(cfg.resolution==1280){
-    s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 1280, 720, rs2_format::RS2_FORMAT_RGB8, 30);
-    s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 1280, 720, rs2_format::RS2_FORMAT_Z16, 30);
+    if(cfg.captureColor) s->cfg->enable_stream(RS2_STREAM_COLOR, -1, 1280, 720, rs2_format::RS2_FORMAT_RGB8, 30);
+    if(cfg.captureDepth) s->cfg->enable_stream(RS2_STREAM_DEPTH, -1, 1280, 720, rs2_format::RS2_FORMAT_Z16, 30);
   }else{
     LOG(-2) <<"RealSense Driver: resolution=" <<cfg.resolution <<" option not available (avaiable: 480, 640, 1280)";
   }
@@ -143,12 +152,14 @@ void RealSenseThread::open(){
   LOG(1) <<"depth scale: " <<s->depth_scale;
 
   //-- align with depth or color?
-  if(cfg.alignToDepth){
-    s->align = std::make_shared<rs2::align>(RS2_STREAM_DEPTH);
-    fxycxy = depth_fxycxy;
-  }else{
-    s->align = std::make_shared<rs2::align>(RS2_STREAM_COLOR);
-    fxycxy = color_fxycxy;
+  if(cfg.captureColor && cfg.captureDepth) {
+    if(cfg.alignToDepth){
+      s->align = std::make_shared<rs2::align>(RS2_STREAM_DEPTH);
+      fxycxy = depth_fxycxy;
+    }else{
+      s->align = std::make_shared<rs2::align>(RS2_STREAM_COLOR);
+      fxycxy = color_fxycxy;
+    }
   }
 }
 
@@ -168,17 +179,19 @@ void RealSenseThread::step(){
     return;
   }
 
-  rs2::frameset processed = s->align->process(data);
-//  rs2::frameset processed = data;
-
-  rs2::depth_frame rs_depth = processed.get_depth_frame();
-  rs2::video_frame rs_color = processed.get_color_frame();
+  rs2::frameset processed;
+  if(cfg.captureColor && cfg.captureDepth) {
+    processed = s->align->process(data);
+  }else{
+    processed = data;
+  }
 
 //  rs2::depth_frame rs_depth2 = s->temp_filter.process(rs_depth);
 //  rs_depth = rs_depth2;
 //  rs_depth = s->hole_filter.process(rs_depth2);
 
-  {
+  if(cfg.captureDepth){
+    rs2::depth_frame rs_depth = processed.get_depth_frame();
     auto depthSet = depth.set();
     depthSet->resize(rs_depth.get_height(), rs_depth.get_width());
 #if 0
@@ -197,7 +210,8 @@ void RealSenseThread::step(){
 #endif
   }
 
-  {
+  if(cfg.captureColor){
+    rs2::video_frame rs_color = processed.get_color_frame();
     auto colorSet = image.set();
     colorSet->resize(rs_color.get_height(), rs_color.get_width(), 3);
     CHECK(rs_color.get_bytes_per_pixel()==3,"");
