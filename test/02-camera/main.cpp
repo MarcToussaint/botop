@@ -12,7 +12,7 @@
 
 int testDirect(){
 
-  RealSenseThread RS("realsense", 0);
+  RealSenseThread RS("realsense", 1);
   OpenGL gl, gl2;
 
   {
@@ -53,6 +53,46 @@ int testDirect(){
     }
     cout <<"DISPLAY timer:   " <<tim.report() <<endl;
     cout <<"RealSense timer: " <<RS.timer.report() <<endl;
+  }
+
+  LOG(0) <<"bye bye";
+
+  return EXIT_SUCCESS;
+}
+
+//===========================================================================
+
+int testTwoCameras(){
+
+  RealSenseThread RS0("realsense", 0);
+  RealSenseThread RS1("realsense", 1);
+  OpenGL gl0, gl1;
+
+  {
+    RS0.image.waitForNextRevision();
+    RS1.image.waitForNextRevision();
+
+    CycleTimer tim;
+    for(;;){
+      RS0.image.waitForNextRevision();
+
+      tim.cycleStart();
+      int key=0;
+      {
+        auto colorGet = RS0.image.get();
+        key = gl0.watchImage(colorGet(), false, 1.);
+      }
+      {
+        auto colorGet = RS1.image.get();
+        key = gl1.watchImage(colorGet(), false, 1.);
+      }
+
+      tim.cycleDone();
+
+      if(key=='q') break;
+    }
+    cout <<"DISPLAY timer:   " <<tim.report() <<endl;
+    cout <<"RealSense timer: " <<RS0.timer.report() <<endl;
   }
 
   LOG(0) <<"bye bye";
@@ -163,8 +203,9 @@ void testMini(){
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
- testDirect();
-  // testBotop();
+// testDirect();
+// testTwoCameras();
+  testBotop();
 //  testBotopPcl();
 //  testMini();
 }
