@@ -28,6 +28,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   //-- launch arm(s) & gripper(s)
   bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
   bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
+  forceRealCamera = rai::getParameter<bool>("bot/forceRealCamera", false);
 
   C.ensure_indexedJoints();
   qHome = C.getJointState();
@@ -359,7 +360,7 @@ StepObservation BotOp::stepObservation(){
 void BotOp::stepAction(const arr& delta, const StepObservation& obs, double lambda, double maxAccel, double xi){
   arr x0 = obs.qref; //reference!!
   arr v0 = obs.qvel; //real!!
-  arr accel = (delta-2.*xi*lambda*v0)/(lambda*lambda);
+  arr accel = (delta-2.*xi*lambda*v0)/(lambda*lambda); // accel = 2.*coeff (in comparison to python SecondOrderPolyRef)!
   double a = absMax(accel);
   if(a>maxAccel) accel *= maxAccel/a;
   double time = obs.ctrlTime;
@@ -427,10 +428,15 @@ std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
   for(std::shared_ptr<rai::CameraAbstraction>& cam:cameras){
     if(cam->name==sensor) return cam;
   }
-  if(simthread){
+  if(simthread && !forceRealCamera){
     cameras.append( make_shared<CameraSim>(simthread, sensor) );
   }else{
-    cameras.append( make_shared<RealSenseThread>(sensor) );
+    int cameraID = -1;
+    str name = sensor;
+    if(name.startsWith("RealSense_")){
+      name.sub(10,0) >>cameraID;
+    }
+    cameras.append( make_shared<RealSenseThread>(sensor, cameraID) );
   }
   return cameras(-1);
 }

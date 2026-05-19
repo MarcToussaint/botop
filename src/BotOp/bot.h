@@ -97,6 +97,7 @@ private:
   template<class T> BotOp& setReference();
   std::shared_ptr<rai::BSplineCtrlReference> getSplineRef();
   double startRealTime;
+  bool forceRealCamera=false;
 };
 
 //===========================================================================
