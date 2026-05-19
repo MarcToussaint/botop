@@ -107,22 +107,31 @@ void testBotop(){
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
 
   //-- start a robot
-  BotOp bot(C, rai::getParameter<bool>("BotOp/real", false));
+  BotOp bot(C, rai::getParameter<bool>("bot/real", false));
 
-  OpenGL gl, gl2;
-  byteA image;
+  OpenGL gl, gl1, gl2;
+  byteA image, image1;
   floatA depth;
   arr points;
   for(uint k=0;k<100;){
     bot.sync(C, .1);
     if(bot.keypressed=='q'){ LOG(0) <<"HERE"; break; }
 
-    bot.getImageDepthPcl(image, depth, points, "cameraWrist", false);
+    //bot.getImageDepthPcl(image, depth, points, "RealSense_0", false);
+    bot.getImageAndDepth(image, depth, "RealSense_0");
+    bot.getImageAndDepth(image1, depth, "RealSense_1");
 
-    for(float& d:depth) d *= 128.f;
     int key=0;
-    key |= gl.watchImage(depth, false, 1.);
-    key |= gl2.watchImage(image, false, 1.);
+    if(depth.N){
+      for(float& d:depth) d *= 128.f;
+      key |= gl.watchImage(depth, false, 1.);
+    }
+    if(image.N){
+      key |= gl2.watchImage(image, false, 1.);
+    }
+    if(image1.N){
+      key |= gl1.watchImage(image1, false, 1.);
+    }
     if(key=='q') break;
   }
 }

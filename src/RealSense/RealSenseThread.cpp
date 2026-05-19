@@ -9,8 +9,6 @@
 rs2_stream find_stream_to_align(const std::vector<rs2::stream_profile>& streams);
 
 struct sRealSenseThread{
-  bool captureColor;
-  bool captureDepth;
   std::shared_ptr<rs2::config> cfg;
   std::shared_ptr<rs2::pipeline> pipe;
   std::shared_ptr<rs2::align> align;
@@ -41,11 +39,11 @@ void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){
   if(!cfg.autoExposure) n=1;
   if(image.getRevision()<n){
     LOG(0) <<"waiting to get " <<n <<" images from RealSense for autoexposure settling";
-    image.waitForRevisionGreaterThan(n); //need many starting images for autoexposure to get settled!!
-    depth.waitForRevisionGreaterThan(n);
+    if(cfg.captureColor) image.waitForRevisionGreaterThan(n); //need many starting images for autoexposure to get settled!!
+    if(cfg.captureDepth) depth.waitForRevisionGreaterThan(n);
   }
-  _image = image.get();
-  _depth = depth.get();
+  if(cfg.captureColor) _image = image.get(); else _image.clear();
+  if(cfg.captureDepth) _depth = depth.get(); else _depth.clear();
 }
 
 void RealSenseThread::open(){
