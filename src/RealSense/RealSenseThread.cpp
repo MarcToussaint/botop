@@ -221,7 +221,7 @@ void rs2_get_motion_intrinsics(const rs2_stream_profile* mode, rs2_motion_device
 
 #else //REALSENSE
 
-RealSenseThread::RealSenseThread(const char *_name) : Thread("RealSenseThread") { NICO }
+RealSenseThread::RealSenseThread(const char *_name, int _cameraID) : Thread("RealSenseThread") { NICO }
 RealSenseThread::~RealSenseThread(){ NICO }
 void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){ NICO }
 void RealSenseThread::open(){ NICO }
