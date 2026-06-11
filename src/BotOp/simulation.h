@@ -7,10 +7,10 @@
 
 struct BotThreadedSim : rai::RobotAbstraction, Thread {
   BotThreadedSim(const rai::Configuration& _sim_config,
-                const Var<rai::CtrlCmdMsg>& _cmd={}, const Var<rai::CtrlStateMsg>& _state={},
-                const StringA& joints={},
-                double _tau=-1,
-                double hyperSpeed=-1.);
+                 Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state,
+                 const StringA& joints={},
+                 double _tau=-1,
+                 double hyperSpeed=-1.);
 
   ~BotThreadedSim();
 

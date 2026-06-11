@@ -7,10 +7,10 @@
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
 BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
-                               const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state,
+                               Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state,
                                const StringA& joints,
                                double _tau, double hyperSpeed)
-  : RobotAbstraction(_cmd, _state),
+  : RobotAbstraction(cmd, state),
     Thread("FrankaThread_Emulated"),
     simConfig(C),
     tau(_tau){

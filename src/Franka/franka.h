@@ -7,8 +7,8 @@
 
 
 struct FrankaThread : rai::RobotAbstraction, Thread{
-  FrankaThread(uint robotID=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6}) : Thread("FrankaThread"){ init(robotID, _qIndices); }
-  FrankaThread(uint robotID, const uintA& _qIndices, const Var<rai::CtrlCmdMsg>& _cmd, const Var<rai::CtrlStateMsg>& _state) : RobotAbstraction(_cmd, _state), Thread("FrankaThread"){ init(robotID, _qIndices); }
+  FrankaThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state, uint robotID=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6})
+      : RobotAbstraction(cmd, state), Thread("FrankaThread"){ init(robotID, _qIndices); }
   ~FrankaThread();
 
 private:

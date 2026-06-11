@@ -7,8 +7,7 @@
 const char *gripperIpAddresses[2] = {"172.16.0.2", "172.17.0.2"};
 
 FrankaGripper::FrankaGripper(uint whichRobot)
-  : Thread(STRING("FrankaGripper_"<<whichRobot))
-  , cmd(this, false){
+  : Thread(STRING("FrankaGripper_"<<whichRobot)) {
   //-- choose robot/ipAddress
   CHECK_LE(whichRobot, 1, "");
   LOG(0) <<"launching FrankaGripper " <<whichRobot <<" at " <<gripperIpAddresses[whichRobot];

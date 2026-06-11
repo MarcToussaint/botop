@@ -78,7 +78,7 @@ void testBotop(){
   rai::Configuration C;
   C.addFile("scene.yml");
 
-  rai::setParameter("botsim/verbose", 4);
+  rai::setParameter("botsim/verbose", 1);
   BotOp bot(C, false);
 
   for(uint k=0;k<4;k++) bot.launch_camera(STRING("cam"<<k));

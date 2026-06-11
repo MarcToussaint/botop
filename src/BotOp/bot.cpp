@@ -74,12 +74,12 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     LOG(0) <<"CONNECTING TO FRANKAS";
     try{
       if(C.getFrame("l_panda_base", false) && C.getFrame("r_panda_base", false)){
-        robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
-        robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
+        robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
+        robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
       } else if(C.getFrame("l_panda_base", false)){
-        robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
+        robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
       } else if(C.getFrame("r_panda_base", false)){
-        robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
+        robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
       }else{
         LOG(0) <<"starting botop without franka robots (no frames l_panda_base or r_panda_base defined)";
       }
@@ -93,7 +93,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     try{
       if(C.getFrame("omnibase_world", false)){
         LOG(0) <<"CONNECTING TO OMNIBASE";
-        robotL = make_shared<OmnibaseThread>(robotID++, uintA{0,1,2}, cmd, state);
+        robotL = make_shared<OmnibaseThread>(cmd, state, robotID++, uintA{0,1,2});
       }
     } catch(const std::exception& ex) {
       LOG(-1) <<"Starting the omnibase failed! Error msg: " <<ex.what();

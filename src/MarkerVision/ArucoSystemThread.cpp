@@ -28,6 +28,7 @@ ArucoSystemThread::~ArucoSystemThread(){
 void ArucoSystemThread::step() {
   uint K = inputs.N;
   solver.data.clear();
+  solver.X.setZero();
   for(uint k=0;k<K;k++){
     solver.data.append(inputs(k)->get());
   }
@@ -46,7 +47,8 @@ void ArucoSystemThread::pull(Configuration& C){
       rai::Frame *f = C.getFrame(name, false);
       if(!f){//create a new marker frame!
         f = C.addFrame(name);
-        f->setShape(rai::ST_marker, {.05});
+        f->setShape(rai::ST_sphere, {.01});
+        f->setColor({1., 1., 0., .9});
       }
       frames(j) = f;
     }

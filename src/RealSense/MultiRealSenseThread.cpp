@@ -152,11 +152,9 @@ RealSenseCamera::RealSenseCamera(std::string cameraName, bool captureColor, bool
 
 
 
-MultiRealSenseThread::MultiRealSenseThread(const std::vector<std::string> cameraNames, const Var<std::vector<byteA>>& color, const Var<std::vector<floatA>>& depth, bool captureColor, bool captureDepth)
+MultiRealSenseThread::MultiRealSenseThread(const std::vector<std::string> cameraNames, bool captureColor, bool captureDepth)
   : Thread("MultiRealSenseThread"),
     cameraNames(cameraNames),
-    color(this, color),
-    depth(this, depth),
     captureColor(captureColor),
     captureDepth(captureDepth)
 {
