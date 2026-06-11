@@ -42,7 +42,7 @@ protected:
 
   friend struct BotOp;
   friend struct GripperSim;
-  friend struct CameraSim;
+  friend struct CameraSimThread;
 };
 
 struct GripperSim : rai::GripperAbstraction, Thread{
@@ -70,28 +70,36 @@ struct GripperSim : rai::GripperAbstraction, Thread{
 
 };
 
-struct CameraSim : rai::CameraAbstraction {
+struct CameraSimThread : rai::CameraAbstraction, Thread {
   std::shared_ptr<BotThreadedSim> simthread;
 
-  CameraSim(const std::shared_ptr<BotThreadedSim>& _sim, const char* sensorName) : simthread(_sim) {
+  CameraSimThread(const std::shared_ptr<BotThreadedSim>& _sim, const char* sensorName)
+      : Thread(sensorName, .05), simthread(_sim) {
     auto mux = simthread->stepMutex(RAI_HERE);
-    name = sensorName;
-    simthread->sim->addSensor(name);
+    camera_name = sensorName;
+    simthread->sim->addSensor(sensorName);
+    LOG(0) <<"launching camera " <<camera_name;
+    threadLoop();
+  }
+  ~CameraSimThread(){
+    LOG(0) <<"shutting down camera " <<camera_name;
+    threadClose();
   }
 
-  virtual void getImageAndDepth(byteA& image, floatA& depth){
+  void step() {
     auto mux = simthread->stepMutex(RAI_HERE);
-    simthread->sim->selectSensor(name);
-    simthread->sim->getImageAndDepth(image, depth);
+    simthread->sim->selectSensor(camera_name);
+    simthread->sim->getImageAndDepth(image.set(), depth.set());
   }
+
   virtual arr getFxycxy(){
     auto mux = simthread->stepMutex(RAI_HERE);
-    simthread->sim->selectSensor(name);
+    simthread->sim->selectSensor(camera_name);
     return simthread->sim->cameraview().currentCamera->cam.getFxycxy();
   }
   virtual rai::Transformation getPose(){
     auto mux = simthread->stepMutex(RAI_HERE);
-    simthread->sim->selectSensor(name);
+    simthread->sim->selectSensor(camera_name);
     return simthread->sim->cameraview().currentCamera->frame.ensure_X();
   }
 };

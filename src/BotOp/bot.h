@@ -9,6 +9,7 @@ namespace rai{
   struct OptiTrack;
   struct ViveController;
   struct Sound;
+  struct ArucoThread;
 }
 struct BotThreadedSim;
 
@@ -35,6 +36,7 @@ struct BotOp{
   std::shared_ptr<rai::Sound> audio;
   std::shared_ptr<BotThreadedSim> simthread;
   rai::Array<std::shared_ptr<rai::CameraAbstraction>> cameras;
+  rai::Array<std::shared_ptr<rai::ArucoThread>> aruco_threads;
 
   arr qHome;
   int keypressed=0;
@@ -72,6 +74,8 @@ struct BotOp{
   bool gripperDone(rai::ArgWord leftRight);
 
   //-- camera commands
+  void launch_camera(const char* sensor){ getCamera(sensor); }
+  void launch_arucos();
   void getImageAndDepth(byteA& image, floatA& depth, const char* sensor);
   void getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates=false);
   arr  getCameraFxycxy(const char* sensor);
@@ -91,6 +95,7 @@ struct BotOp{
   //-- cheating in sim
   void attach(str from, str to);
   void detach(str from, str to);
+  void cheat_setFramePose(str name, const arr& pose);
 
 private:
   std::shared_ptr<rai::CameraAbstraction>& getCamera(const char* sensor);

@@ -22,31 +22,30 @@ struct sRealSenseThread{
 };
 
 RealSenseThread::RealSenseThread(const char *_name, int _cameraID)
-  : Thread("RealSenseThread"),
-    image(this),
-    depth(this){
-  if(_name) CameraAbstraction::name=_name;
+  : Thread("RealSenseThread"){
+  if(_name) camera_name=_name;
   cameraID = _cameraID;
   threadOpen(true);
+  LOG(0) <<"launching camera " <<camera_name;
   threadLoop();
 }
 
 RealSenseThread::~RealSenseThread(){
-  LOG(0) <<"DTOR";
+  LOG(0) <<"shutting down camera " <<camera_name;
   threadClose();
 }
 
-void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){
-  uint n=cfg.startupSkipImages;
-  if(!cfg.autoExposure) n=1;
-  if(image.getRevision()<n){
-    LOG(0) <<"waiting to get " <<n <<" images from RealSense for autoexposure settling";
-    image.waitForRevisionGreaterThan(n); //need many starting images for autoexposure to get settled!!
-    depth.waitForRevisionGreaterThan(n);
-  }
-  _image = image.get();
-  _depth = depth.get();
-}
+// void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){
+//   uint n=cfg.startupSkipImages;
+//   if(!cfg.autoExposure) n=1;
+//   if(image.getRevision()<n){
+//     LOG(0) <<"waiting to get " <<n <<" images from RealSense for autoexposure settling";
+//     image.waitForRevisionGreaterThan(n); //need many starting images for autoexposure to get settled!!
+//     depth.waitForRevisionGreaterThan(n);
+//   }
+//   _image = image.get();
+//   _depth = depth.get();
+// }
 
 void RealSenseThread::open(){
 

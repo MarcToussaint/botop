@@ -29,8 +29,8 @@ option(USE_PYBIND "build python bindings" ON)
 option(USE_BULLET "link to bullet" OFF)
 option(USE_PHYSX "link to physx" ON)
 option(USE_OPENCV "link to opencv" ON)
+option(USE_OPENCV_sys "link to opencv" OFF)
 option(USE_OPENVR "link to openvr" OFF)
-option(USE_OPENCV_LOCAL "link to opencv" OFF)
 option(USE_REALSENSE "link to realsense2 driver library" ON)
 option(USE_LIBFRANKA "link to libfranka" ON)
 option(USE_PCL "link to pcl library" OFF)
@@ -73,6 +73,7 @@ include_directories(
 
 link_directories(
   $ENV{HOME}/.local/lib
+  $ENV{HOME}/.local/lib/opencv5/3rdparty
   )
 
 if(USE_H5)
@@ -131,8 +132,6 @@ add_library(rai SHARED
   )
 
 ################################################################################
-#
-# compile extra modules
 
 if(MODULE_Vive)
   add_definitions(-DRAI_Vive)
@@ -141,8 +140,6 @@ if(MODULE_Vive)
 endif()
   
 ################################################################################
-#
-# rai include/link
 
 #find_package (Eigen3 3.3 REQUIRED NO_MODULE)
 #target_link_libraries (rai Eigen3::Eigen)
@@ -178,17 +175,18 @@ if(USE_PHYSX)
   message(STATUS "[rai] using physx libs from ~/.local")
 endif()
 
-if(USE_OPENCV)
+if(USE_OPENCV_sys)
   find_package(OpenCV REQUIRED)
   add_definitions(-DRAI_OPENCV)
   target_link_libraries(rai ${OpenCV_LIBS})
   message(STATUS "[rai] using OpenCV libs:" ${OpenCV_LIBS})
 endif()
 
-if(USE_OPENCV_LOCAL)
+if(USE_OPENCV)
   add_definitions(-DRAI_OPENCV)
-  include_directories($ENV{HOME}/.local/include/opencv4)
-  target_link_libraries(rai opencv_core opencv_highgui opencv_imgproc opencv_videoio)
+  include_directories($ENV{HOME}/.local/include/opencv5)
+  target_link_libraries(rai opencv_highgui opencv_imgproc opencv_videoio opencv_objdetect opencv_core ittnotify ippiw ipphal ippicv)
+  # target_link_libraries(rai PRIVATE libopencv_core.a libopencv_features.a libopencv_geometry.a libopencv_stereo.a libopencv_highgui.a libopencv_imgproc.a libopencv_video.a libopencv_videoio.a libopencv_objdetect.a libopencv_calib.a  libopencv_dnn.a       libopencv_flann.a     libopencv_highgui.a    libopencv_imgproc.a    libopencv_photo.a         libopencv_core.a   libopencv_imgcodecs.a  libopencv_objdetect.a  libopencv_ptcloud.a  libopencv_stitching.a  libopencv_videoio.a libittnotify.a  liblibclapack.a  liblibprotobuf.a libippiw.a  libipphal.a libippicv.a)
   message(STATUS "[rai] using OpenCV libs from ~/.local")
 endif()
 
@@ -208,7 +206,7 @@ endif()
 
 if(USE_REALSENSE)
   add_definitions(-DRAI_REALSENSE)
-  target_link_libraries(rai realsense2 realsense-file rsutils fw usb-1.0)
+  target_link_libraries(rai realsense2 realsense-file rsutils usb-1.0)
   message(STATUS "[rai] using realsense libs")
 endif()
 

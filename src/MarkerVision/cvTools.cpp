@@ -1,6 +1,7 @@
 #include "cvTools.h"
 
 #include <Perception/opencv.h>
+#include <opencv2/imgproc.hpp>
 
 void makeHomogeneousImageCoordinate(arr& u){
   u(0) *= u(2);
@@ -65,7 +66,8 @@ arr getHsvBlobImageCoords(byteA& _rgb, floatA& _depth, const arr& hsvFilter, int
 
   //get largest contour
   arr sizes(contours.size());
-  for(uint i=0; i<contours.size(); i++) sizes(i) = cv::contourArea(cv::Mat(contours[i]));
+  //for(uint i=0; i<contours.size(); i++) sizes(i) = cv::contourArea(cv::Mat(contours[i]));
+  NIY; //why is contourArea not defined?
   uint largest = argmax(sizes);
 
   //draw the contour interior into the mask
