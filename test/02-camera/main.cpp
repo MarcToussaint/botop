@@ -12,7 +12,7 @@
 
 int testDirect(){
 
-  RealSenseThread RS("realsense", 0);
+  RealSenseThread RS("realsense", 1);
   OpenGL gl, gl2;
 
   {
@@ -62,27 +62,76 @@ int testDirect(){
 
 //===========================================================================
 
+int testTwoCameras(){
+
+  RealSenseThread RS0("realsense", 0);
+  RealSenseThread RS1("realsense", 1);
+  OpenGL gl0, gl1;
+
+  {
+    RS0.image.waitForNextRevision();
+    RS1.image.waitForNextRevision();
+
+    CycleTimer tim;
+    for(;;){
+      RS0.image.waitForNextRevision();
+
+      tim.cycleStart();
+      int key=0;
+      {
+        auto colorGet = RS0.image.get();
+        key = gl0.watchImage(colorGet(), false, 1.);
+      }
+      {
+        auto colorGet = RS1.image.get();
+        key = gl1.watchImage(colorGet(), false, 1.);
+      }
+
+      tim.cycleDone();
+
+      if(key=='q') break;
+    }
+    cout <<"DISPLAY timer:   " <<tim.report() <<endl;
+    cout <<"RealSense timer: " <<RS0.timer.report() <<endl;
+  }
+
+  LOG(0) <<"bye bye";
+
+  return EXIT_SUCCESS;
+}
+
+//===========================================================================
+
 void testBotop(){
   rai::Configuration C;
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
 
   //-- start a robot
-  BotOp bot(C, rai::getParameter<bool>("BotOp/real", false));
+  BotOp bot(C, rai::getParameter<bool>("bot/real", false));
 
-  OpenGL gl, gl2;
-  byteA image;
+  OpenGL gl, gl1, gl2;
+  byteA image, image1;
   floatA depth;
   arr points;
   for(uint k=0;k<100;){
     bot.sync(C, .1);
     if(bot.keypressed=='q'){ LOG(0) <<"HERE"; break; }
 
-    bot.getImageDepthPcl(image, depth, points, "cameraWrist", false);
+    //bot.getImageDepthPcl(image, depth, points, "RealSense_0", false);
+    bot.getImageAndDepth(image, depth, "RealSense_0");
+    bot.getImageAndDepth(image1, depth, "RealSense_1");
 
-    for(float& d:depth) d *= 128.f;
     int key=0;
-    key |= gl.watchImage(depth, false, 1.);
-    key |= gl2.watchImage(image, false, 1.);
+    if(depth.N){
+      for(float& d:depth) d *= 128.f;
+      key |= gl.watchImage(depth, false, 1.);
+    }
+    if(image.N){
+      key |= gl2.watchImage(image, false, 1.);
+    }
+    if(image1.N){
+      key |= gl1.watchImage(image1, false, 1.);
+    }
     if(key=='q') break;
   }
 }
@@ -163,8 +212,9 @@ void testMini(){
 int main(int argc, char * argv[]){
   rai::initCmdLine(argc, argv);
 
- testDirect();
-  // testBotop();
+// testDirect();
+// testTwoCameras();
+  testBotop();
 //  testBotopPcl();
 //  testMini();
 }

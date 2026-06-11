@@ -29,6 +29,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   //-- launch arm(s) & gripper(s)
   bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
   bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
+  forceRealCamera = rai::getParameter<bool>("bot/forceRealCamera", false);
 
   C.ensure_indexedJoints();
   qHome = C.getJointState();
@@ -444,13 +445,13 @@ std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
   for(std::shared_ptr<rai::CameraAbstraction>& cam:cameras){
     if(cam->camera_name==sensor) return cam;
   }
-  if(simthread){
+  if(simthread && !forceRealCamera){
     cameras.append( make_shared<CameraSimThread>(simthread, sensor) );
   }else{
     int cameraID = -1;
     str name = sensor;
     if(name.startsWith("RealSense_")){
-      name.sub(10,-1) >>cameraID;
+      name.sub(10,0) >>cameraID;
     }
     cameras.append( make_shared<RealSenseThread>(sensor, cameraID) );
   }
