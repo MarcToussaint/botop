@@ -20,31 +20,30 @@ struct sRealSenseThread{
 };
 
 RealSenseThread::RealSenseThread(const char *_name, int _cameraID)
-  : Thread("RealSenseThread"),
-    image(this),
-    depth(this){
-  if(_name) CameraAbstraction::name=_name;
+  : Thread("RealSenseThread"){
+  if(_name) camera_name=_name;
   cameraID = _cameraID;
   threadOpen(true);
+  LOG(0) <<"launching camera " <<camera_name;
   threadLoop();
 }
 
 RealSenseThread::~RealSenseThread(){
-  LOG(0) <<"DTOR";
+  LOG(0) <<"shutting down camera " <<camera_name;
   threadClose();
 }
 
-void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){
-  uint n=cfg.startupSkipImages;
-  if(!cfg.autoExposure) n=1;
-  if(image.getRevision()<n){
-    LOG(0) <<"waiting to get " <<n <<" images from RealSense for autoexposure settling";
-    if(cfg.captureColor) image.waitForRevisionGreaterThan(n); //need many starting images for autoexposure to get settled!!
-    if(cfg.captureDepth) depth.waitForRevisionGreaterThan(n);
-  }
-  if(cfg.captureColor) _image = image.get(); else _image.clear();
-  if(cfg.captureDepth) _depth = depth.get(); else _depth.clear();
-}
+// void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){
+//   uint n=cfg.startupSkipImages;
+//   if(!cfg.autoExposure) n=1;
+//   if(image.getRevision()<n){
+//     LOG(0) <<"waiting to get " <<n <<" images from RealSense for autoexposure settling";
+//     if(cfg.captureColor) image.waitForRevisionGreaterThan(n); //need many starting images for autoexposure to get settled!!
+//     if(cfg.captureDepth) depth.waitForRevisionGreaterThan(n);
+//   }
+//   if(cfg.captureColor) _image = image.get(); else _image.clear();
+//   if(cfg.captureDepth) _depth = depth.get(); else _depth.clear();
+// }
 
 void RealSenseThread::open(){
 
@@ -223,7 +222,6 @@ void rs2_get_motion_intrinsics(const rs2_stream_profile* mode, rs2_motion_device
 
 RealSenseThread::RealSenseThread(const char *_name, int _cameraID) : Thread("RealSenseThread") { NICO }
 RealSenseThread::~RealSenseThread(){ NICO }
-void RealSenseThread::getImageAndDepth(byteA& _image, floatA& _depth){ NICO }
 void RealSenseThread::open(){ NICO }
 void RealSenseThread::close(){ NICO }
 void RealSenseThread::step(){ NICO }

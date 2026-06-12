@@ -16,6 +16,8 @@
 #include <Robotiq/RobotiqGripper.h>
 #include <OptiTrack/optitrack.h>
 #include <RealSense/RealSenseThread.h>
+#include <MarkerVision/ArucoThread.h>
+#include <MarkerVision/ArucoSystemThread.h>
 #ifdef RAI_VIVE
 #  include <ViveController/vivecontroller.h>
 #endif
@@ -73,12 +75,12 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     LOG(0) <<"CONNECTING TO FRANKAS";
     try{
       if(C.getFrame("l_panda_base", false) && C.getFrame("r_panda_base", false)){
-        robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
-        robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
+        robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
+        robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
       } else if(C.getFrame("l_panda_base", false)){
-        robotL = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'l'), cmd, state);
+        robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
       } else if(C.getFrame("r_panda_base", false)){
-        robotR = make_shared<FrankaThread>(robotID++, franka_getJointIndices(C,'r'), cmd, state);
+        robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
       }else{
         LOG(0) <<"starting botop without franka robots (no frames l_panda_base or r_panda_base defined)";
       }
@@ -92,7 +94,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     try{
       if(C.getFrame("omnibase_world", false)){
         LOG(0) <<"CONNECTING TO OMNIBASE";
-        robotL = make_shared<OmnibaseThread>(robotID++, uintA{0,1,2}, cmd, state);
+        robotL = make_shared<OmnibaseThread>(cmd, state, robotID++, uintA{0,1,2});
       }
     } catch(const std::exception& ex) {
       LOG(-1) <<"Starting the omnibase failed! Error msg: " <<ex.what();
@@ -138,6 +140,8 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 
 BotOp::~BotOp(){
   LOG(0) <<"shutting down BotOp...";
+  for(auto& ar:aruco_threads) ar.reset();
+  for(auto& cam:cameras) cam.reset();
   if(simthread) simthread.reset();
   gripperL.reset();
   gripperR.reset();
@@ -209,6 +213,16 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
   //update vivecontroller state
   if(vivecontroller) vivecontroller->pull(C);
 #endif
+
+  if(aruco_system_thread) aruco_system_thread->pull(C);
+
+  if(cameras.N){
+    auto& V = *C.get_viewer();
+    for(uint i=0;i<cameras.N;i++){
+      byteA rgb = cameras(i)->image.get();
+      if(rgb.N) V.setQuad(i, rgb, i*.3, .8, .2);
+    }
+  }
 
   //update sim state
   if(simthread) simthread->pullDynamicStates(C);
@@ -424,12 +438,29 @@ bool BotOp::gripperDone(rai::ArgWord leftRight){
   return true;
 }
 
+void BotOp::launch_arucos(int triangulateN){
+  for(uint k=0;k<cameras.N;k++){
+    aruco_threads.append(make_shared<rai::ArucoThread>(k, cameras(k)->image));
+  }
+  if(triangulateN>0){
+    rai::Array<Var<PointViewA>*> ar_outputs;
+    arrA Fxycxy;
+    rai::Array<rai::Transformation> Pose;
+    for(uint k=0;k<cameras.N;k++){
+      ar_outputs.append(&aruco_threads(k)->output);
+      Fxycxy.append(cameras(k)->getFxycxy());
+      Pose.append(cameras(k)->getPose());
+    }
+    aruco_system_thread = make_shared<rai::ArucoSystemThread>(triangulateN, ar_outputs, Fxycxy, Pose);
+  }
+}
+
 std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
   for(std::shared_ptr<rai::CameraAbstraction>& cam:cameras){
-    if(cam->name==sensor) return cam;
+    if(cam->camera_name==sensor) return cam;
   }
   if(simthread && !forceRealCamera){
-    cameras.append( make_shared<CameraSim>(simthread, sensor) );
+    cameras.append( make_shared<CameraSimThread>(simthread, sensor) );
   }else{
     int cameraID = -1;
     str name = sensor;
@@ -443,7 +474,8 @@ std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
 
 void BotOp::getImageAndDepth(byteA& image, floatA& depth, const char* sensor){
   auto cam = getCamera(sensor);
-  cam->getImageAndDepth(image, depth);
+  image = cam->image.get();
+  depth = cam->depth.get(); //getImageAndDepth(image, depth);
 }
 
 arr BotOp::getCameraFxycxy(const char* sensor){
@@ -453,7 +485,8 @@ arr BotOp::getCameraFxycxy(const char* sensor){
 
 void BotOp::getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates){
   auto cam = getCamera(sensor);
-  cam->getImageAndDepth(image, depth);
+  image = cam->image.get();
+  depth = cam->depth.get(); //getImageAndDepth(image, depth);
   depthData2pointCloud(points, depth, cam->getFxycxy());
   if(globalCoordinates){
     rai::Transformation pose=cam->getPose();
@@ -513,6 +546,16 @@ void BotOp::detach(str from, str to){
     LOG(-1) <<"attach only works in sim";
   }else{
     simthread->detach(from, to);
+  }
+}
+
+void BotOp::cheat_setFramePose(str name, const arr& pose){
+  if(!simthread){
+    LOG(-1) <<"cheat only works in sim";
+  }else{
+    rai::Frame *f = simthread->simConfig.getFrame(name);
+    if(pose.N) f->setPose(pose);
+    simthread->sim->pushConfigToSim();
   }
 }
 

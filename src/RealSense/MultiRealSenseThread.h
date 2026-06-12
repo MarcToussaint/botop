@@ -39,8 +39,6 @@ struct MultiRealSenseThread : Thread {
   std::vector<RealSenseCamera*> cameras;
 
   MultiRealSenseThread(const std::vector<std::string> cameraNames,
-                       const Var<std::vector<byteA>>& color,
-                       const Var<std::vector<floatA>>& depth,
                        bool captureColor, bool captureDepth);
   ~MultiRealSenseThread();
 
