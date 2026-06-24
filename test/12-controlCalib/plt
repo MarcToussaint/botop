@@ -1,6 +1,6 @@
 set style data lines
 
-joint = 5
+joint = 4
 
 J = 7
 
@@ -21,7 +21,7 @@ _uc = 2+joint+7*J
 plot 'z.panda0.dat' us 1:_vreal t 'vreal',\
 '' us 1:_vref t 'vref',\
 '' us 1:_ucmd t 'ucmd',\
-'' us 1:(100*(column(_qreal)-column(_qref))) t 'qreal-qref'
+'' us 1:(100*(column(_qreal)-column(_qref))) t '100*(qreal-qref)'
 
 #'' us 1:_uc t 'uc',\
 #'' us 1:_ureal t 'ureal',\

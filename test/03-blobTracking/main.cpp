@@ -8,8 +8,79 @@
 #include <Core/array.h>
 #include <Gui/opengl.h>
 #include <RealSense/RealSenseThread.h>
-#include <Gui/viewer.h>
+// #include <Gui/viewer.h>
 #include <Core/thread.h>
+
+#include <opencv2/objdetect/aruco_detector.hpp>
+
+template<class T>
+inline rai::Array<T> conv_cvMat2Arr(const cv::Mat& mat) {
+  if(mat.elemSize()==0) return rai::Array<T>();
+  if(mat.elemSize()==1) return rai::Array<T>().referTo((T*)mat.data, mat.total());
+  if(mat.elemSize()==3) return rai::Array<T>().referTo((T*)mat.data, 3*mat.total()).reshape(mat.rows, mat.cols, 3);
+  if(mat.elemSize()==rai::Array<T>::sizeT) return rai::Array<T>().referTo((T*)mat.data, mat.total());
+  return rai::Array<T>();
+}
+
+void test(){
+  OpencvCamera cam("zed", 4);
+  cam.flip_bgr=true;
+
+  byteA rgb;
+  OpenGL gl;
+  uint i=0, key=0;
+
+  std::vector<int> markerIds;
+  std::vector<std::vector<cv::Point2f>> markerCorners, rejectedCandidates;
+  cv::aruco::DetectorParameters detectorParams = cv::aruco::DetectorParameters();
+  cv::aruco::Dictionary dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::DICT_5X5_50);
+  detectorParams.cornerRefinementMethod = cv::aruco::CornerRefineMethod::CORNER_REFINE_SUBPIX;
+  cv::aruco::ArucoDetector detector(dictionary, detectorParams);
+
+  for(;;){
+    i=cam.image.waitForRevisionGreaterThan(i);
+    rgb = cam.image.get();
+    if(rgb.N){
+      // key=gl.watchImage(rgb, false);
+
+      cv::Mat inputImage = CV(rgb);
+      detector.detectMarkers(inputImage, markerCorners, markerIds, rejectedCandidates);
+
+      intA ids = as_arr<int>(markerIds, true);
+      if(ids.N){
+        cout <<ids <<endl;
+        arr pos(ids.N, 4, 2);
+        for(uint i=0;i<pos.d0;i++){
+          CHECK_EQ(markerCorners[i].size(), 4, "");
+          for(uint j=0;j<4;j++){
+            pos(i, j, 0) = markerCorners[i][j].x;
+            pos(i, j, 1) = markerCorners[i][j].y;
+          }
+
+	}
+	cout <<pos <<endl;
+	if(ids.N==2){
+	  arr del = pos(0,0,{}) - pos(1,0,{});
+
+	  if(del(0)>0.) del(0) -= 1280.;
+	  else del(0) += 1280.;
+
+	  double foc = 528., baseline = 0.12;
+	  double depth = baseline*foc/length(del);
+
+	  cout <<depth <<' ' <<del <<endl;
+	}
+
+	cv::Mat outputImage = inputImage.clone();
+	cv::aruco::drawDetectedMarkers(outputImage, markerCorners, markerIds);
+
+        rgb = conv_cvMat2byteA(outputImage);
+      }
+      key=gl.watchImage(rgb, false);
+    }
+    if(key=='q') break;
+  }
+}
 
 arr getHsvBlobPosition(cv::Mat& rgb, cv::Mat& depth, const arr& hsvFilter, const arr& fxycxy){
   //blur
@@ -139,7 +210,8 @@ void tracking2(){
 int main(int argc,char **argv){
   rai::initCmdLine(argc,argv);
 
-  tracking2();
+  test();
+  // tracking2();
 
   LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
 

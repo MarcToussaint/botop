@@ -10,7 +10,7 @@ int main(int argc, char * argv[]){
   //-- setup a configuration
   rai::Configuration C;
   if(rai::getParameter<rai::String>("bot/useArm", "left")=="left"){
-  C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
+    C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
   }else{
     C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandasTable-calibrated.g"));
   }

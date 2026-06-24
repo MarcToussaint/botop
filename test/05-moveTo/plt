@@ -19,8 +19,8 @@ _ug = 2+joint+6*J
 _uc = 2+joint+7*J
 
 
-#plot 'z.panda.dat' us 1:_qreal t 'qreal', '' us 1:_qref t 'qref'
-#exit
+plot 'z.panda.dat' us 1:_qreal t 'qreal', '' us 1:_qref t 'qref'
+exit
 
 plot 'z.panda.dat' us 1:_vreal t 'vreal',\
 '' us 1:_vref t 'vref',\
