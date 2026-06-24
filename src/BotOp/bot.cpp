@@ -140,6 +140,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 
 BotOp::~BotOp(){
   LOG(0) <<"shutting down BotOp...";
+  aruco_system_thread.reset();
   for(auto& ar:aruco_threads) ar.reset();
   for(auto& cam:cameras) cam.reset();
   if(simthread) simthread.reset();

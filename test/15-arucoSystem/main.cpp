@@ -20,7 +20,7 @@
 
 void test(){
   rai::Configuration C;
-  C.addFile("scene.yml");
+  C.addFile("table.yml");
 
   // rai::ConfigurationViewer& V = *C.get_viewer();
   // V.setWindow("bla", 800, 600);
@@ -38,7 +38,7 @@ void test(){
     tests(i)-> setShape(rai::ST_marker, {.2});
   }
 
-  FrameL cams(4);
+  FrameL cams(5);
   for(uint i=0;i<cams.N;i++) cams(i) = C.getFrame(STRING("cam" <<i));
 
   for(uint k=0;k<20;k++){
@@ -76,12 +76,12 @@ void test(){
 
 void testBotop(){
   rai::Configuration C;
-  C.addFile("scene.yml");
+  C.addFile("table.yml");
 
   rai::setParameter("botsim/verbose", 1);
   BotOp bot(C, false);
 
-  for(uint k=0;k<4;k++) bot.launch_camera(STRING("cam"<<k));
+  for(uint k=0;k<5;k++) bot.launch_camera(STRING("cam"<<k));
   bot.launch_arucos(12);
 
   // rai::Array<Var<PointViewA>*> ar_outputs;
