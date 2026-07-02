@@ -16,6 +16,7 @@
 #include <Robotiq/RobotiqGripper.h>
 #include <OptiTrack/optitrack.h>
 #include <RealSense/RealSenseThread.h>
+#include <RealSense/MultiRealSenseThread.h>
 #include <MarkerVision/ArucoThread.h>
 #include <MarkerVision/ArucoSystemThread.h>
 #ifdef RAI_VIVE
@@ -142,6 +143,7 @@ BotOp::~BotOp(){
   LOG(0) <<"shutting down BotOp...";
   aruco_system_thread.reset();
   for(auto& ar:aruco_threads) ar.reset();
+  realsenses.reset();
   for(auto& cam:cameras) cam.reset();
   if(simthread) simthread.reset();
   gripperL.reset();
@@ -221,6 +223,13 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
     auto& V = *C.get_viewer();
     for(uint i=0;i<cameras.N;i++){
       byteA rgb = cameras(i)->image.get();
+      if(rgb.N) V.setQuad(i, rgb, i*.3, .8, .2);
+    }
+  }
+  if(realsenses){
+    auto& V = *C.get_viewer();
+    for(uint i=0;i<realsenses->color.N;i++){
+      byteA rgb = realsenses->color(i).get();
       if(rgb.N) V.setQuad(i, rgb, i*.3, .8, .2);
     }
   }
@@ -439,19 +448,51 @@ bool BotOp::gripperDone(rai::ArgWord leftRight){
   return true;
 }
 
+void BotOp::launch_camera(rai::Frame* f_cam){
+  if(simthread && !forceRealCamera && !f_cam->ats->findNode("realsense")){
+    cameras.append( make_shared<CameraSimThread>(simthread, f_cam) );
+  }else if(f_cam->ats->findNode("realsense")){
+    int cameraID = f_cam->ats->get<int>("realsense");
+    LOG(0) <<cameraID;
+    cameras.append( make_shared<RealSenseThread>(f_cam->name, cameraID) );
+  }else{
+    LOG(-1) <<"NO camera launched for frame " <<f_cam->name;
+  }
+}
+
+void BotOp::launch_MultiRealSense(const FrameL& f_cams, bool captureColor, bool captureDepth){
+//  StringA serialNumbers;
+//  for(auto* f:f_cams){
+//    str sn = f->ats->get<str>("realsense");
+//    if(sn.startsWith("sn")) sn = sn.sub(2,-1);
+//    serialNumbers.append(sn);
+//  }
+//  LOG(0) <<"== LAUNCHING realsenses:" <<serialNumbers;
+//  realsenses = make_shared<rai::MultiRealSenseThread>(serialNumbers, captureColor, captureDepth);
+
+  StringA serialNumbers = {"102422075114", "102422071099", "825312070938"};
+  realsenses = make_shared<rai::MultiRealSenseThread>(serialNumbers, true, false);
+}
+
 void BotOp::launch_arucos(int triangulateN){
-  for(uint k=0;k<cameras.N;k++){
-    aruco_threads.append(make_shared<rai::ArucoThread>(k, cameras(k)->image));
+  uint k=0;
+  arrA Fxycxy;
+  rai::Array<rai::Transformation> Pose;
+  for(auto& cam: cameras){
+    aruco_threads.append(make_shared<rai::ArucoThread>(k++, cam->image));
+    Fxycxy.append(cam->getFxycxy());
+    Pose.append(cam->getPose());
+  }
+  if(realsenses){
+    for(auto& image:realsenses->color){
+      aruco_threads.append(make_shared<rai::ArucoThread>(k++, image));
+//      Fxycxy.append(cam->getFxycxy());
+//      Pose.append(came->getPose());
+    }
   }
   if(triangulateN>0){
     rai::Array<Var<PointViewA>*> ar_outputs;
-    arrA Fxycxy;
-    rai::Array<rai::Transformation> Pose;
-    for(uint k=0;k<cameras.N;k++){
-      ar_outputs.append(&aruco_threads(k)->output);
-      Fxycxy.append(cameras(k)->getFxycxy());
-      Pose.append(cameras(k)->getPose());
-    }
+    for(auto& a:aruco_threads) ar_outputs.append(&a->output);
     aruco_system_thread = make_shared<rai::ArucoSystemThread>(triangulateN, ar_outputs, Fxycxy, Pose);
   }
 }
@@ -461,7 +502,8 @@ std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
     if(cam->camera_name==sensor) return cam;
   }
   if(simthread && !forceRealCamera){
-    cameras.append( make_shared<CameraSimThread>(simthread, sensor) );
+    auto f_cam = simthread->sim->C.getFrame(sensor);
+    cameras.append( make_shared<CameraSimThread>(simthread, f_cam) );
   }else{
     int cameraID = -1;
     str name = sensor;

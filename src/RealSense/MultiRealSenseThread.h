@@ -11,34 +11,32 @@ struct align;
 }
 
 namespace rai {
-namespace realsense {
 
 extern std::unordered_map<std::string, std::string> cameraMapping;
 
 struct RealSenseCamera {
-  std::string cameraName;
   bool captureColor;
   bool captureDepth;
-  std::string serialNumber;
+  rai::String serialNumber;
   std::shared_ptr<rs2::config> cfg;
   std::shared_ptr<rs2::pipeline> pipe;
   std::shared_ptr<rs2::align> align;
   float depth_scale;
   arr fxycxy, color_fxycxy, depth_fxycxy;
 
-  RealSenseCamera(std::string cameraName, bool captureColor, bool captureDepth);
+  RealSenseCamera(rai::String serialNumber, bool captureColor, bool captureDepth);
 };
 
 struct MultiRealSenseThread : Thread {
-  std::vector<std::string> cameraNames;
-  Var<std::vector<byteA>> color;
-  Var<std::vector<floatA>> depth;
+  StringA serialNumbers;
+  rai::Array<RealSenseCamera*> cameras;
+
+  rai::Array<Var<byteA>> color;
+  rai::Array<Var<floatA>> depth;
   bool captureColor;
   bool captureDepth;
 
-  std::vector<RealSenseCamera*> cameras;
-
-  MultiRealSenseThread(const std::vector<std::string> cameraNames,
+  MultiRealSenseThread(const StringA& serialNumbers,
                        bool captureColor, bool captureDepth);
   ~MultiRealSenseThread();
 
@@ -49,5 +47,4 @@ struct MultiRealSenseThread : Thread {
   void step();
 };
 
-}
 }

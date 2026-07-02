@@ -9,6 +9,7 @@ namespace rai{
   struct OptiTrack;
   struct ViveController;
   struct Sound;
+  struct MultiRealSenseThread;
   struct ArucoThread;
   struct ArucoSystemThread;
 }
@@ -37,6 +38,7 @@ struct BotOp{
   std::shared_ptr<rai::Sound> audio;
   std::shared_ptr<BotThreadedSim> simthread;
   rai::Array<std::shared_ptr<rai::CameraAbstraction>> cameras;
+  std::shared_ptr<rai::MultiRealSenseThread> realsenses;
   rai::Array<std::shared_ptr<rai::ArucoThread>> aruco_threads;
   std::shared_ptr<rai::ArucoSystemThread> aruco_system_thread;
 
@@ -77,6 +79,8 @@ struct BotOp{
 
   //-- camera commands
   void launch_camera(const char* sensor){ getCamera(sensor); }
+  void launch_camera(rai::Frame *cam_frame); //might be obsolete, given that realsenses have to be launched en-block
+  void launch_MultiRealSense(const FrameL& f_cams, bool captureColor, bool captureDepth);
   void launch_arucos(int triangulateN=-1);
   void getImageAndDepth(byteA& image, floatA& depth, const char* sensor);
   void getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates=false);

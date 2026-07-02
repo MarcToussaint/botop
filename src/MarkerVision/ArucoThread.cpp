@@ -16,7 +16,7 @@ ArucoThread::~ArucoThread(){
 
 void ArucoThread::step() {
   input_revision = input.waitForRevisionGreaterThan(input_revision);
-  rgb = input.get();
+  rgb = input.get()();
   //do things...
   finder.find(rgb);
   // LOG(0) <<"aruco: found #" <<finder.ids.N <<" rev " <<input_revision <<" timer " <<timer.report();

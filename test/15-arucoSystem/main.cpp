@@ -78,11 +78,14 @@ void testBotop(){
   rai::Configuration C;
   C.addFile("table.yml");
 
-  rai::setParameter("botsim/verbose", 1);
+  rai::setParameter("botsim/verbose", 0);
   BotOp bot(C, false);
 
-  for(uint k=0;k<5;k++) bot.launch_camera(STRING("cam"<<k));
-  bot.launch_arucos(12);
+
+  FrameL f_cams;
+  for(uint k=0;k<1;k++)  f_cams.append( C.getFrame(STRING("cam"<<k)) );
+  bot.launch_MultiRealSense(f_cams, true, false);
+  bot.launch_arucos(-12);
 
   // rai::Array<Var<PointViewA>*> ar_outputs;
   // arrA Fxycxy;
@@ -98,6 +101,11 @@ void testBotop(){
     int key = bot.sync(C);
 
     // Ar.pull(C);
+    PointViewA data;
+    for(auto& ar:bot.aruco_threads) data.append(ar->output.get());
+    for(auto& pv:data){
+      cout <<"aruco marker id " <<pv.j <<", camera id " <<pv.k <<", point " <<pv.p <<endl;
+    }
 
 
     if(!(t%20)){

@@ -72,49 +72,35 @@ void setSettings(rs2::pipeline_profile& profile, bool autoExposure, double expos
 
 
 namespace rai {
-namespace realsense {
-
-std::unordered_map<std::string, std::string> cameraMapping = {
-  {"c1", "102422075114"},
-  {"c2", "102422071099"},
-  {"c3", "922612070608"},
-  {"c4", "922612070831"},
-  {"c5", "825312070938"}
-};
 
 #ifdef RAI_REALSENSE
 
-RealSenseCamera::RealSenseCamera(std::string cameraName, bool captureColor, bool captureDepth)
-  : cameraName(cameraName),
+RealSenseCamera::RealSenseCamera(String serialNumber, bool captureColor, bool captureDepth)
+  : serialNumber(serialNumber),
     captureColor(captureColor),
     captureDepth(captureDepth)
 {
 
-  if(cameraName.at(0) == 'c') {
-    serialNumber = cameraMapping.at(cameraName);
-  } else {
-    serialNumber = cameraName;
-  }
-
   cfg = std::make_shared<rs2::config>();
-  cfg->enable_device(serialNumber);
+  cfg->enable_device(serialNumber.p);
 
-  double wRGB = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/wRGB"), 1920);
-  double hRGB = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/hRGB"), 1080);
-  double wDepth = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/wDepth"), 424);
-  double hDepth = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/hDepth"), 240);
+  double wRGB = rai::getParameter<double>(STRING("RealSense/" << "wRGB"), 1920);
+  double hRGB = rai::getParameter<double>(STRING("RealSense/" << "hRGB"), 1080);
+  double wDepth = rai::getParameter<double>(STRING("RealSense/" << "wDepth"), 424);
+  double hDepth = rai::getParameter<double>(STRING("RealSense/" << "hDepth"), 240);
   if(captureColor) cfg->enable_stream(RS2_STREAM_COLOR, -1, wRGB, hRGB, rs2_format::RS2_FORMAT_RGB8, 30);
   if(captureDepth) cfg->enable_stream(RS2_STREAM_DEPTH, -1, wDepth, hDepth, rs2_format::RS2_FORMAT_Z16, 30);
 
   pipe = std::make_shared<rs2::pipeline>();
   pipe->start(*cfg);
 
-  bool alignToDepth = rai::getParameter<bool>(STRING("RealSense/" << cameraName << "/alignToDepth"), false);
-  bool autoExposure = rai::getParameter<bool>(STRING("RealSense/" << cameraName << "/autoExposure"), false);
-  double exposure = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/exposure"), 500);
-  double white = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/white"), 4000);
-  double gain = rai::getParameter<double>(STRING("RealSense/" << cameraName << "/gain"), 50);
+  bool alignToDepth = rai::getParameter<bool>(STRING("RealSense/" << "alignToDepth"), false);
+  bool autoExposure = rai::getParameter<bool>(STRING("RealSense/" << "autoExposure"), false);
+  double exposure = rai::getParameter<double>(STRING("RealSense/" << "exposure"), 500);
+  double white = rai::getParameter<double>(STRING("RealSense/" << "white"), 4000);
+  double gain = rai::getParameter<double>(STRING("RealSense/" << "gain"), 50);
 
+  LOG(0) <<"REALSENSE params: " <<alignToDepth <<' ' <<autoExposure <<' ' <<exposure <<' ' <<white <<' ' <<gain;
   rs2::pipeline_profile profile = pipe->get_active_profile();
   setSettings(profile, autoExposure, exposure, white, gain);
 
@@ -152,9 +138,11 @@ RealSenseCamera::RealSenseCamera(std::string cameraName, bool captureColor, bool
 
 
 
-MultiRealSenseThread::MultiRealSenseThread(const std::vector<std::string> cameraNames, bool captureColor, bool captureDepth)
+MultiRealSenseThread::MultiRealSenseThread(const StringA& cameraNames, bool captureColor, bool captureDepth)
   : Thread("MultiRealSenseThread"),
-    cameraNames(cameraNames),
+    serialNumbers(cameraNames),
+    color(cameraNames.N),
+    depth(cameraNames.N),
     captureColor(captureColor),
     captureDepth(captureDepth)
 {
@@ -168,15 +156,11 @@ MultiRealSenseThread::~MultiRealSenseThread(){
   threadClose();
 }
 
-uint MultiRealSenseThread::getNumberOfCameras() {
-  return cameras.size();
-}
-
 void MultiRealSenseThread::open() {
   rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
 
-  for(const auto& cameraName : cameraNames) {
-    cameras.push_back(new RealSenseCamera(cameraName, captureColor, captureDepth));
+  for(const auto& serialNumber: serialNumbers) {
+    cameras.append(new RealSenseCamera(serialNumber, captureColor, captureDepth));
   }
 }
 
@@ -191,9 +175,9 @@ void MultiRealSenseThread::close() {
 }
 
 void MultiRealSenseThread::step() {
-  std::vector<byteA> colorNew;
-  std::vector<floatA> depthNew;
-  for(auto camera : cameras) {
+  for(uint c=0;c<cameras.N;c++){
+    auto& camera = cameras.elem(c);
+
     rs2::frameset data;
     try {
       data = camera->pipe->wait_for_frames(); // Wait for next set of frames from the camera
@@ -211,11 +195,10 @@ void MultiRealSenseThread::step() {
 
     if(captureColor) {
       rs2::video_frame rs_color = processed.get_color_frame();
-      byteA colorArr;
-      colorArr.resize(rs_color.get_height(), rs_color.get_width(), 3);
+      auto colorSet = color.elem(c).set();
+      colorSet->resize(rs_color.get_height(), rs_color.get_width(), 3);
       CHECK(rs_color.get_bytes_per_pixel()==3,"");
-      memmove(colorArr.p, rs_color.get_data(), colorArr.N);
-      colorNew.push_back(std::move(colorArr));
+      memmove(colorSet->p, rs_color.get_data(), colorSet->N);
     }
 
     if(captureDepth) {
@@ -224,20 +207,16 @@ void MultiRealSenseThread::step() {
       /*rs2::hole_filling_filter hole_filter(2);
       rs_depth = hole_filter.process(rs_depth);*/
 
-      floatA depthArr;
-      depthArr.resize(rs_depth.get_height(), rs_depth.get_width());
+      auto depthSet = depth.elem(c).set();
+      depthSet->resize(rs_depth.get_height(), rs_depth.get_width());
       CHECK_EQ(rs_depth.get_bits_per_pixel(), 16, "");
       CHECK_EQ(rs_depth.get_stride_in_bytes(), rs_depth.get_width()*2, "");
       const uint16_t *data = reinterpret_cast<const uint16_t*>(rs_depth.get_data());
-      for(uint i=0;i<depthArr.N;i++){
-        depthArr.p[i] = float(data[i]) * camera->depth_scale;
+      for(uint i=0;i<depthSet->N;i++){
+        depthSet->p[i] = float(data[i]) * camera->depth_scale;
       }
-      depthNew.push_back(std::move(depthArr));
     }
   }
-
-  if(captureColor) color.set() = std::move(colorNew);
-  if(captureDepth) depth.set() = std::move(depthNew);
 }
 
 
@@ -254,5 +233,4 @@ void MultiRealSenseThread::step(){ NICO }
 
 #endif
 
-}
 }
