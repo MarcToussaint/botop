@@ -10,7 +10,7 @@ ArucoThread::ArucoThread(uint k_id, Var<byteA>& _input)
 }
 
 ArucoThread::~ArucoThread(){
-  LOG(0) <<"shutting down aruco thread " <<k_id;
+  LOG(0) <<"shutting down aruco thread " <<k_id <<" cycle report: " <<timer.report();
   threadClose();
 }
 
@@ -19,7 +19,7 @@ void ArucoThread::step() {
   rgb = input.get()();
   //do things...
   finder.find(rgb);
-  // LOG(0) <<"aruco: found #" <<finder.ids.N <<" rev " <<input_revision <<" timer " <<timer.report();
+  LOG(0) <<"aruco " <<k_id <<" found #" <<finder.ids.N <<" points in image rev " <<input_revision;
   {
     auto set = output.set();
     uint N = finder.ids.N;

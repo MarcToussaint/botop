@@ -17,6 +17,7 @@
 #include <OptiTrack/optitrack.h>
 #include <RealSense/RealSenseThread.h>
 #include <RealSense/MultiRealSenseThread.h>
+#include <Basler/BaslerThread.h>
 #include <MarkerVision/ArucoThread.h>
 #include <MarkerVision/ArucoSystemThread.h>
 #ifdef RAI_VIVE
@@ -232,6 +233,13 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
       byteA rgb = realsenses->color(i).get();
       if(rgb.N) V.setQuad(i, rgb, i*.3, .8, .2);
     }
+  }
+  if(basler){
+      auto& V = *C.get_viewer();
+      for(uint i=0;i<basler->color.N;i++){
+          byteA rgb = basler->color(i).get();
+          if(rgb.N) V.setQuad(i, rgb, i*.3, .8, .2);
+      }
   }
 
   //update sim state
@@ -474,6 +482,10 @@ void BotOp::launch_MultiRealSense(const FrameL& f_cams, bool captureColor, bool 
   realsenses = make_shared<rai::MultiRealSenseThread>(serialNumbers, true, false);
 }
 
+void BotOp::launch_Basler(uint nCams){
+    basler = make_shared<rai::BaslerThread>(nCams);
+}
+
 void BotOp::launch_arucos(int triangulateN){
   uint k=0;
   arrA Fxycxy;
@@ -489,6 +501,13 @@ void BotOp::launch_arucos(int triangulateN){
 //      Fxycxy.append(cam->getFxycxy());
 //      Pose.append(came->getPose());
     }
+  }
+  if(basler){
+      for(auto& image:basler->color){
+          aruco_threads.append(make_shared<rai::ArucoThread>(k++, image));
+          //      Fxycxy.append(cam->getFxycxy());
+          //      Pose.append(came->getPose());
+      }
   }
   if(triangulateN>0){
     rai::Array<Var<PointViewA>*> ar_outputs;
