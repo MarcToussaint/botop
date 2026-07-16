@@ -1,6 +1,6 @@
 #include "BaslerThread.h"
 
-#if 1 //def RAI_PYLON
+#ifdef RAI_BASLER
 
 #include <pylon/PylonIncludes.h>
 
@@ -98,14 +98,14 @@ void BaslerThread::step() {
 
 #else //BASLER
 
-RealSenseCamera::RealSenseCamera(String serialNumber, bool captureColor, bool captureDepth) { NICO }
+  namespace rai{
 
-MultiRealSenseThread::MultiRealSenseThread(const StringA& cameraNames, bool captureColor, bool captureDepth) : Thread("MultiRealSenseThread"){ NICO }
-MultiRealSenseThread::~MultiRealSenseThread() { NICO }
-uint MultiRealSenseThread::getNumberOfCameras() { NICO }
-void MultiRealSenseThread::open(){ NICO }
-void MultiRealSenseThread::close(){ NICO }
-void MultiRealSenseThread::step(){ NICO }
+    BaslerThread::BaslerThread(uint nCams)
+  : Thread("BaslerThread"), color(nCams) { NICO }
+BaslerThread::~BaslerThread(){ NICO }
+void BaslerThread::open(){ NICO }
+void BaslerThread::close(){ NICO }
+void BaslerThread::step(){ NICO }
 
 #endif
 
