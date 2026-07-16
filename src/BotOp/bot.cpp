@@ -516,6 +516,19 @@ void BotOp::launch_arucos(int triangulateN){
   }
 }
 
+byteA BotOp::getImage(const str& sensor){
+    if(sensor.startsWith("basler_")){
+        CHECK(basler, "basler cameras were not launched")
+        int cameraID;
+        sensor.sub(7,0) >>cameraID;
+        CHECK_LE(cameraID, (int)basler->color.N-1, "only have " <<basler->color.N <<" basler cameras");
+        byteA img = basler->color(cameraID).get();
+        return img;
+    }
+    NIY;
+    return byteA();
+}
+
 std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
   for(std::shared_ptr<rai::CameraAbstraction>& cam:cameras){
     if(cam->camera_name==sensor) return cam;

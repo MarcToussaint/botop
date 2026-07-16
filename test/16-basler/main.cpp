@@ -1,10 +1,15 @@
-#include <pylon/PylonIncludes.h>
 #include <Gui/opengl.h>
 #include <Core/util.h>
 
 #include <BotOp/bot.h>
 #include <RealSense/RealSenseThread.h>
 #include <Basler/BaslerThread.h>
+
+// COMMAND LINE:   QT_QPA_PLATFORM=xcb ./pylonviewer
+
+#ifdef RAI_BASLER
+
+#include <pylon/PylonIncludes.h>
 
 using namespace Pylon;
 
@@ -81,32 +86,38 @@ int direct(){
     return 0;
 }
 
+#endif
+
 void thread(){
 
-    OpenGL gl0, gl1;
-
-    rai::BaslerThread basler(2);
+    uint n=3;
+    rai::BaslerThread basler(n);
+    rai::Array<OpenGL> gl(n);
 
     CycleTimer tim;
     for(;;){
 
-        basler.color(1).waitForNextRevision();
+        basler.color(-1).waitForNextRevision();
 
         tim.cycleStart();
         int key=0;
-        {
-            auto colorGet = basler.color(0).get();
-            key = gl0.watchImage(colorGet(), false, .25);
-        }
-        {
-            auto colorGet = basler.color(1).get();
-            key = gl1.watchImage(colorGet(), false, .25);
+        for(uint i=0;i<n;i++){
+            auto colorGet = basler.color(i).get();
+            key = gl(i).watchImage(colorGet(), false, .5);
+            if(key=='q') break;
         }
 
         tim.cycleDone();
 
         if(key=='q') break;
     }
+    uint j=2;
+    for(uint i=0;i<n;i++){
+        auto colorGet = basler.color(i).get();
+        write_png(colorGet(), STRING("img-"<<i<<"-"<<j<<".png"), false);
+    }
+
+
     cout <<"DISPLAY timer:   " <<tim.report() <<endl;
     cout <<"timer: " <<basler.timer.report() <<endl;
 }
@@ -118,7 +129,7 @@ void botop(){
     rai::setParameter("botsim/verbose", 0);
     BotOp bot(C, false);
 
-    bot.launch_Basler(4);
+    bot.launch_Basler(3);
     bot.launch_arucos();
 
     for(;;){
@@ -128,7 +139,7 @@ void botop(){
 }
 
 int main(int argn, char** argv){
-    // direct();
+    //direct();
     // thread();
     botop();
     return 0;

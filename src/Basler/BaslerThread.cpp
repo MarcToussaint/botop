@@ -13,16 +13,18 @@
 #include <opencv2/objdetect/aruco_detector.hpp>
 
 void cv_process(byteA& rgb, const byteA& bayer, bool downscale){
-    static byteA buf;
-    buf.resize(bayer.d0, bayer.d1, 3);
-    cv::cvtColor(CV(bayer), CV(buf), cv::COLOR_BayerRG2BGR);
 
     if(downscale){
+        static byteA buf;
+        buf.resize(bayer.d0, bayer.d1, 3);
+        cv::cvtColor(CV(bayer), CV(buf), cv::COLOR_BayerRG2BGR);
+
         rgb.resize(bayer.d0/2, bayer.d1/2, 3);
         // cv::pyrDown(CV(buf), CV(rgb));
         cv::resize(CV(buf), CV(rgb), cv::Size(rgb.d1, rgb.d0), 0, 0, cv::INTER_LINEAR);
     }else{
-        rgb = buf;
+        rgb.resize(bayer.d0, bayer.d1, 3);
+        cv::cvtColor(CV(bayer), CV(rgb), cv::COLOR_BayerRG2BGR);
     }
 }
 
@@ -88,12 +90,19 @@ void BaslerThread::step() {
         s->bayer.resize(imageDataComponent.GetHeight(), imageDataComponent.GetWidth()); //THIS IS  bayer!!
         memmove(s->bayer.p, imageDataComponent.GetData(), s->bayer.N);
 
+#if 1
         {
             auto rgb = color(cameraContextValue).set();
             cv_process(rgb(), s->bayer, true);
         }
+#else //for testing
+        {
+            auto rgb = color(cameraContextValue).set();
+            cv_process(rgb(), s->bayer, false);
+            rgb = s->bayer;
+        }
+#endif
     }
-
 }
 
 #else //BASLER

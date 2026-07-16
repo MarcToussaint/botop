@@ -6,7 +6,8 @@ ArucoThread::ArucoThread(uint k_id, Var<byteA>& _input)
     : Thread(STRING("aruco_thread_" <<k_id), -1.), input(_input), k_id(k_id) {
   finder.verbose=0;
   LOG(0) <<"launching aruco thread " <<k_id;
-  threadLoop();
+  event.listenTo(input);
+  threadOpen();
 }
 
 ArucoThread::~ArucoThread(){
@@ -15,7 +16,7 @@ ArucoThread::~ArucoThread(){
 }
 
 void ArucoThread::step() {
-  input_revision = input.waitForRevisionGreaterThan(input_revision);
+  // input_revision = input.waitForRevisionGreaterThan(input_revision);
   rgb = input.get()();
   //do things...
   finder.find(rgb);
