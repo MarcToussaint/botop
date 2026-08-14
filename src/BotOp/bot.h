@@ -50,6 +50,8 @@ struct BotOp{
   BotOp(rai::Configuration& C, bool useRealRobot);
   ~BotOp();
 
+  void launch_robots(rai::Configuration& C, bool useRealRobot);
+
   //-- state info
   arr get_q();
   arr get_qDot();

@@ -4,7 +4,7 @@
 
 #include <franka/gripper.h>
 
-const char *gripperIpAddresses[2] = {"172.16.0.2", "172.17.0.2"};
+const char *gripperIpAddresses[2] = {"172.17.0.2", "172.16.0.2"};
 
 FrankaGripper::FrankaGripper(uint whichRobot)
   : Thread(STRING("FrankaGripper_"<<whichRobot)) {

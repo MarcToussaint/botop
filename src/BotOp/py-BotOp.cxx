@@ -132,6 +132,7 @@ void init_BotOp(pybind11::module& m) {
        "returns if gripper is done",
        pybind11::arg("leftRight"))
 
+  .def("launch_robots", &BotOp::launch_robots, "", pybind11::arg("C"), pybind11::arg("useRealRobot"))
   .def("launch_camera", pybind11::overload_cast<const char*>(&BotOp::launch_camera), "start a camera thread referring to a frame that encodes all necessary specs", pybind11::arg("sensor"))
   .def("launch_Basler", &BotOp::launch_Basler, "", pybind11::arg("nCams"))
   .def("launch_arucos", &BotOp::launch_arucos, "for each camera, start a thread that permanently analyzes for aruco markers in the images", pybind11::arg("triangulateN"))
@@ -193,6 +194,8 @@ void init_BotOp(pybind11::module& m) {
   .def("attach", &BotOp::attach, "cheating: attach two objects kinematically", pybind11::arg("from"), pybind11::arg("to"))
   .def("detach", &BotOp::detach, "cheating: detach two previously attached objects", pybind11::arg("from"), pybind11::arg("to"))
   .def("cheat_setFramePose", &BotOp::cheat_setFramePose, "cheating: set a frame pose in sim", pybind11::arg("name"), pybind11::arg("pose"))
+
+  .def("sound", &BotOp::sound, "play a sound", pybind11::arg("noteRelToC")=0, pybind11::arg("a")=.5, pybind11::arg("decay")=0.0007);
 
   ;
 

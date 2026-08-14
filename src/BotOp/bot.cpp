@@ -28,85 +28,89 @@
 
 //===========================================================================
 
+void BotOp::launch_robots(rai::Configuration& C, bool useRealRobot){
+    bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
+    bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
+    forceRealCamera = rai::getParameter<bool>("bot/forceRealCamera", false);
+
+    C.ensure_indexedJoints();
+    qHome = C.getJointState();
+    state.set()->initZero(qHome.N);
+
+    if(blockRealRobot && useRealRobot){
+        LOG(0) <<"-- blocking useRealRobot -- ";
+        useRealRobot=false;
+    }
+
+    //-- launch robots & grippers
+    if(useRealRobot && useGripper){
+        LOG(0) <<"CONNECTING TO GRIPPERS";
+        try{
+            if(C.getFrame("l_panda_finger_joint1", false) && C.getFrame("r_panda_finger_joint1", false)){
+                gripperL = make_shared<FrankaGripper>(0);
+                gripperR = make_shared<FrankaGripper>(1);
+            }else if(C.getFrame("l_panda_finger_joint1", false)){
+                gripperL = make_shared<FrankaGripper>(0);
+            }else if(C.getFrame("r_panda_finger_joint1", false)){
+                gripperR = make_shared<FrankaGripper>(1);
+
+            }else if(C.getFrame("l_robotiq_base", false) && C.getFrame("r_robotiq_base", false)){
+                gripperL = make_shared<RobotiqGripper>(0);
+                gripperR = make_shared<RobotiqGripper>(1);
+            }else if(C.getFrame("l_robotiq_base", false)){
+                gripperL = make_shared<RobotiqGripper>(0);
+            }else if(C.getFrame("r_robotiq_base", false)){
+                gripperR = make_shared<RobotiqGripper>(1);
+            }
+        } catch(const std::exception& ex) {
+            LOG(-1) <<"Starting the gripper(s) failed! Error msg: " <<ex.what();
+        }
+
+        if(!gripperL && !gripperR){
+            LOG(0) <<"WARNING: no grippers created (no frames l_panda_finger_joint1 or l_robotiq_base found in config)";
+        }
+    }
+
+    if(useRealRobot){
+        uint robotID=0;
+        LOG(0) <<"CONNECTING TO FRANKAS";
+        try{
+            if(C.getFrame("l_panda_base", false) && C.getFrame("r_panda_base", false)){
+                robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
+                robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
+            } else if(C.getFrame("l_panda_base", false)){
+                robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
+            } else if(C.getFrame("r_panda_base", false)){
+                robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
+            }else{
+                LOG(0) <<"starting botop without franka robots (no frames l_panda_base or r_panda_base defined)";
+            }
+            C.setJointState(get_q());
+        } catch(const std::exception& ex) {
+            LOG(-1) <<"Starting the franka robot(s) failed! Error msg: " <<ex.what();
+        } catch(...) {
+            LOG(-1) <<"Starting the franka robot(s) failed! Error msg: " <<rai::errString();
+        }
+
+        try{
+            if(C.getFrame("omnibase_world", false)){
+                LOG(0) <<"CONNECTING TO OMNIBASE";
+                robotL = make_shared<OmnibaseThread>(cmd, state, robotID++, uintA{0,1,2});
+            }
+        } catch(const std::exception& ex) {
+            LOG(-1) <<"Starting the omnibase failed! Error msg: " <<ex.what();
+        }
+
+    }else{
+        simthread = make_shared<BotThreadedSim>(C, cmd, state);
+        robotL = simthread;
+        if(useGripper) gripperL = make_shared<GripperSim>(simthread, "l_gripper");
+    }
+}
+
 BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   //-- launch arm(s) & gripper(s)
-  bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
-  bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
-  forceRealCamera = rai::getParameter<bool>("bot/forceRealCamera", false);
-
-  C.ensure_indexedJoints();
-  qHome = C.getJointState();
-  state.set()->initZero(qHome.N);
-
-  if(blockRealRobot && useRealRobot){
-    LOG(0) <<"-- blocking useRealRobot -- ";
-    useRealRobot=false;
-  }
-
-  //-- launch robots & grippers
-  if(useRealRobot && useGripper){
-    LOG(0) <<"CONNECTING TO GRIPPERS";
-    try{
-      if(C.getFrame("l_panda_finger_joint1", false) && C.getFrame("r_panda_finger_joint1", false)){
-        gripperL = make_shared<FrankaGripper>(0);
-        gripperR = make_shared<FrankaGripper>(1);
-      }else if(C.getFrame("l_panda_finger_joint1", false)){
-        gripperL = make_shared<FrankaGripper>(0);
-      }else if(C.getFrame("r_panda_finger_joint1", false)){
-        gripperR = make_shared<FrankaGripper>(1);
-
-      }else if(C.getFrame("l_robotiq_base", false) && C.getFrame("r_robotiq_base", false)){
-        gripperL = make_shared<RobotiqGripper>(0);
-        gripperR = make_shared<RobotiqGripper>(1);
-      }else if(C.getFrame("l_robotiq_base", false)){
-        gripperL = make_shared<RobotiqGripper>(0);
-      }else if(C.getFrame("r_robotiq_base", false)){
-        gripperR = make_shared<RobotiqGripper>(1);
-      }
-    } catch(const std::exception& ex) {
-      LOG(-1) <<"Starting the gripper(s) failed! Error msg: " <<ex.what();
-    }
-    
-    if(!gripperL && !gripperR){
-      LOG(0) <<"WARNING: no grippers created (no frames l_panda_finger_joint1 or l_robotiq_base found in config)";
-    }
-  }
-
-  if(useRealRobot){
-    uint robotID=0;
-    LOG(0) <<"CONNECTING TO FRANKAS";
-    try{
-      if(C.getFrame("l_panda_base", false) && C.getFrame("r_panda_base", false)){
-        robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
-        robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
-      } else if(C.getFrame("l_panda_base", false)){
-        robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
-      } else if(C.getFrame("r_panda_base", false)){
-        robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
-      }else{
-        LOG(0) <<"starting botop without franka robots (no frames l_panda_base or r_panda_base defined)";
-      }
-      C.setJointState(get_q());
-    } catch(const std::exception& ex) {
-      LOG(-1) <<"Starting the franka robot(s) failed! Error msg: " <<ex.what();
-    } catch(...) {
-      LOG(-1) <<"Starting the franka robot(s) failed! Error msg: " <<rai::errString();
-    }
-
-    try{
-      if(C.getFrame("omnibase_world", false)){
-        LOG(0) <<"CONNECTING TO OMNIBASE";
-        robotL = make_shared<OmnibaseThread>(cmd, state, robotID++, uintA{0,1,2});
-      }
-    } catch(const std::exception& ex) {
-      LOG(-1) <<"Starting the omnibase failed! Error msg: " <<ex.what();
-    }
-
-  }else{
-    simthread = make_shared<BotThreadedSim>(C, cmd, state);
-    robotL = simthread;
-    if(useGripper) gripperL = make_shared<GripperSim>(simthread, "l_gripper");
-  }
+  // launch_robots(C, useRealRobot);
 
   startRealTime = rai::realTime();
 
@@ -136,8 +140,8 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
     audio = make_shared<rai::Sound>();
   }
 
-  C.view(false, STRING("time: 0"));
-  C.gl().setTitle("BotOp associated Configuration");
+  // C.view(false, STRING("time: 0"));
+  // C.gl().setTitle("BotOp associated Configuration");
 }
 
 BotOp::~BotOp(){
@@ -248,6 +252,7 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
   //gui
   if(rai::getParameter<bool>("bot/raiseWindow",false)) C.get_viewer()->raiseWindow();
   double ctrlTime = get_t();
+  C.gl().setTitle("BotOp associated Configuration");
   keypressed = C.view(false, STRING("BotOp sync ctrl time: "<<ctrlTime <<" (=" <<int(100.*ctrlTime/(rai::realTime()-startRealTime)) <<"% real time)\n" <<viewMsg));
   if(keypressed) C.get_viewer()->_resetPressedKey();
 //  if(keypressed==13) return false;

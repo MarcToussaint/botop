@@ -70,7 +70,6 @@ float SineSound::get(){
 
 #include <portaudio.h>
 
-
 void err(PaError e){
   if(!e) return;
   Pa_Terminate();
@@ -95,8 +94,6 @@ static int PortAudioCallback( const void *inputBuffer, void *outputBuffer,
 
   return paContinue;
 }
-
-
 
 Audio::Audio(SineSound& S){
   err( Pa_Initialize() );
