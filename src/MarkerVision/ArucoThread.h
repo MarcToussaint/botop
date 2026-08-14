@@ -14,7 +14,7 @@ struct ArucoThread : Thread {
   int input_revision=0;
   FindArucos finder;
 
-  ArucoThread(uint k_id, Var<byteA>& _input);
+  ArucoThread(uint k_id, Var<byteA>& _input, double beatIntervalSec=0.025);
   ~ArucoThread();
 
   void step();

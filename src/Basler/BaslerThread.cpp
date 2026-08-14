@@ -3,6 +3,7 @@
 #ifdef RAI_BASLER
 
 #include <pylon/PylonIncludes.h>
+#include <pylon/ImageFormatConverter.h>
 
 #ifdef RAI_OPENCV
 
@@ -12,30 +13,16 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/objdetect/aruco_detector.hpp>
 
-void cv_process(byteA& rgb, const byteA& bayer, bool downscale){
-
-    if(downscale){
-        static byteA buf;
-        buf.resize(bayer.d0, bayer.d1, 3);
-        cv::cvtColor(CV(bayer), CV(buf), cv::COLOR_BayerRG2BGR);
-
-        rgb.resize(bayer.d0/2, bayer.d1/2, 3);
-        // cv::pyrDown(CV(buf), CV(rgb));
-        cv::resize(CV(buf), CV(rgb), cv::Size(rgb.d1, rgb.d0), 0, 0, cv::INTER_LINEAR);
-    }else{
-        rgb.resize(bayer.d0, bayer.d1, 3);
-        cv::cvtColor(CV(bayer), CV(rgb), cv::COLOR_BayerRG2BGR);
-    }
-}
-
 #endif
 
 namespace rai {
 
 struct sBaslerThread{
     std::shared_ptr<Pylon::CInstantCameraArray> cameras;
+    std::shared_ptr<Pylon::CImageFormatConverter> converter;
     Pylon::CGrabResultPtr ptrGrabResult;
-    byteA bayer;
+    byteA rgb;
+    double startTime;
 };
 
 
@@ -47,7 +34,7 @@ BaslerThread::BaslerThread(uint nCams)
 
 
 BaslerThread::~BaslerThread(){
-  LOG(0) <<"BASLER DTOR - cycle report: " <<timer.report();
+  LOG(0) <<"BASLER DTOR - " <<timer.report();
   threadClose();
 }
 
@@ -57,51 +44,56 @@ void BaslerThread::open() {
     Pylon::PylonInitialize();
     Pylon::CTlFactory& tlFactory = Pylon::CTlFactory::GetInstance();
     Pylon::DeviceInfoList_t devices;
-    if (tlFactory.EnumerateDevices( devices ) == 0){
-        throw RUNTIME_EXCEPTION( "No camera present." );
-    }
+    CHECK(tlFactory.EnumerateDevices(devices)>=0, "No camera present");
     uint n = devices.size();
     if(color.N<n) n=color.N;
     LOG(0) <<"opening " <<n <<" basler cameras (" <<devices.size() <<" found)";
-    s->cameras = make_shared<Pylon::CInstantCameraArray>( n );
+    s->cameras = make_shared<Pylon::CInstantCameraArray>(n);
     for(uint i=0; i<n; i++) {
         (*s->cameras)[i].Attach( tlFactory.CreateDevice( devices[i] ) );
+        // (*s->cameras)[i].OutputQueueSize = 10;
         const Pylon::CDeviceInfo& info = (*s->cameras)[i].GetDeviceInfo();
         LOG(0) <<"Device " <<i <<" model: " << info.GetModelName() <<" serial numer: " <<info.GetSerialNumber() <<" name: " <<info.GetFullName();
     }
 
-    s->cameras->StartGrabbing();
+    s->cameras->StartGrabbing(Pylon::GrabStrategy_LatestImageOnly);
+
+    s->converter = std::make_shared<Pylon::CImageFormatConverter>();
+    s->converter->OutputPixelFormat = Pylon::PixelType_RGB8packed;
+    s->converter->OutputBitAlignment = Pylon::OutputBitAlignment_MsbAligned;
+    s->startTime = rai::clockTime();
 }
 
 void BaslerThread::close(){
     s->cameras.reset();
     Pylon::PylonTerminate();
+    arr revs(color.N);
+    for(uint i=0;i<color.N;i++) revs(i) = double(color(i).getRevision());
+    LOG(0) <<"frameCounts: " <<revs <<" frameRates: " <<revs/(rai::clockTime()-s->startTime);
     rai::wait(.1);
     delete s;
 }
 
 void BaslerThread::step() {
     s->cameras->RetrieveResult( 5000, s->ptrGrabResult, Pylon::TimeoutHandling_ThrowException );
+    timer.tic(1);
     if (s->ptrGrabResult->GrabSucceeded()) {
-        intptr_t cameraContextValue = s->ptrGrabResult->GetCameraContext();
+        int camera_id = s->ptrGrabResult->GetCameraContext();
         // cout << "Camera " << cameraContextValue << ": " << (*s->cameras)[cameraContextValue].GetDeviceInfo().GetModelName() << endl;
         Pylon::CPylonDataComponent imageDataComponent = s->ptrGrabResult->GetFirstImageDataComponent();
+        s->rgb.resize(imageDataComponent.GetHeight(), imageDataComponent.GetWidth(), 3);
+        s->converter->Convert( s->rgb.p, s->rgb.N, imageDataComponent );
+        timer.tic(2);
 
-        s->bayer.resize(imageDataComponent.GetHeight(), imageDataComponent.GetWidth()); //THIS IS  bayer!!
-        memmove(s->bayer.p, imageDataComponent.GetData(), s->bayer.N);
-
-#if 1
-        {
-            auto rgb = color(cameraContextValue).set();
-            cv_process(rgb(), s->bayer, true);
-        }
-#else //for testing
-        {
-            auto rgb = color(cameraContextValue).set();
-            cv_process(rgb(), s->bayer, false);
-            rgb = s->bayer;
-        }
+#if 0 //without resizing
+        color(cameraContextValue).set() = s->rgb;
+#else //with half resizing
+        static byteA resized;
+        resized.resize(s->rgb.d0/2, s->rgb.d1/2, 3);
+        cv::resize(CV(s->rgb), CV(resized), cv::Size(resized.d1, resized.d0), 0, 0, cv::INTER_LINEAR);
+        color(camera_id).set() = resized;
 #endif
+        timer.tic(3);
     }
 }
 

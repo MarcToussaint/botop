@@ -21,7 +21,7 @@ ArucoSystemThread::ArucoSystemThread(uint J_numMarkers,
 }
 
 ArucoSystemThread::~ArucoSystemThread(){
-  LOG(0) <<"shutting down aruco system thread" <<" cycle report: " <<timer.report();
+  LOG(0) <<"shutting down aruco system thread - " <<timer.report();
   threadClose();
 }
 
