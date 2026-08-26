@@ -1,3 +1,5 @@
+#include "komo_aruco_tracker.h"
+
 #include <Perception/opencv.h> //always include this first! OpenCV headers define stupid macros
 #include <Perception/opencvCamera.h>
 #include <Perception/aruco.h>
@@ -17,6 +19,17 @@
 #include <BotOp/simulation.h>
 #include <MarkerVision/ArucoThread.h>
 #include <MarkerVision/ArucoSystemThread.h>
+
+
+
+void testKomoTracker(){
+  rai::Configuration C;
+  C.addFile("../16-basler/scene.yml");
+  C.view(true);
+
+  KomoArucoTracker K(C, "box");
+
+}
 
 void test(){
   rai::Configuration C;
@@ -84,7 +97,7 @@ void testBotop(){
 
   FrameL f_cams;
   for(uint k=0;k<1;k++)  f_cams.append( C.getFrame(STRING("cam"<<k)) );
-  bot.launch_MultiRealSense(f_cams, true, false);
+  // bot.launch_MultiRealSense(f_cams, true, false);
   bot.launch_arucos(-12);
 
   // rai::Array<Var<PointViewA>*> ar_outputs;
@@ -121,9 +134,11 @@ void testBotop(){
 int main(int argc,char **argv){
   rai::initCmdLine(argc,argv);
 
+  testKomoTracker();
+
   // test();
 
-  testBotop();
+  // testBotop();
   
   return 0;
 }

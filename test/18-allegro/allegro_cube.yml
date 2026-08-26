@@ -1,0 +1,19 @@
+Include: <_allegro_org.yml>
+
+#table: { X: [0, 0, .3], shape: box, size: [1, 1, .1], color: [.6], contact: 1 }
+
+#obj_base: {}
+#obj(obj_base): { joint: free, limits: [-.1,-.1,.4,-1.1,-1.1,-1.1,-1.1,.1,.1,.6,1.1,1.1,1.1,1.1], Q: [0, 0, .5], shape: ssBox, size: [.06, .06, .06, .005], color: [1., .5, .0], mass: .2, sampleUniform: 1., contact: 1 }
+#obj_axes(obj): { shape: marker, size: [.045], simulation: false }
+
+#obj_goal (obj_base): { shape: ssBox, size: [.06, .06, .06, .005], color: [.0, 1., .5, .3], simulation: false }
+#obj_goal_axes(obj_goal): { shape: marker, size: [.045], simulation: false }
+
+#goal1 (obj): { Q: [+.03, +.03, +.03], shape: marker, size: [.005], color: [1, 0, 0, .9] }
+#goal2 (obj): { Q: [+.03, -.03, -.03], shape: marker, size: [.005], color: [1, 1, 0, .9] }
+#goal3 (obj): { Q: [-.03, +.03, -.03], shape: marker, size: [.005], color: [0, 1, 0, .9] }
+#goal4 (obj): { Q: [-.03, -.03, +.03], shape: marker, size: [.005], color: [0, 0, 1, .9] }
+
+camera_init: { X: [-0.13, 0.25, 0.53, 0.15, -0.20, 0.77, -0.59], focalLength: 1., width: 1024, height: 768 }
+
+#[-0.14573, 0.252954, 0.230458, 0.151757, -0.19612, 0.766173, -0.592863]

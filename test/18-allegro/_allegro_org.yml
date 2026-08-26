@@ -1,0 +1,24 @@
+Include: <$RAI_PATH/allegro/allegro.g>
+
+#Edit base_link: { pose: [.02, .0, .6, 1, 0, 1, 0] }
+Edit base_link: { pose: [-.02, .0, .4, 1, 0, -1, 0] }
+
+Edit joint_0.0: { q: .0, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+Edit joint_1.0: { q: .7, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+Edit joint_2.0: { q: .7, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+Edit joint_3.0: { q: .7, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+
+Edit joint_4.0: { q: .0, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+Edit joint_5.0: { q: .7, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+Edit joint_6.0: { q: .7, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+Edit joint_7.0: { q: .7, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+
+Edit joint_8.0: { q: .0, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+Edit joint_9.0: { q: .7, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+Edit joint_10.0: { q: .7, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+Edit joint_11.0: { q: .7, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+
+Edit joint_12.0: { q: .5, mj_actuator_kp: "10.", mj_actuator_kv: ".0", mj_joint_damping: ".2" }
+Edit joint_13.0: { q: .9, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+Edit joint_14.0: { q: .7, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }
+Edit joint_15.0: { q: .7, mj_actuator_kp: "3.", mj_actuator_kv: ".0", mj_joint_damping: ".02" }

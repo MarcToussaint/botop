@@ -14,6 +14,7 @@
 #include "simulation.h"
 #include <Omnibase/omnibase.h>
 #include <Robotiq/RobotiqGripper.h>
+#include <Allegro/allegro.h>
 #include <OptiTrack/optitrack.h>
 #include <RealSense/RealSenseThread.h>
 #include <RealSense/MultiRealSenseThread.h>
@@ -106,16 +107,26 @@ void BotOp::launch_robots(rai::Configuration& C, bool useRealRobot){
         robotL = simthread;
         if(useGripper) gripperL = make_shared<GripperSim>(simthread, "l_gripper");
     }
+
+    //-- initialize the control reference
+    hold(false, true);
+}
+
+void BotOp::launch_allegro(){
+  allegro = make_shared<AllegroThread>(cmd, state);
+  hold(false, true);
 }
 
 BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
+  C.ensure_indexedJoints();
+  qHome = C.getJointState();
+  state.set()->initZero(qHome.N);
+
   //-- launch arm(s) & gripper(s)
   // launch_robots(C, useRealRobot);
 
   startRealTime = rai::realTime();
 
-  //-- initialize the control reference
-  hold(false, true);
 
   //-- launch OptiTrack
   if(rai::getParameter<bool>("bot/useOptitrack", false)){
@@ -155,6 +166,7 @@ BotOp::~BotOp(){
   gripperR.reset();
   robotL.reset();
   robotR.reset();
+  allegro.reset();
 }
 
 double BotOp::get_t(){
