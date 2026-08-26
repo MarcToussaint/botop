@@ -15,6 +15,7 @@ namespace rai{
   struct ArucoSystemThread;
 }
 struct BotThreadedSim;
+struct KomoArucoTracker_Thread;
 
 struct StepObservation{
   double ctrlTime;
@@ -43,6 +44,7 @@ struct BotOp{
   std::shared_ptr<rai::MultiRealSenseThread> realsenses;
   std::shared_ptr<rai::BaslerThread> basler;
   rai::Array<std::shared_ptr<rai::ArucoThread>> aruco_threads;
+  std::shared_ptr<KomoArucoTracker_Thread> aruco_obj_tracker_thread;
   std::shared_ptr<rai::ArucoSystemThread> aruco_system_thread;
 
   arr qHome;
@@ -89,6 +91,7 @@ struct BotOp{
   void launch_MultiRealSense(const FrameL& f_cams, bool captureColor, bool captureDepth);
   void launch_Basler(uint nCams);
   void launch_arucos();
+  void launch_arucoObjTracker(rai::Configuration& C, const char* obj_name);
   byteA getImage(const str& sensor);
   void getImageAndDepth(byteA& image, floatA& depth, const char* sensor);
   void getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates=false);

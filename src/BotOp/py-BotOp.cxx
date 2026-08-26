@@ -135,7 +135,8 @@ void init_BotOp(pybind11::module& m) {
   .def("launch_robots", &BotOp::launch_robots, "", pybind11::arg("C"), pybind11::arg("useRealRobot"))
   .def("launch_camera", pybind11::overload_cast<const char*>(&BotOp::launch_camera), "start a camera thread referring to a frame that encodes all necessary specs", pybind11::arg("sensor"))
   .def("launch_Basler", &BotOp::launch_Basler, "", pybind11::arg("nCams"))
-  .def("launch_arucos", &BotOp::launch_arucos, "for each camera, start a thread that permanently analyzes for aruco markers in the images", pybind11::arg("triangulateN"))
+  .def("launch_arucos", &BotOp::launch_arucos, "for each camera, start a thread that permanently analyzes for aruco markers in the images")
+  .def("launch_arucoObjTracker", &BotOp::launch_arucoObjTracker, "")
 
   .def("getCameraFxycxy", &BotOp::getCameraFxycxy,
        "returns camera intrinsics",

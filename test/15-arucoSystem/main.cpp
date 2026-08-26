@@ -58,9 +58,7 @@ void testKomoTracker(){
     C.get_viewer()->opt.renderText = false;
     C.get_viewer()->renderUntil = rai::_solid;
 
-    CalibrationScene CS(C, "obj");
-
-    KomoArucoTracker K(CS);
+    KomoArucoTracker K(C, "obj");
     cout <<K.CS.report() <<endl;
 
     // rai::CameraView V(CS.C);
@@ -73,6 +71,7 @@ void testKomoTracker(){
 
     bot.launch_Basler(3);
     bot.launch_arucos();
+    bot.launch_arucoObjTracker(C, "obj");
 
     cout <<bot.state.get()->q <<endl;
 
@@ -85,8 +84,8 @@ void testKomoTracker(){
     for(uint t=0;;t++){
         tim.tic(0);
         int key = 0;
-        if(!(t%1)) key = C.view(false);
-        // int key = bot.sync(C, .0);
+        // if(!(t%1)) key = C.view(false);
+        key = bot.sync(C, .0);
         if(key=='q') break;
 
         // if(!(t%1)) key = gl.watchImage(bot.getImage("camera_0"), false, .5);
@@ -94,7 +93,8 @@ void testKomoTracker(){
 
         tim.tic(1);
 
-        K.reset(CS.C);
+#if 0
+        K.reset();
 
 #if 0
         byteAA imgs(3);
@@ -109,7 +109,8 @@ void testKomoTracker(){
 #else
         tim.tic(2);
         rai::Array<rai::ArucoOutput> ao(bot.aruco_threads.N);
-        bot.aruco_threads(0)->output.waitForNextRevision();
+        rai::wait(.05);
+        // bot.aruco_threads(0)->output.waitForNextRevision();
         for(uint i=0;i<ao.N;i++) ao(i) = bot.aruco_threads(i)->output.get();
         for(auto& o:ao) K.addMultiPointView(o.ids, o.pts, o.cam_id);
 #endif
@@ -119,14 +120,16 @@ void testKomoTracker(){
         // cout <<*K.ret <<K.ret->x <<endl;
         arr q_obj = K.ret->x;
         q_obj = K.filter.q;
-        cout <<q_obj <<' ' <<K.filter.err_filtered <<endl;
         // K.komo->view(false, "komo");
-
+        obj->joint->setDofs(q_obj);
+        bot.state.set()->q({obj->joint->qIndex, obj->joint->qIndex+7}) = q_obj;
+#else
+        arr q_obj = bot.state.get()->q;
+#endif
+        cout <<q_obj <<' ' <<K.filter.err_filtered <<endl;
         tim.tic(4);
 
-        obj->joint->setDofs(q_obj);
         //somewhat awkward?
-        bot.state.set()->q({obj->joint->qIndex, obj->joint->qIndex+7}) = q_obj;
 
     }
 

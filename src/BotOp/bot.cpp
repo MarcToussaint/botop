@@ -21,6 +21,7 @@
 #include <Basler/BaslerThread.h>
 #include <MarkerVision/ArucoThread.h>
 #include <MarkerVision/ArucoSystemThread.h>
+#include <Perception/KomoArucoTracker.h>
 #ifdef RAI_VIVE
 #  include <ViveController/vivecontroller.h>
 #endif
@@ -153,9 +154,11 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 
 BotOp::~BotOp(){
   LOG(0) <<"shutting down BotOp...";
-  aruco_system_thread.reset();
+  // aruco_system_thread.reset();
+  aruco_obj_tracker_thread.reset();
   for(auto& ar:aruco_threads) ar.reset();
   realsenses.reset();
+  basler.reset();
   for(auto& cam:cameras) cam.reset();
   if(simthread) simthread.reset();
   gripperL.reset();
@@ -531,6 +534,10 @@ void BotOp::launch_arucos(){
   //   for(auto& a:aruco_threads) ar_outputs.append(&a->output);
   //   aruco_system_thread = make_shared<rai::ArucoSystemThread>(triangulateN, ar_outputs, Fxycxy, Pose);
   // }
+}
+
+void BotOp::launch_arucoObjTracker(rai::Configuration& C, const char* obj_name){
+   aruco_obj_tracker_thread = make_shared<KomoArucoTracker_Thread>(aruco_threads, state, C, obj_name);
 }
 
 byteA BotOp::getImage(const str& sensor){
