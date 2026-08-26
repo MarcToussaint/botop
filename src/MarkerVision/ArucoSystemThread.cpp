@@ -4,7 +4,7 @@
 namespace rai{
 
 ArucoSystemThread::ArucoSystemThread(uint J_numMarkers,
-				     const rai::Array<Var<PointViewA>*>& ar_outputs,
+                     const rai::Array<Var<PointViewData>*>& ar_outputs,
 				     arrA Fxycxy,
 				     rai::Array<rai::Transformation> Pose)
     : Thread(STRING("aruco_system thread"), .05),

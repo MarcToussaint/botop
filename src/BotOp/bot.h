@@ -88,7 +88,7 @@ struct BotOp{
   void launch_camera(rai::Frame *cam_frame); //might be obsolete, given that realsenses have to be launched en-block
   void launch_MultiRealSense(const FrameL& f_cams, bool captureColor, bool captureDepth);
   void launch_Basler(uint nCams);
-  void launch_arucos(int triangulateN=-1);
+  void launch_arucos();
   byteA getImage(const str& sensor);
   void getImageAndDepth(byteA& image, floatA& depth, const char* sensor);
   void getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates=false);

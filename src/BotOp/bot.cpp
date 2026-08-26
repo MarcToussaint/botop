@@ -34,10 +34,6 @@ void BotOp::launch_robots(rai::Configuration& C, bool useRealRobot){
     bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
     forceRealCamera = rai::getParameter<bool>("bot/forceRealCamera", false);
 
-    C.ensure_indexedJoints();
-    qHome = C.getJointState();
-    state.set()->initZero(qHome.N);
-
     if(blockRealRobot && useRealRobot){
         LOG(0) <<"-- blocking useRealRobot -- ";
         useRealRobot=false;
@@ -120,7 +116,7 @@ void BotOp::launch_allegro(){
 BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
   C.ensure_indexedJoints();
   qHome = C.getJointState();
-  state.set()->initZero(qHome.N);
+  state.set()->init(qHome);
 
   //-- launch arm(s) & gripper(s)
   // launch_robots(C, useRealRobot);
@@ -250,11 +246,23 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
       if(rgb.N) V.setQuad(i, rgb, i*.3, .8, .2);
     }
   }
-  if(basler){
+  if(basler && basler->color.N){
       auto& V = *C.get_viewer();
-      for(uint i=0;i<basler->color.N;i++){
-          byteA rgb = basler->color(i).get();
-          if(rgb.N) V.setQuad(i, rgb, i*.3, .8, .2);
+      static byteA rgb;
+      uint n = basler->color.N;
+      if(!rgb.N){
+          byteA tmp = basler->color(0).get();
+          if(tmp.N) rgb.resize(n * tmp.d0, tmp.d1, tmp.d2).setZero();
+      }
+      if(rgb.N){
+          uint H =rgb.d0;
+          rgb.reshape(n, -1, rgb.d2);
+          for(uint i=0;i<basler->color.N;i++){
+              auto g = basler->color(i).get();
+              if(g.var->revision>0) rgb[i] = g();
+          }
+          rgb.reshape(H, -1, rgb.d2);
+          V.setQuad(0, rgb, .0, .0, n*.2);
       }
   }
 
@@ -263,8 +271,8 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
 
   //gui
   if(rai::getParameter<bool>("bot/raiseWindow",false)) C.get_viewer()->raiseWindow();
-  double ctrlTime = get_t();
   C.gl().setTitle("BotOp associated Configuration");
+  double ctrlTime = get_t();
   keypressed = C.view(false, STRING("BotOp sync ctrl time: "<<ctrlTime <<" (=" <<int(100.*ctrlTime/(rai::realTime()-startRealTime)) <<"% real time)\n" <<viewMsg));
   if(keypressed) C.get_viewer()->_resetPressedKey();
 //  if(keypressed==13) return false;
@@ -503,38 +511,30 @@ void BotOp::launch_Basler(uint nCams){
     basler = make_shared<rai::BaslerThread>(nCams);
 }
 
-void BotOp::launch_arucos(int triangulateN){
+void BotOp::launch_arucos(){
   uint k=0;
-  arrA Fxycxy;
-  rai::Array<rai::Transformation> Pose;
   for(auto& cam: cameras){
     aruco_threads.append(make_shared<rai::ArucoThread>(k++, cam->image));
-    Fxycxy.append(cam->getFxycxy());
-    Pose.append(cam->getPose());
   }
   if(realsenses){
     for(auto& image:realsenses->color){
       aruco_threads.append(make_shared<rai::ArucoThread>(k++, image));
-//      Fxycxy.append(cam->getFxycxy());
-//      Pose.append(came->getPose());
     }
   }
   if(basler){
       for(auto& image:basler->color){
           aruco_threads.append(make_shared<rai::ArucoThread>(k++, image));
-          //      Fxycxy.append(cam->getFxycxy());
-          //      Pose.append(came->getPose());
       }
   }
-  if(triangulateN>0){
-    rai::Array<Var<PointViewA>*> ar_outputs;
-    for(auto& a:aruco_threads) ar_outputs.append(&a->output);
-    aruco_system_thread = make_shared<rai::ArucoSystemThread>(triangulateN, ar_outputs, Fxycxy, Pose);
-  }
+  // if(triangulateN>0){
+  //   rai::Array<Var<PointViewData>*> ar_outputs;
+  //   for(auto& a:aruco_threads) ar_outputs.append(&a->output);
+  //   aruco_system_thread = make_shared<rai::ArucoSystemThread>(triangulateN, ar_outputs, Fxycxy, Pose);
+  // }
 }
 
 byteA BotOp::getImage(const str& sensor){
-    if(sensor.startsWith("basler_")){
+    if(sensor.startsWith("camera_")){
         CHECK(basler, "basler cameras were not launched")
         int cameraID;
         sensor.sub(7,0) >>cameraID;
@@ -542,7 +542,7 @@ byteA BotOp::getImage(const str& sensor){
         byteA img = basler->color(cameraID).get();
         return img;
     }
-    NIY;
+    HALT("image sensor needs to start with camera_");
     return byteA();
 }
 

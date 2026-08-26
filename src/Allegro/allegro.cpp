@@ -1,6 +1,6 @@
 #include "allegro.h"
 
-#if 1//def RAI_ALLEGRO
+#ifdef RAI_ALLEGRO
 
 #include <unistd.h>
 #include <Control/CtrlMsgs.h>
@@ -338,8 +338,9 @@ void AllegroThread::ioThreadProc(){
 
 #else //RAI_Allegro
 
-AllegroThread::~AllegroThread(){ NICO }
-void AllegroThread::init(uint _robotID, const uintA& _qIndices) { NICO }
+AllegroThread::AllegroThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state)
+    : rai::RobotAbstraction(cmd, state), Thread("AllegroThread"){ NICO; }
+AllegroThread::~AllegroThread(){}
 void AllegroThread::step(){ NICO }
 
 #endif

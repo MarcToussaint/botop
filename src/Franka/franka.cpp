@@ -11,7 +11,7 @@ void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio)
 const char *frankaIpAddresses[2] = {"172.17.0.2", "172.16.0.2"};
 
 FrankaThread::~FrankaThread(){
-  LOG(0) <<"shutting down Franka " <<robotID;
+  LOG(0) <<"shutting down Franka " <<robotID <<" - " <<timer.report();
   stop = true;
   waitForIdle();
   threadClose();

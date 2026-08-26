@@ -5,7 +5,6 @@
 #include <Control/ctrlMsg.h>
 #include <Control/CtrlMsgs.h>
 
-
 struct AllegroThread : rai::RobotAbstraction, Thread{
   AllegroThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state);
   ~AllegroThread();
@@ -25,5 +24,4 @@ private:
   void CloseCAN();
   void ioThreadProc();
   void publish_state_and_compute_torques(double* _q, double* _tau_des);
-
 };

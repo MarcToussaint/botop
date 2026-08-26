@@ -1,5 +1,3 @@
-#include "komo_aruco_tracker.h"
-
 #include <Perception/opencv.h> //always include this first! OpenCV headers define stupid macros
 #include <Perception/opencvCamera.h>
 #include <Perception/aruco.h>
@@ -10,9 +8,10 @@
 #include <Kin/frame.h>
 #include <Kin/viewer.h>
 #include <Kin/cameraview.h>
+#include <Optim/NLP_Solver.h>
 
 #include <opencv2/features2d.hpp>
-#include "opencv2/imgproc.hpp"
+#include <opencv2/imgproc.hpp>
 #include <opencv2/objdetect/aruco_detector.hpp>
 
 #include <BotOp/bot.h>
@@ -20,14 +19,118 @@
 #include <MarkerVision/ArucoThread.h>
 #include <MarkerVision/ArucoSystemThread.h>
 
+#include <Perception/KomoArucoTracker.h>
 
+void testRender(){
+    rai::Configuration C;
+    C.addFile("/home/mtoussai/git/tests/calibration/station.g");
+    rai::Frame *obj = C.getFrame("obj");
+    // obj->unLink();
+
+    arr q0 = C.getJointState();
+    C.get_viewer()->opt.renderShadow = false;
+    C.get_viewer()->opt.flatColors = true;
+    C.get_viewer()->opt.renderText = false;
+    C.get_viewer()->renderUntil = rai::_solid;
+    // RAI_PARAM("Render/", bool, flatColors, false)
+    // RAI_PARAM("Render/", bool, renderShadow, true)
+    // RAI_PARAM("Render/", bool, renderPolygonLines, false)
+
+    CycleTimer tim;
+    for(uint t=0;t<100;t++){
+        tim.tic(0);
+        C.setJointState(q0 + .1*randn(q0.N));
+        C.view(false);
+        tim.tic(1);
+        rai::wait(.01);
+    }
+    cout <<tim.report() <<endl;
+}
 
 void testKomoTracker(){
-  rai::Configuration C;
-  C.addFile("../16-basler/scene.yml");
-  C.view(true);
+    rai::Configuration C;
+    C.addFile("/home/mtoussai/git/tests/calibration/station_reduced.g");
+    rai::Frame *obj = C.getFrame("obj");
+    // obj->unLink();
 
-  KomoArucoTracker K(C, "box");
+    C.get_viewer()->opt.renderShadow = false;
+    C.get_viewer()->opt.flatColors = true;
+    C.get_viewer()->opt.renderText = false;
+    C.get_viewer()->renderUntil = rai::_solid;
+
+    CalibrationScene CS(C, "obj");
+
+    KomoArucoTracker K(CS);
+    cout <<K.CS.report() <<endl;
+
+    // rai::CameraView V(CS.C);
+    // byteA rgb;
+    // floatA depth;
+
+    rai::setParameter("botsim/verbose", 0);
+    BotOp bot(C, false);
+    cout <<bot.state.get()->q <<endl;
+
+    bot.launch_Basler(3);
+    bot.launch_arucos();
+
+    cout <<bot.state.get()->q <<endl;
+
+    // rai::ArucoSystemThread Ar(12, ar_outputs, Fxycxy, Pose);
+
+    CycleTimer tim;
+    OpenGL gl;
+    auto finder = FindArucos();
+
+    for(uint t=0;;t++){
+        tim.tic(0);
+        int key = 0;
+        if(!(t%1)) key = C.view(false);
+        // int key = bot.sync(C, .0);
+        if(key=='q') break;
+
+        // if(!(t%1)) key = gl.watchImage(bot.getImage("camera_0"), false, .5);
+        if(key=='q') break;
+
+        tim.tic(1);
+
+        K.reset(CS.C);
+
+#if 0
+        byteAA imgs(3);
+        for(uint c=0;c<imgs.N;c++) imgs(c) = bot.getImage(STRING("camera_" <<c));
+
+        tim.tic(2);
+
+        for(uint c=0;c<imgs.N;c++){
+            finder.find(imgs(c));
+            K.addMultiPointView(finder.ids, finder.pts, c);
+        }
+#else
+        tim.tic(2);
+        rai::Array<rai::ArucoOutput> ao(bot.aruco_threads.N);
+        bot.aruco_threads(0)->output.waitForNextRevision();
+        for(uint i=0;i<ao.N;i++) ao(i) = bot.aruco_threads(i)->output.get();
+        for(auto& o:ao) K.addMultiPointView(o.ids, o.pts, o.cam_id);
+#endif
+        tim.tic(3);
+
+        K.solve(0);
+        // cout <<*K.ret <<K.ret->x <<endl;
+        arr q_obj = K.ret->x;
+        q_obj = K.filter.q;
+        cout <<q_obj <<' ' <<K.filter.err_filtered <<endl;
+        // K.komo->view(false, "komo");
+
+        tim.tic(4);
+
+        obj->joint->setDofs(q_obj);
+        //somewhat awkward?
+        bot.state.set()->q({obj->joint->qIndex, obj->joint->qIndex+7}) = q_obj;
+
+    }
+
+    cout <<"TIMING: " <<tim.report() <<endl;
 
 }
 
@@ -98,7 +201,7 @@ void testBotop(){
   FrameL f_cams;
   for(uint k=0;k<1;k++)  f_cams.append( C.getFrame(STRING("cam"<<k)) );
   // bot.launch_MultiRealSense(f_cams, true, false);
-  bot.launch_arucos(-12);
+  bot.launch_arucos();
 
   // rai::Array<Var<PointViewA>*> ar_outputs;
   // arrA Fxycxy;
@@ -114,8 +217,8 @@ void testBotop(){
     int key = bot.sync(C);
 
     // Ar.pull(C);
-    PointViewA data;
-    for(auto& ar:bot.aruco_threads) data.append(ar->output.get());
+    PointViewData data;
+    NIY; //for(auto& ar:bot.aruco_threads) data.append(ar->output.get());
     for(auto& pv:data){
       cout <<"aruco marker id " <<pv.j <<", camera id " <<pv.k <<", point " <<pv.p <<endl;
     }

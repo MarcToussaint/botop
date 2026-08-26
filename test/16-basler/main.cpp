@@ -80,7 +80,7 @@ int direct(){
         }
         tim.tic(2);
         t++;
-        if(t>1000) break;
+        if(t>10000) break;
     }
 
     //-- close
@@ -153,9 +153,31 @@ void botop(){
     bot.launch_Basler(3);
     bot.launch_arucos();
 
-    for(;;){
-        int key = bot.sync(C);
-        if(key=='q') break;
+    // CycleTimer tim;
+    byteA buffer;
+    uint H, W;
+    OpenGL gl;
+    for(uint t=0;;t++){
+        int key=0;
+        if(!(t%10)){
+            key = bot.sync(C, 0.);
+            if(key=='q') break;
+        }
+        if(!(t%1)){
+            bot.basler->color(0).waitForNextRevision();
+            if(!buffer.N){
+                auto g = bot.basler->color(0).get();
+                H = g->d0; W=g->d1;
+                buffer.resize(bot.basler->color.N, H*W*3).setZero();
+            }
+            if(buffer.N){
+                for(uint i=0;i<bot.basler->color.N;i++) buffer[i] = bot.basler->color(i).get()();
+                buffer.reshape(bot.basler->color.N*H, W, 3);
+                key = gl.watchImage(buffer, false, .3);
+                buffer.reshape(bot.basler->color.N, H*W*3);
+                if(key=='q') break;
+            }
+        }
     }
 }
 

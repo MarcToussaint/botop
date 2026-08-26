@@ -9,12 +9,12 @@
 namespace rai{
 
 struct ArucoSystemThread : Thread {
-  rai::Array<Var<PointViewA>*> inputs;
+  rai::Array<Var<PointViewData>*> inputs;
   Var<arr> X;
   MultiViewSolver solver;
 
   ArucoSystemThread(uint J_numMarkers,
-                    const rai::Array<Var<PointViewA>*>& ar_outputs,
+                    const rai::Array<Var<PointViewData>*>& ar_outputs,
                     arrA Fxycxy,
                     rai::Array<rai::Transformation> Pose);
   ~ArucoSystemThread();

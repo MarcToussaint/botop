@@ -24,8 +24,8 @@ FrankaGripper::FrankaGripper(uint whichRobot)
 }
 
 FrankaGripper::~FrankaGripper(){
+  LOG(0) <<"shutting down FrankaGripper - " <<timer.report();
   threadClose();
-  LOG(0) <<"shutting down FrankaGripper";
 }
 
 void FrankaGripper::homing(){
