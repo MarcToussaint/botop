@@ -8,7 +8,7 @@
 
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
-const char *frankaIpAddresses[2] = {"172.17.0.2", "172.16.0.2"};
+// const char *frankaIpAddresses[2] = {"172.17.0.2", "172.16.0.2"};
 
 FrankaThread::~FrankaThread(){
   LOG(0) <<"shutting down Franka " <<robotID <<" - " <<timer.report();
@@ -19,7 +19,7 @@ FrankaThread::~FrankaThread(){
 
 long c = 0;
 
-void FrankaThread::init(uint _robotID, const uintA& _qIndices) {
+void FrankaThread::init(uint _robotID, const char* _ipAddress, const uintA& _qIndices) {
   robotID=_robotID;
   qIndices=_qIndices;
 
@@ -40,7 +40,7 @@ void FrankaThread::init(uint _robotID, const uintA& _qIndices) {
 
   //-- choose robot/ipAddress
   CHECK_LE(robotID, 1, "");
-  ipAddress = frankaIpAddresses[robotID];
+  ipAddress = _ipAddress;
 
   //-- start thread and wait for first state signal
   LOG(0) <<"launching Franka " <<robotID <<" at " <<ipAddress;
@@ -58,7 +58,7 @@ void FrankaThread::init(uint _robotID, const uintA& _qIndices) {
 
 void FrankaThread::step(){
   // connect to robot
-  franka::Robot robot(ipAddress);
+  franka::Robot robot(ipAddress.p);
 
   // load the kinematics and dynamics model
   franka::Model model = robot.loadModel();

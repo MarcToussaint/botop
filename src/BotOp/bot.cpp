@@ -39,17 +39,25 @@ void BotOp::launch_robots(rai::Configuration& C, bool useRealRobot){
     useRealRobot=false;
   }
 
+  str l_ip, r_ip;
+  if(useRealRobot){
+    rai::Frame *l_panda = C.getFrame("l_panda_base", false);
+    rai::Frame *r_panda = C.getFrame("r_panda_base", false);
+    if(l_panda){ CHECK(l_panda->ats, "franka pandas need attributes"); l_ip=l_panda->ats->get<str>("franka_ip", ""); }
+    if(r_panda){ CHECK(r_panda->ats, "franka pandas need attributes"); r_ip=r_panda->ats->get<str>("franka_ip", ""); }
+  }
+
   //-- launch robots & grippers
   if(useRealRobot && useGripper){
     LOG(0) <<"CONNECTING TO GRIPPERS";
     try{
-      if(C.getFrame("l_panda_finger_joint1", false) && C.getFrame("r_panda_finger_joint1", false)){
-        gripperL = make_shared<FrankaGripper>(0);
-        gripperR = make_shared<FrankaGripper>(1);
-      }else if(C.getFrame("l_panda_finger_joint1", false)){
-        gripperL = make_shared<FrankaGripper>(0);
-      }else if(C.getFrame("r_panda_finger_joint1", false)){
-        gripperR = make_shared<FrankaGripper>(1);
+      if(l_ip.N && r_ip.N){
+        gripperL = make_shared<FrankaGripper>(l_ip);
+        gripperR = make_shared<FrankaGripper>(r_ip);
+      }else if(l_ip.N){
+        gripperL = make_shared<FrankaGripper>(l_ip);
+      }else if(r_ip.N){
+        gripperR = make_shared<FrankaGripper>(r_ip);
 
       }else if(C.getFrame("l_robotiq_base", false) && C.getFrame("r_robotiq_base", false)){
         gripperL = make_shared<RobotiqGripper>(0);
@@ -72,13 +80,13 @@ void BotOp::launch_robots(rai::Configuration& C, bool useRealRobot){
     uint robotID=0;
     LOG(0) <<"CONNECTING TO FRANKAS";
     try{
-      if(C.getFrame("l_panda_base", false) && C.getFrame("r_panda_base", false)){
-        robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
-        robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
-      } else if(C.getFrame("l_panda_base", false)){
-        robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
-      } else if(C.getFrame("r_panda_base", false)){
-        robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
+      if(l_ip.N && r_ip.N){
+        robotL = make_shared<FrankaThread>(cmd, state, robotID++, l_ip, franka_getJointIndices(C,'l'));
+        robotR = make_shared<FrankaThread>(cmd, state, robotID++, r_ip, franka_getJointIndices(C,'r'));
+      } else if(l_ip.N){
+        robotL = make_shared<FrankaThread>(cmd, state, robotID++, l_ip, franka_getJointIndices(C,'l'));
+      } else if(r_ip.N){
+        robotR = make_shared<FrankaThread>(cmd, state, robotID++, r_ip, franka_getJointIndices(C,'r'));
       }else{
         LOG(0) <<"starting botop without franka robots (no frames l_panda_base or r_panda_base defined)";
       }

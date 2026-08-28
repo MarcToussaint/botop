@@ -4,14 +4,12 @@
 
 #include <franka/gripper.h>
 
-const char *gripperIpAddresses[2] = {"172.17.0.2", "172.16.0.2"};
+// const char *gripperIpAddresses[2] = {"172.17.0.2", "172.16.0.2"};
 
-FrankaGripper::FrankaGripper(uint whichRobot)
-  : Thread(STRING("FrankaGripper_"<<whichRobot)) {
-  //-- choose robot/ipAddress
-  CHECK_LE(whichRobot, 1, "");
-  LOG(0) <<"launching FrankaGripper " <<whichRobot <<" at " <<gripperIpAddresses[whichRobot];
-  frankaGripper = make_shared<franka::Gripper>(gripperIpAddresses[whichRobot]);
+FrankaGripper::FrankaGripper(const char* ipAddress)
+  : Thread(STRING("FrankaGripper_"<<ipAddress)) {
+  LOG(0) <<"launching FrankaGripper " <<ipAddress;
+  frankaGripper = make_shared<franka::Gripper>(ipAddress);
   franka::GripperState gripper_state = frankaGripper->readOnce();
   maxWidth = gripper_state.max_width;
   LOG(0) <<"gripper max width:" <<maxWidth;

@@ -21,7 +21,7 @@ struct FrankaGripper : rai::GripperAbstraction, Thread{
   Var<GripperCmdMsg> cmd;
   double maxWidth;
 
-  FrankaGripper(uint whichRobot=0);
+  FrankaGripper(const char* ipAddress);
   ~FrankaGripper();
 
   void homing();

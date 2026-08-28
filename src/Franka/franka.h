@@ -7,8 +7,8 @@
 
 
 struct FrankaThread : rai::RobotAbstraction, Thread{
-  FrankaThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state, uint robotID=0, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6})
-      : RobotAbstraction(cmd, state), Thread("FrankaThread"){ init(robotID, _qIndices); }
+  FrankaThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state, uint robotID, const char* _ipAddress, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6})
+      : RobotAbstraction(cmd, state), Thread("FrankaThread"){ init(robotID, _ipAddress, _qIndices); }
   ~FrankaThread();
 
 private:
@@ -18,7 +18,7 @@ private:
   arr Kp_freq, Kd_ratio; //read from rai.cfg
   arr friction;
 
-  const char* ipAddress;
+  str ipAddress;
 
   uintA qIndices;
   uint qIndices_max=0;
@@ -27,6 +27,6 @@ private:
   ofstream dataFile;
   double ctrlTime=0.;
 
-  void init(uint _robotID, const uintA& _qIndices);
+  void init(uint _robotID, const char* _ipAddress, const uintA& _qIndices);
   void step();
 };
