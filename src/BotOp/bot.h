@@ -5,17 +5,16 @@
 
 //fwd declarations
 namespace rai{
-  struct GripperAbstraction;
-  struct OptiTrack;
-  struct ViveController;
-  struct Sound;
-  struct MultiRealSenseThread;
-  struct BaslerThread;
-  struct ArucoThread;
-  struct ArucoSystemThread;
+struct GripperAbstraction;
+struct OptiTrack;
+struct ViveController;
+struct Sound;
+struct MultiRealSenseThread;
+struct BaslerThread;
+struct ArucoThread;
+struct KomoArucoTracker_Thread;
 }
 struct BotThreadedSim;
-struct KomoArucoTracker_Thread;
 
 struct StepObservation{
   double ctrlTime;
@@ -44,8 +43,7 @@ struct BotOp{
   std::shared_ptr<rai::MultiRealSenseThread> realsenses;
   std::shared_ptr<rai::BaslerThread> basler;
   rai::Array<std::shared_ptr<rai::ArucoThread>> aruco_threads;
-  std::shared_ptr<KomoArucoTracker_Thread> aruco_obj_tracker_thread;
-  std::shared_ptr<rai::ArucoSystemThread> aruco_system_thread;
+  std::shared_ptr<rai::KomoArucoTracker_Thread> aruco_obj_tracker_thread;
 
   arr qHome;
   int keypressed=0;
@@ -141,8 +139,8 @@ template<class T> BotOp& BotOp::setReference(){
   //comment the next line to only get gravity compensation instead of 'zero reference following' (which includes damping)
   ref = make_shared<T>();
   cmd.set()->ref = ref;
-//  ref->setPositionReference(q_now);
-//ref->setVelocityReference({.0,.0,.2,0,0,0,0});
+  //  ref->setPositionReference(q_now);
+  //ref->setVelocityReference({.0,.0,.2,0,0,0,0});
   return *this;
 }
 

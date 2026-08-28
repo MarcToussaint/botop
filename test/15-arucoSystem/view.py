@@ -1,12 +1,12 @@
 import robotic as ry
 
 C = ry.Config()
-C.addFile('scene.yml')
+C.addFile('/home/mtoussai/git/tests/calibration/station.g')
 C.view(True)
 
 cams = []
-for i in range(4):
-    cams.append(C.getFrame(f'cam{i}'))
+for i in range(3):
+    cams.append(C.getFrame(f'camera_{i}'))
 
 V = ry.CameraView(C)
 for _ in range(20):

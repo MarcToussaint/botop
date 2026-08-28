@@ -16,9 +16,7 @@
 
 #include <BotOp/bot.h>
 #include <BotOp/simulation.h>
-#include <MarkerVision/ArucoThread.h>
-#include <MarkerVision/ArucoSystemThread.h>
-
+#include <Perception/aruco.h>
 #include <Perception/KomoArucoTracker.h>
 
 void testRender(){
@@ -50,7 +48,7 @@ void testRender(){
 void testKomoTracker(){
     rai::Configuration C;
     C.addFile("/home/mtoussai/git/tests/calibration/station_reduced.g");
-    rai::Frame *obj = C.getFrame("obj");
+    // rai::Frame *obj = C.getFrame("obj");
     // obj->unLink();
 
     C.get_viewer()->opt.renderShadow = false;
@@ -58,8 +56,8 @@ void testKomoTracker(){
     C.get_viewer()->opt.renderText = false;
     C.get_viewer()->renderUntil = rai::_solid;
 
-    KomoArucoTracker K(C, "obj");
-    cout <<K.CS.report() <<endl;
+    rai::KomoArucoTracker K(C, "obj");
+    // cout <<K.CS.report() <<endl;
 
     // rai::CameraView V(CS.C);
     // byteA rgb;
@@ -67,19 +65,19 @@ void testKomoTracker(){
 
     rai::setParameter("botsim/verbose", 0);
     BotOp bot(C, false);
-    cout <<bot.state.get()->q <<endl;
+    // cout <<bot.state.get()->q <<endl;
 
     bot.launch_Basler(3);
     bot.launch_arucos();
     bot.launch_arucoObjTracker(C, "obj");
 
-    cout <<bot.state.get()->q <<endl;
+    // cout <<bot.state.get()->q <<endl;
 
     // rai::ArucoSystemThread Ar(12, ar_outputs, Fxycxy, Pose);
 
     CycleTimer tim;
     OpenGL gl;
-    auto finder = FindArucos();
+    auto finder = rai::ArucoFinder();
 
     for(uint t=0;;t++){
         tim.tic(0);
@@ -126,7 +124,7 @@ void testKomoTracker(){
 #else
         arr q_obj = bot.state.get()->q;
 #endif
-        cout <<q_obj <<' ' <<K.filter.err_filtered <<endl;
+        // cout <<q_obj <<' ' <<K.filter.err_filtered <<endl;
         tim.tic(4);
 
         //somewhat awkward?
@@ -135,6 +133,23 @@ void testKomoTracker(){
 
     cout <<"TIMING: " <<tim.report() <<endl;
 
+}
+
+void testKomoTracker2(){
+    rai::Configuration C;
+    C.addFile("/home/mtoussai/git/tests/calibration/station_reduced.g");
+
+    auto bot = BotOp(C, false);
+
+    bot.launch_Basler(3);
+    bot.launch_arucos();
+    bot.launch_arucoObjTracker(C, "obj");
+
+    for(uint t=0;;t++){
+        int key = 0;
+        key = bot.sync(C, .0);
+        if(key=='q') break;
+    }
 }
 
 void test(){
@@ -173,7 +188,7 @@ void test(){
       V.computeImageAndDepth(rgb, depth);
       D.setCamera(k, V.getFxycxy(), V.currentCamera->cam.X);
 
-      auto finder = FindArucos();
+      auto finder = rai::ArucoFinder();
       finder.verbose=2;
       finder.find(rgb);
       C.get_viewer()->setQuad(k, finder.rgb_annotated, 0., k*.25, .25);
@@ -240,7 +255,8 @@ void testBotop(){
 int main(int argc,char **argv){
   rai::initCmdLine(argc,argv);
 
-  testKomoTracker();
+  // testKomoTracker();
+  testKomoTracker2();
 
   // test();
 

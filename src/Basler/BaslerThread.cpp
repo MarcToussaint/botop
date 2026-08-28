@@ -34,7 +34,9 @@ BaslerThread::BaslerThread(uint nCams)
 
 
 BaslerThread::~BaslerThread(){
-  LOG(0) <<"BASLER DTOR - " <<timer.report();
+  arr revs(color.N);
+  for(uint i=0;i<color.N;i++) revs(i) = double(color(i).getRevision());
+  LOG(0) <<"DTOR frameCounts: " <<revs <<" frameRates: " <<revs/(rai::clockTime()-s->startTime) <<" - " <<timer.report();
   threadClose();
 }
 
@@ -67,15 +69,12 @@ void BaslerThread::open() {
 void BaslerThread::close(){
     s->cameras.reset();
     Pylon::PylonTerminate();
-    arr revs(color.N);
-    for(uint i=0;i<color.N;i++) revs(i) = double(color(i).getRevision());
-    LOG(0) <<"frameCounts: " <<revs <<" frameRates: " <<revs/(rai::clockTime()-s->startTime);
-    rai::wait(.1);
     delete s;
 }
 
 void BaslerThread::step() {
     s->cameras->RetrieveResult( 5000, s->ptrGrabResult, Pylon::TimeoutHandling_ThrowException );
+    double data_time = rai::realTime();
     timer.tic(1);
     if (s->ptrGrabResult->GrabSucceeded()) {
         int camera_id = s->ptrGrabResult->GetCameraContext();
@@ -91,7 +90,11 @@ void BaslerThread::step() {
         static byteA resized;
         resized.resize(s->rgb.d0/2, s->rgb.d1/2, 3);
         cv::resize(CV(s->rgb), CV(resized), cv::Size(resized.d1, resized.d0), 0, 0, cv::INTER_LINEAR);
-        color(camera_id).set() = resized;
+        {
+            auto set = color(camera_id).set();
+            set() = resized;
+            set.var.data_time = data_time;
+        }
 #endif
         timer.tic(3);
     }
@@ -102,11 +105,11 @@ void BaslerThread::step() {
   namespace rai{
 
     BaslerThread::BaslerThread(uint nCams)
-  : Thread("BaslerThread"), color(nCams) { NICO }
-BaslerThread::~BaslerThread(){ NICO }
-void BaslerThread::open(){ NICO }
-void BaslerThread::close(){ NICO }
-void BaslerThread::step(){ NICO }
+      : Thread("BaslerThread"), color(nCams) { NICO }
+    BaslerThread::~BaslerThread(){ NICO }
+    void BaslerThread::open(){ NICO }
+    void BaslerThread::close(){ NICO }
+    void BaslerThread::step(){ NICO }
 
 #endif
 

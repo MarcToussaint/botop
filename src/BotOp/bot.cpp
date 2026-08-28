@@ -19,8 +19,7 @@
 #include <RealSense/RealSenseThread.h>
 #include <RealSense/MultiRealSenseThread.h>
 #include <Basler/BaslerThread.h>
-#include <MarkerVision/ArucoThread.h>
-#include <MarkerVision/ArucoSystemThread.h>
+#include <Perception/aruco.h>
 #include <Perception/KomoArucoTracker.h>
 #ifdef RAI_VIVE
 #  include <ViveController/vivecontroller.h>
@@ -31,82 +30,82 @@
 //===========================================================================
 
 void BotOp::launch_robots(rai::Configuration& C, bool useRealRobot){
-    bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
-    bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
-    forceRealCamera = rai::getParameter<bool>("bot/forceRealCamera", false);
+  bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
+  bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
+  forceRealCamera = rai::getParameter<bool>("bot/forceRealCamera", false);
 
-    if(blockRealRobot && useRealRobot){
-        LOG(0) <<"-- blocking useRealRobot -- ";
-        useRealRobot=false;
+  if(blockRealRobot && useRealRobot){
+    LOG(0) <<"-- blocking useRealRobot -- ";
+    useRealRobot=false;
+  }
+
+  //-- launch robots & grippers
+  if(useRealRobot && useGripper){
+    LOG(0) <<"CONNECTING TO GRIPPERS";
+    try{
+      if(C.getFrame("l_panda_finger_joint1", false) && C.getFrame("r_panda_finger_joint1", false)){
+        gripperL = make_shared<FrankaGripper>(0);
+        gripperR = make_shared<FrankaGripper>(1);
+      }else if(C.getFrame("l_panda_finger_joint1", false)){
+        gripperL = make_shared<FrankaGripper>(0);
+      }else if(C.getFrame("r_panda_finger_joint1", false)){
+        gripperR = make_shared<FrankaGripper>(1);
+
+      }else if(C.getFrame("l_robotiq_base", false) && C.getFrame("r_robotiq_base", false)){
+        gripperL = make_shared<RobotiqGripper>(0);
+        gripperR = make_shared<RobotiqGripper>(1);
+      }else if(C.getFrame("l_robotiq_base", false)){
+        gripperL = make_shared<RobotiqGripper>(0);
+      }else if(C.getFrame("r_robotiq_base", false)){
+        gripperR = make_shared<RobotiqGripper>(1);
+      }
+    } catch(const std::exception& ex) {
+      LOG(-1) <<"Starting the gripper(s) failed! Error msg: " <<ex.what();
     }
 
-    //-- launch robots & grippers
-    if(useRealRobot && useGripper){
-        LOG(0) <<"CONNECTING TO GRIPPERS";
-        try{
-            if(C.getFrame("l_panda_finger_joint1", false) && C.getFrame("r_panda_finger_joint1", false)){
-                gripperL = make_shared<FrankaGripper>(0);
-                gripperR = make_shared<FrankaGripper>(1);
-            }else if(C.getFrame("l_panda_finger_joint1", false)){
-                gripperL = make_shared<FrankaGripper>(0);
-            }else if(C.getFrame("r_panda_finger_joint1", false)){
-                gripperR = make_shared<FrankaGripper>(1);
+    if(!gripperL && !gripperR){
+      LOG(0) <<"WARNING: no grippers created (no frames l_panda_finger_joint1 or l_robotiq_base found in config)";
+    }
+  }
 
-            }else if(C.getFrame("l_robotiq_base", false) && C.getFrame("r_robotiq_base", false)){
-                gripperL = make_shared<RobotiqGripper>(0);
-                gripperR = make_shared<RobotiqGripper>(1);
-            }else if(C.getFrame("l_robotiq_base", false)){
-                gripperL = make_shared<RobotiqGripper>(0);
-            }else if(C.getFrame("r_robotiq_base", false)){
-                gripperR = make_shared<RobotiqGripper>(1);
-            }
-        } catch(const std::exception& ex) {
-            LOG(-1) <<"Starting the gripper(s) failed! Error msg: " <<ex.what();
-        }
-
-        if(!gripperL && !gripperR){
-            LOG(0) <<"WARNING: no grippers created (no frames l_panda_finger_joint1 or l_robotiq_base found in config)";
-        }
+  if(useRealRobot){
+    uint robotID=0;
+    LOG(0) <<"CONNECTING TO FRANKAS";
+    try{
+      if(C.getFrame("l_panda_base", false) && C.getFrame("r_panda_base", false)){
+        robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
+        robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
+      } else if(C.getFrame("l_panda_base", false)){
+        robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
+      } else if(C.getFrame("r_panda_base", false)){
+        robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
+      }else{
+        LOG(0) <<"starting botop without franka robots (no frames l_panda_base or r_panda_base defined)";
+      }
+      C.setJointState(get_q());
+    } catch(const std::exception& ex) {
+      LOG(-1) <<"Starting the franka robot(s) failed! Error msg: " <<ex.what();
+    } catch(...) {
+      LOG(-1) <<"Starting the franka robot(s) failed! Error msg: " <<rai::errString();
     }
 
-    if(useRealRobot){
-        uint robotID=0;
-        LOG(0) <<"CONNECTING TO FRANKAS";
-        try{
-            if(C.getFrame("l_panda_base", false) && C.getFrame("r_panda_base", false)){
-                robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
-                robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
-            } else if(C.getFrame("l_panda_base", false)){
-                robotL = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'l'));
-            } else if(C.getFrame("r_panda_base", false)){
-                robotR = make_shared<FrankaThread>(cmd, state, robotID++, franka_getJointIndices(C,'r'));
-            }else{
-                LOG(0) <<"starting botop without franka robots (no frames l_panda_base or r_panda_base defined)";
-            }
-            C.setJointState(get_q());
-        } catch(const std::exception& ex) {
-            LOG(-1) <<"Starting the franka robot(s) failed! Error msg: " <<ex.what();
-        } catch(...) {
-            LOG(-1) <<"Starting the franka robot(s) failed! Error msg: " <<rai::errString();
-        }
-
-        try{
-            if(C.getFrame("omnibase_world", false)){
-                LOG(0) <<"CONNECTING TO OMNIBASE";
-                robotL = make_shared<OmnibaseThread>(cmd, state, robotID++, uintA{0,1,2});
-            }
-        } catch(const std::exception& ex) {
-            LOG(-1) <<"Starting the omnibase failed! Error msg: " <<ex.what();
-        }
-
-    }else{
-        simthread = make_shared<BotThreadedSim>(C, cmd, state);
-        robotL = simthread;
-        if(useGripper) gripperL = make_shared<GripperSim>(simthread, "l_gripper");
+    try{
+      if(C.getFrame("omnibase_world", false)){
+        LOG(0) <<"CONNECTING TO OMNIBASE";
+        robotL = make_shared<OmnibaseThread>(cmd, state, robotID++, uintA{0,1,2});
+      }
+    } catch(const std::exception& ex) {
+      LOG(-1) <<"Starting the omnibase failed! Error msg: " <<ex.what();
     }
 
-    //-- initialize the control reference
-    hold(false, true);
+  }else{
+    simthread = make_shared<BotThreadedSim>(C, cmd, state);
+    robotL = simthread;
+    if(useGripper) gripperL = make_shared<GripperSim>(simthread, "l_gripper");
+  }
+
+  //-- initialize the control reference
+  hold(false, true);
 }
 
 void BotOp::launch_allegro(){
@@ -153,8 +152,7 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
 }
 
 BotOp::~BotOp(){
-  LOG(0) <<"shutting down BotOp...";
-  // aruco_system_thread.reset();
+  LOG(0) <<"DTOR - shutting down BotOp...";
   aruco_obj_tracker_thread.reset();
   for(auto& ar:aruco_threads) ar.reset();
   realsenses.reset();
@@ -233,8 +231,6 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
   if(vivecontroller) vivecontroller->pull(C);
 #endif
 
-  if(aruco_system_thread) aruco_system_thread->pull(C);
-
   if(cameras.N){
     auto& V = *C.get_viewer();
     for(uint i=0;i<cameras.N;i++){
@@ -250,23 +246,23 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
     }
   }
   if(basler && basler->color.N){
-      auto& V = *C.get_viewer();
-      static byteA rgb;
-      uint n = basler->color.N;
-      if(!rgb.N){
-          byteA tmp = basler->color(0).get();
-          if(tmp.N) rgb.resize(n * tmp.d0, tmp.d1, tmp.d2).setZero();
+    auto& V = *C.get_viewer();
+    static byteA rgb;
+    uint n = basler->color.N;
+    if(!rgb.N){
+      byteA tmp = basler->color(0).get();
+      if(tmp.N) rgb.resize(n * tmp.d0, tmp.d1, tmp.d2).setZero();
+    }
+    if(rgb.N){
+      uint H =rgb.d0;
+      rgb.reshape(n, -1, rgb.d2);
+      for(uint i=0;i<basler->color.N;i++){
+        auto g = basler->color(i).get();
+        if(g.var.revision>0) rgb[i] = g();
       }
-      if(rgb.N){
-          uint H =rgb.d0;
-          rgb.reshape(n, -1, rgb.d2);
-          for(uint i=0;i<basler->color.N;i++){
-              auto g = basler->color(i).get();
-              if(g.var->revision>0) rgb[i] = g();
-          }
-          rgb.reshape(H, -1, rgb.d2);
-          V.setQuad(0, rgb, .0, .0, n*.2);
-      }
+      rgb.reshape(H, -1, rgb.d2);
+      V.setQuad(0, rgb, .0, .0, n*.2);
+    }
   }
 
   //update sim state
@@ -278,10 +274,10 @@ int BotOp::sync(rai::Configuration& C, double waitTime, rai::String viewMsg){
   double ctrlTime = get_t();
   keypressed = C.view(false, STRING("BotOp sync ctrl time: "<<ctrlTime <<" (=" <<int(100.*ctrlTime/(rai::realTime()-startRealTime)) <<"% real time)\n" <<viewMsg));
   if(keypressed) C.get_viewer()->_resetPressedKey();
-//  if(keypressed==13) return false;
-//  if(keypressed=='q' || keypressed==27) return false;
-//  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
-//  if(sp && ctrlTime>sp->getEndTime()) return false;
+  //  if(keypressed==13) return false;
+  //  if(keypressed=='q' || keypressed==27) return false;
+  //  auto sp = std::dynamic_pointer_cast<rai::SplineCtrlReference>(ref);
+  //  if(sp && ctrlTime>sp->getEndTime()) return false;
   if(!keypressed && waitTime>0.) rai::wait(waitTime);
   return keypressed;
 }
@@ -497,21 +493,21 @@ void BotOp::launch_camera(rai::Frame* f_cam){
 }
 
 void BotOp::launch_MultiRealSense(const FrameL& f_cams, bool captureColor, bool captureDepth){
-//  StringA serialNumbers;
-//  for(auto* f:f_cams){
-//    str sn = f->ats->get<str>("realsense");
-//    if(sn.startsWith("sn")) sn = sn.sub(2,-1);
-//    serialNumbers.append(sn);
-//  }
-//  LOG(0) <<"== LAUNCHING realsenses:" <<serialNumbers;
-//  realsenses = make_shared<rai::MultiRealSenseThread>(serialNumbers, captureColor, captureDepth);
+  //  StringA serialNumbers;
+  //  for(auto* f:f_cams){
+  //    str sn = f->ats->get<str>("realsense");
+  //    if(sn.startsWith("sn")) sn = sn.sub(2,-1);
+  //    serialNumbers.append(sn);
+  //  }
+  //  LOG(0) <<"== LAUNCHING realsenses:" <<serialNumbers;
+  //  realsenses = make_shared<rai::MultiRealSenseThread>(serialNumbers, captureColor, captureDepth);
 
   StringA serialNumbers = {"102422075114", "102422071099", "825312070938"};
   realsenses = make_shared<rai::MultiRealSenseThread>(serialNumbers, true, false);
 }
 
 void BotOp::launch_Basler(uint nCams){
-    basler = make_shared<rai::BaslerThread>(nCams);
+  basler = make_shared<rai::BaslerThread>(nCams);
 }
 
 void BotOp::launch_arucos(){
@@ -525,32 +521,27 @@ void BotOp::launch_arucos(){
     }
   }
   if(basler){
-      for(auto& image:basler->color){
-          aruco_threads.append(make_shared<rai::ArucoThread>(k++, image));
-      }
+    for(auto& image:basler->color){
+      aruco_threads.append(make_shared<rai::ArucoThread>(k++, image));
+    }
   }
-  // if(triangulateN>0){
-  //   rai::Array<Var<PointViewData>*> ar_outputs;
-  //   for(auto& a:aruco_threads) ar_outputs.append(&a->output);
-  //   aruco_system_thread = make_shared<rai::ArucoSystemThread>(triangulateN, ar_outputs, Fxycxy, Pose);
-  // }
 }
 
 void BotOp::launch_arucoObjTracker(rai::Configuration& C, const char* obj_name){
-   aruco_obj_tracker_thread = make_shared<KomoArucoTracker_Thread>(aruco_threads, state, C, obj_name);
+  aruco_obj_tracker_thread = make_shared<rai::KomoArucoTracker_Thread>(aruco_threads, state, C, obj_name);
 }
 
 byteA BotOp::getImage(const str& sensor){
-    if(sensor.startsWith("camera_")){
-        CHECK(basler, "basler cameras were not launched")
-        int cameraID;
-        sensor.sub(7,0) >>cameraID;
-        CHECK_LE(cameraID, (int)basler->color.N-1, "only have " <<basler->color.N <<" basler cameras");
-        byteA img = basler->color(cameraID).get();
-        return img;
-    }
-    HALT("image sensor needs to start with camera_");
-    return byteA();
+  if(sensor.startsWith("camera_")){
+    CHECK(basler, "basler cameras were not launched")
+    int cameraID;
+    sensor.sub(7,0) >>cameraID;
+    CHECK_LE(cameraID, (int)basler->color.N-1, "only have " <<basler->color.N <<" basler cameras");
+    byteA img = basler->color(cameraID).get();
+    return img;
+  }
+  HALT("image sensor needs to start with camera_");
+  return byteA();
 }
 
 std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
