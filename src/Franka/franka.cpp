@@ -359,7 +359,7 @@ void FrankaThread::step(){
 #else //RAI_FRANKA
 
 FrankaThread::~FrankaThread(){ NICO }
-void FrankaThread::init(uint _robotID, const uintA& _qIndices) { NICO }
+void FrankaThread::init(uint _robotID, const char* ipAddress, const uintA& _qIndices) { NICO }
 void FrankaThread::step(){ NICO }
 
 #endif

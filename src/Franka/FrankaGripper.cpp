@@ -98,8 +98,8 @@ void FrankaGripper::step() {
 
 #else //RAI_FRANKA
 
-FrankaGripper::FrankaGripper(uint whichRobot)
-  : Thread(STRING("FrankaGripper_"<<whichRobot)) { NICO }
+FrankaGripper::FrankaGripper(const char* ipAddress)
+  : Thread(STRING("FrankaGripper_"<<ipAddress)) { NICO }
 FrankaGripper::~FrankaGripper(){ threadClose(); }
 void FrankaGripper::homing(){ NICO }
 void FrankaGripper::open(double width, double speed){ NICO }
