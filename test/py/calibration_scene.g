@@ -72,7 +72,11 @@ camera_0(table): {
   #fxycxy: [1013.6617031960608, 1014.1728954833683, 641.0030346256076, 471.55660368940636]
   #distortion: [-0.2540915125466794, 0.14076989020155176, 6.834847377053347e-05, 0.00014755920014026806, -0.05743168173510058]
 }
-
+Prefix: "0_"
+Include: <$RAI_PATH/basler/basler.yml>
+Prefix: False
+Edit 0_basler: { parent: [camera_0] }
+        
 camera_1(table): {
   basler: 41956220,
   Q: [0.0708059, 0.76234, 0.630606, 0.122105, 0.693827, -0.561165, 0.434498]
@@ -83,6 +87,10 @@ camera_1(table): {
   #fxycxy: [988.9491690061556, 989.4141040159345, 623.1037849361142, 439.66447559070514]
   #distortion: [-0.2413961154003396, 0.11674053733915875, 0.0002463650206466761, 0.0004825219920498637, -0.04322697453856177]
 }
+Prefix: "1_"
+Include: <$RAI_PATH/basler/basler.yml>
+Prefix: False
+Edit 1_basler: { parent: [camera_1] }
 
 camera_2(table): {
   basler: 41958511,
@@ -94,6 +102,10 @@ camera_2(table): {
   #fxycxy: [1260.05912806823, 1256.8118203928045, 674.0255235561862, 443.7420249071231]
   #distortion: [-0.3862890596111546, 0.3735525760450747, 0.006015829348812757, -0.0014634538456106223, -0.20684906840089493]
 }
+Prefix: "2_"
+Include: <$RAI_PATH/basler/basler.yml>
+Prefix: False
+Edit 2_basler: { parent: [camera_2] }
 
 Include: <calib_cams_intrinsics.yml>
 Include: <calib_cams.yml>

@@ -15,6 +15,7 @@
 #include <Omnibase/omnibase.h>
 #include <Robotiq/RobotiqGripper.h>
 #include <Allegro/allegro.h>
+#include <Trossen/TrossenThread.h>
 #include <OptiTrack/optitrack.h>
 #include <RealSense/RealSenseThread.h>
 #include <RealSense/MultiRealSenseThread.h>
@@ -118,6 +119,11 @@ void BotOp::launch_robots(rai::Configuration& C, bool useRealRobot){
 
 void BotOp::launch_allegro(){
   allegro = make_shared<AllegroThread>(cmd, state);
+  hold(false, true);
+}
+
+void BotOp::launch_trossen(){
+  trossen = make_shared<TrossenThread>(cmd, state);
   hold(false, true);
 }
 

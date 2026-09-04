@@ -1,0 +1,3 @@
+Include: <../../../../26-robot-models/models/vx300s.g>
+
+Edit(gripper): { joint: none }

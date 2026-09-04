@@ -34,6 +34,7 @@ struct BotOp{
   std::shared_ptr<rai::GripperAbstraction> gripperL;
   std::shared_ptr<rai::GripperAbstraction> gripperR;
   std::shared_ptr<rai::RobotAbstraction> allegro;
+  std::shared_ptr<rai::RobotAbstraction> trossen;
   std::shared_ptr<rai::ReferenceFeed> ref;
   std::shared_ptr<rai::OptiTrack> optitrack;
   std::shared_ptr<rai::ViveController> vivecontroller;
@@ -53,6 +54,7 @@ struct BotOp{
 
   void launch_robots(rai::Configuration& C, bool useRealRobot);
   void launch_allegro();
+  void launch_trossen();
 
   //-- state info
   arr get_q();
