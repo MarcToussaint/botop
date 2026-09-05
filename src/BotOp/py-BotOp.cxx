@@ -132,7 +132,7 @@ void init_BotOp(pybind11::module& m) {
        "returns if gripper is done",
        pybind11::arg("leftRight"))
 
-  .def("launch_robots", &BotOp::launch_robots, "", pybind11::arg("C"), pybind11::arg("useRealRobot"))
+  .def("launch_robots", &BotOp::launch_frankas, "", pybind11::arg("C"), pybind11::arg("useRealRobot"))
   .def("launch_camera", pybind11::overload_cast<const char*>(&BotOp::launch_camera), "start a camera thread referring to a frame that encodes all necessary specs", pybind11::arg("sensor"))
   .def("launch_Basler", &BotOp::launch_Basler, "", pybind11::arg("nCams"))
   .def("launch_arucos", &BotOp::launch_arucos, "for each camera, start a thread that permanently analyzes for aruco markers in the images")

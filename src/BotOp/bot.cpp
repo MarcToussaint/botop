@@ -30,7 +30,81 @@
 
 //===========================================================================
 
-void BotOp::launch_robots(rai::Configuration& C, bool useRealRobot){
+BotOp::BotOp(rai::Configuration& C, bool useRealRobot, bool auto_launch_config){
+  C.ensure_indexedJoints();
+  qHome = C.getJointState();
+  state.set()->init(qHome);
+  cmd.set()->setConst(qHome, false, true);
+
+  ///THIS NEEDS MAJOR DEV: more systematically scaning the Configuration C to check which hardware to launch
+  if(auto_launch_config){
+    bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
+    bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
+
+    if(useRealRobot && !blockRealRobot){
+      {
+        FrameL baslers;
+        for(rai::Frame *f:C.frames) if(f->ats && f->ats->findNode("basler")) baslers.append(f);
+        if(baslers.N) launch_Basler(baslers.N);
+      }
+      {
+        FrameL frankas;
+        for(rai::Frame *f:C.frames) if(f->ats && f->ats->findNode("franka_ip")) frankas.append(f);
+        if(frankas.N) launch_frankas(C, true);
+      }
+    }else{
+      simthread = make_shared<BotThreadedSim>(C, cmd, state);
+      robotL = simthread;
+      if(useGripper) gripperL = make_shared<GripperSim>(simthread, "l_gripper");
+    }
+  }
+
+  startRealTime = rai::realTime();
+
+  //-- launch OptiTrack
+  if(rai::getParameter<bool>("bot/useOptitrack", false)){
+    LOG(0) <<"OPENING OPTITRACK";
+    if(!useRealRobot) LOG(-1) <<"useOptitrack with real:false -- that's usually wrong!";
+    optitrack = make_shared<rai::OptiTrack>();
+    optitrack->pull(C);
+  }
+
+#ifdef RAI_VIVE
+  //-- launch ViveController
+  if(rai::getParameter<bool>("bot/useViveController", false)){
+    LOG(0) <<"OPENING ViveController";
+    vivecontroller = make_shared<rai::ViveController>();
+    vivecontroller->pull(C);
+  }
+#endif
+
+  //-- launch Audio/Sound
+  if(rai::getParameter<bool>("bot/useAudio", false)){
+    LOG(0) <<"OPENING SOUND";
+    audio = make_shared<rai::Sound>();
+  }
+
+  // C.view(false, STRING("time: 0"));
+  // C.gl().setTitle("BotOp associated Configuration");
+}
+
+BotOp::~BotOp(){
+  LOG(0) <<"DTOR - shutting down BotOp...";
+  aruco_obj_tracker_thread.reset();
+  for(auto& ar:aruco_threads) ar.reset();
+  realsenses.reset();
+  basler.reset();
+  for(auto& cam:cameras) cam.reset();
+  if(simthread) simthread.reset();
+  gripperL.reset();
+  gripperR.reset();
+  robotL.reset();
+  robotR.reset();
+  allegro.reset();
+}
+
+void BotOp::launch_frankas(rai::Configuration& C, bool useRealRobot){
+  CHECK(useRealRobot, "refactored...");
   bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
   bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
   forceRealCamera = rai::getParameter<bool>("bot/forceRealCamera", false);
@@ -124,60 +198,6 @@ void BotOp::launch_allegro(){
 
 void BotOp::launch_trossen(){
   trossen = make_shared<TrossenThread>(cmd, state);
-  hold(false, true);
-}
-
-BotOp::BotOp(rai::Configuration& C, bool useRealRobot){
-  C.ensure_indexedJoints();
-  qHome = C.getJointState();
-  state.set()->init(qHome);
-
-  //-- launch arm(s) & gripper(s)
-  // launch_robots(C, useRealRobot);
-
-  startRealTime = rai::realTime();
-
-
-  //-- launch OptiTrack
-  if(rai::getParameter<bool>("bot/useOptitrack", false)){
-    LOG(0) <<"OPENING OPTITRACK";
-    if(!useRealRobot) LOG(-1) <<"useOptitrack with real:false -- that's usually wrong!";
-    optitrack = make_shared<rai::OptiTrack>();
-    optitrack->pull(C);
-  }
-
-#ifdef RAI_VIVE
-  //-- launch ViveController
-  if(rai::getParameter<bool>("bot/useViveController", false)){
-    LOG(0) <<"OPENING ViveController";
-    vivecontroller = make_shared<rai::ViveController>();
-    vivecontroller->pull(C);
-  }
-#endif
-
-  //-- launch Audio/Sound
-  if(rai::getParameter<bool>("bot/useAudio", false)){
-    LOG(0) <<"OPENING SOUND";
-    audio = make_shared<rai::Sound>();
-  }
-
-  // C.view(false, STRING("time: 0"));
-  // C.gl().setTitle("BotOp associated Configuration");
-}
-
-BotOp::~BotOp(){
-  LOG(0) <<"DTOR - shutting down BotOp...";
-  aruco_obj_tracker_thread.reset();
-  for(auto& ar:aruco_threads) ar.reset();
-  realsenses.reset();
-  basler.reset();
-  for(auto& cam:cameras) cam.reset();
-  if(simthread) simthread.reset();
-  gripperL.reset();
-  gripperR.reset();
-  robotL.reset();
-  robotR.reset();
-  allegro.reset();
 }
 
 double BotOp::get_t(){
@@ -206,17 +226,19 @@ arr BotOp::get_qDot() {
 }
 
 double BotOp::getTimeToEnd(){
-  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
+  double ctrlTime = get_t();
+  auto cmd_get = cmd.get();
+  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(cmd_get->ref);
   if(!sp){
     LOG(-1) <<"can't get timeToEnd for non-spline mode";
     return 0.;
   }
-  double ctrlTime = get_t();
   return sp->getEndTime() - ctrlTime;
 }
 
 arr BotOp::getEndPoint(){
-  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
+  auto cmd_get = cmd.get();
+  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(cmd_get->ref);
   if(!sp) return get_q();
   return sp->getEndPoint();
 }
@@ -311,10 +333,12 @@ int BotOp::wait(rai::Configuration& C, bool forKeyPressed, bool forTimeToEnd, bo
 }
 
 std::shared_ptr<rai::BSplineCtrlReference> BotOp::getSplineRef(){
-  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
+  auto cmd_set = cmd.set();
+  // double ctrlTime = get_t();
+  auto sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(cmd_set->ref);
   if(!sp){
-    setReference<rai::BSplineCtrlReference>();
-    sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref);
+    cmd_set->ref = make_shared<rai::BSplineCtrlReference>();
+    sp = std::dynamic_pointer_cast<rai::BSplineCtrlReference>(cmd_set->ref);
     CHECK(sp, "this is not a spline reference!")
   }
   return sp;
@@ -335,7 +359,7 @@ void BotOp::move(const arr& path, const arr& times, bool overwrite, double overw
   }
 
   if(overwrite){
-    CHECK(overwriteCtrlTime>0., "overwrite -> need to give a cut-time (e.g. start or MPC cycle, or just get_t())");
+    CHECK(overwriteCtrlTime>=0., "overwrite -> need to give a cut-time (e.g. start or MPC cycle, or just get_t())");
     //LOG(1) <<"overwrite: " <<ctrlTime <<" - " <<_times;
     if(times.first()>0.){
       getSplineRef()->overwriteSmooth(path, /*vels,*/ _times, overwriteCtrlTime);
@@ -352,7 +376,7 @@ void BotOp::move_oldCubic(const arr& path, const arr& times, bool overwrite, dou
   arr _times=times;
 
 
-  if(std::dynamic_pointer_cast<rai::BSplineCtrlReference>(ref)){
+  if(std::dynamic_pointer_cast<rai::BSplineCtrlReference>(cmd.get()->ref)){
     return move(path, _times, overwrite, overwriteCtrlTime);
   }
 
@@ -559,6 +583,7 @@ byteA BotOp::getImage(const str& sensor){
 }
 
 std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
+  CHECK(sensor, "you need to specify a frame, nullptr not allowed");
   for(std::shared_ptr<rai::CameraAbstraction>& cam:cameras){
     if(cam->camera_name==sensor) return cam;
   }
@@ -577,17 +602,20 @@ std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
 }
 
 void BotOp::getImageAndDepth(byteA& image, floatA& depth, const char* sensor){
+  CHECK(sensor, "you need to specify a frame, nullptr not allowed");
   auto cam = getCamera(sensor);
   image = cam->image.get();
   depth = cam->depth.get(); //getImageAndDepth(image, depth);
 }
 
 arr BotOp::getCameraFxycxy(const char* sensor){
+  CHECK(sensor, "you need to specify a frame, nullptr not allowed");
   auto cam = getCamera(sensor);
   return cam->getFxycxy();
 }
 
 void BotOp::getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates){
+  CHECK(sensor, "you need to specify a frame, nullptr not allowed");
   auto cam = getCamera(sensor);
   image = cam->image.get();
   depth = cam->depth.get(); //getImageAndDepth(image, depth);
@@ -611,24 +639,8 @@ void BotOp::stop(rai::Configuration& C){
 }
 
 void BotOp::hold(bool floating, bool damping){
-  auto zref = std::dynamic_pointer_cast<ZeroReference>(ref);
-  if(!zref){
-    setReference<ZeroReference>();
-    zref = std::dynamic_pointer_cast<ZeroReference>(ref);
-    CHECK(zref, "this is not a spline reference!")
-  }
-  if(floating){
-    zref->setPositionReference({});
-    if(damping){
-      zref->setVelocityReference({0.}); //{0.}: have a Kd with zero vel ref;
-    }else{
-      zref->setVelocityReference({}); //{}: have no Kd term at all; {1.} have a Kd term with velRef=velTrue (and friction compensation!)
-    }
-  }else{
-    arr q = get_q();
-    zref->setPositionReference(q);
-    zref->setVelocityReference({0.});
-  }
+  arr q = state.get()->q;
+  cmd.set()->setConst(q, floating, damping);
 }
 
 void BotOp::sound(int noteRelToC, float a, float decay){
@@ -662,25 +674,3 @@ void BotOp::cheat_setFramePose(str name, const arr& pose){
     simthread->sim->pushConfigToSim();
   }
 }
-
-//===========================================================================
-
-void ZeroReference::getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime){
-  {
-    arr pos = position_ref.get()();
-    if(pos.N) q_ref = pos;
-    else q_ref.clear(); // = q_real;  //->no position gains at all
-  }
-  {
-    arr vel = velocity_ref.get()();
-    if(vel.N==1){
-      double a = vel.scalar();
-      CHECK(a>=0. && a<=1., "");
-      qDot_ref = a * qDot_real; //[0] -> zero vel reference -> damping
-    }
-    else if(vel.N) qDot_ref = vel;
-    else qDot_ref.clear(); //.clear();  //[] -> no damping at all! (and also no friction compensation based on reference qDot)
-  }
-  qDDot_ref.clear(); //[] -> no acc at all
-}
-

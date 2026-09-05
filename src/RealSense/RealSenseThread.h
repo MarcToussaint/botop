@@ -18,7 +18,7 @@ struct RealSenseCfg{
   RAI_PARAM("RealSense/", bool, longCable, false)
 };
 
-struct RealSenseThread : Thread, rai::CameraAbstraction {
+struct RealSenseThread : rai::Thread, rai::CameraAbstraction {
   struct sRealSenseThread *s=0;
 
   RealSenseCfg cfg;

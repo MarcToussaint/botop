@@ -5,9 +5,9 @@
 #include <Kin/simulation.h>
 #include <Kin/frame.h>
 
-struct BotThreadedSim : rai::RobotAbstraction, Thread {
+struct BotThreadedSim : rai::RobotAbstraction, rai::Thread {
   BotThreadedSim(const rai::Configuration& _sim_config,
-                 Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state,
+                 rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state,
                  const StringA& joints={},
                  double _tau=-1,
                  double hyperSpeed=-1.);
@@ -45,14 +45,14 @@ protected:
   friend struct CameraSimThread;
 };
 
-struct GripperSim : rai::GripperAbstraction, Thread{
+struct GripperSim : rai::GripperAbstraction, rai::Thread{
   std::shared_ptr<BotThreadedSim> simthread;
   rai::String gripperName;
   double q;
   bool isClosing=false, isOpening=false;
 
   GripperSim(const std::shared_ptr<BotThreadedSim>& _simthread, const char* _gripperName)
-    : Thread("GripperSimulation"), simthread(_simthread), gripperName(_gripperName), q(.02) {}
+    : rai::Thread("GripperSimulation"), simthread(_simthread), gripperName(_gripperName), q(.02) {}
 
   //gripper virtual methods
   void calibrate() {}
@@ -70,16 +70,19 @@ struct GripperSim : rai::GripperAbstraction, Thread{
 
 };
 
-struct CameraSimThread : rai::CameraAbstraction, Thread {
+struct CameraSimThread : rai::CameraAbstraction, rai::Thread {
   std::shared_ptr<BotThreadedSim> simthread;
 
   CameraSimThread(const std::shared_ptr<BotThreadedSim>& _sim, rai::Frame *f_cam)
       : Thread(f_cam->name, .05), simthread(_sim) {
-    auto mux = simthread->stepMutex(RAI_HERE);
-    camera_name = f_cam->name;
-    simthread->sim->addSensor(f_cam);
+    {
+      auto mux = simthread->stepMutex(RAI_HERE);
+      camera_name = f_cam->name;
+      simthread->sim->setCamera(f_cam);
+    }
     LOG(0) <<"launching camera " <<camera_name;
     threadLoop();
+    image.waitForRevisionGreaterThan(0);
   }
   ~CameraSimThread(){
     LOG(0) <<"shutting down camera " <<camera_name;
@@ -88,21 +91,21 @@ struct CameraSimThread : rai::CameraAbstraction, Thread {
 
   void step() {
     auto mux = simthread->stepMutex(RAI_HERE);
-    auto f_cam = simthread->sim->C.getFrame("camera_name");
-    simthread->sim->selectSensor(f_cam);
+    auto f_cam = simthread->sim->C.getFrame(camera_name);
+    simthread->sim->setCamera(f_cam);
     simthread->sim->getImageAndDepth(image.set(), depth.set());
   }
 
   virtual arr getFxycxy(){
     auto mux = simthread->stepMutex(RAI_HERE);
-    auto f_cam = simthread->sim->C.getFrame("camera_name");
-    simthread->sim->selectSensor(f_cam);
+    auto f_cam = simthread->sim->C.getFrame(camera_name);
+    simthread->sim->setCamera(f_cam);
     return simthread->sim->cameraview().currentCamera->cam.getFxycxy();
   }
   virtual rai::Transformation getPose(){
     auto mux = simthread->stepMutex(RAI_HERE);
-    auto f_cam = simthread->sim->C.getFrame("camera_name");
-    simthread->sim->selectSensor(f_cam);
+    auto f_cam = simthread->sim->C.getFrame(camera_name);
+    simthread->sim->setCamera(f_cam);
     return simthread->sim->cameraview().currentCamera->frame.ensure_X();
   }
 };

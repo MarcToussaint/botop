@@ -17,8 +17,8 @@ struct GripperCmdMsg {
     double speed=.1;
 };
 
-struct FrankaGripper : rai::GripperAbstraction, Thread{
-  Var<GripperCmdMsg> cmd;
+struct FrankaGripper : rai::GripperAbstraction, rai::Thread {
+  rai::Var<GripperCmdMsg> cmd;
   double maxWidth;
 
   FrankaGripper(const char* ipAddress);

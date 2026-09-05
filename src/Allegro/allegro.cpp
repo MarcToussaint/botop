@@ -32,7 +32,7 @@ const double tau_cov_const_v4 = 1200.0; // Torque conversion constant for v4 fir
 bool CreateBHandAlgorithm();
 void DestroyBHandAlgorithm();
 
-AllegroThread::AllegroThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state)
+AllegroThread::AllegroThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state)
     : rai::RobotAbstraction(cmd, state), Thread("AllegroThread"){
 
   ctrlTime = 0.;
@@ -338,8 +338,8 @@ void AllegroThread::ioThreadProc(){
 
 #else //RAI_Allegro
 
-AllegroThread::AllegroThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state)
-    : rai::RobotAbstraction(cmd, state), Thread("AllegroThread"){ NICO; }
+AllegroThread::AllegroThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state)
+    : rai::RobotAbstraction(cmd, state), rai::Thread("AllegroThread"){ NICO; }
 AllegroThread::~AllegroThread(){}
 void AllegroThread::step(){ NICO }
 

@@ -6,7 +6,7 @@
 
 #include "libtrossen_arm/trossen_arm.hpp"
 
-TrossenThread::TrossenThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state, const char* ipAddress)
+TrossenThread::TrossenThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state, const char* ipAddress)
     : rai::RobotAbstraction(cmd, state),
     Thread("TrossenThread", .002), //HARD CODED step frequency of 100Hz
     ipAddress(ipAddress), fil("trossen.dat") {
@@ -66,13 +66,18 @@ void TrossenThread::open(){
   driver->set_motor_parameters(trossen_arm::StandardMotorParameters::wxai_v0_latest);
 #endif
 
-  { //get initial state
-    arr q_init = as_arr(driver->get_all_positions(), false);
+  //get initial state
+  arr q_init = as_arr(driver->get_all_positions(), false);
+  {
     auto stateSet = state.set();
     stateSet->q = q_init;
     stateSet->qDot.resize(q_init.N).setZero();
     stateSet->tauExternalIntegral.resize(q_init.N).setZero();
     stateSet->tauExternalCount=0;
+  }
+  {
+    auto cmd_set = cmd.set();
+    cmd_set->setConst(q_init, false, true);
   }
 
   // start effort control mode
@@ -155,5 +160,13 @@ void TrossenThread::step(){
 }
 
 #else
-TODO!!
+
+TrossenThread::TrossenThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state, const char* ipAddress)
+    : rai::RobotAbstraction(cmd, state),
+    Thread("TrossenThread", .002), //HARD CODED step frequency of 100Hz
+    ipAddress(ipAddress), fil("trossen.dat") { NICO }
+void TrossenThread::open(){ NICO }
+void TrossenThread::step(){ NICO }
+void TrossenThread::close(){ NICO }
+
 #endif

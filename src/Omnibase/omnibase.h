@@ -7,8 +7,8 @@
 
 struct OmnibaseController;
 
-struct OmnibaseThread : rai::RobotAbstraction, Thread {
-  OmnibaseThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state, uint robotID, const uintA& _qIndices)
+struct OmnibaseThread : rai::RobotAbstraction, rai::Thread {
+  OmnibaseThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state, uint robotID, const uintA& _qIndices)
       : RobotAbstraction(cmd, state), Thread("OmnibaseThread", .01) { init(robotID, _qIndices); }
   ~OmnibaseThread();
 

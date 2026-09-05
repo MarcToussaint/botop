@@ -64,13 +64,17 @@ void test_withoutBotWrapper() {
   C.addFile(rai::raiPath("../rai-robotModels/scenarios/pandaSingle.g"));
   C.view(true);
 
+  rai::Var<rai::CtrlCmdMsg> cmd;
+  rai::Var<rai::CtrlStateMsg> state;
+
   //-- start a robot thread
+  str ipAddress = "bla.0.0";
   C.ensure_indexedJoints();
   std::shared_ptr<rai::RobotAbstraction> robot;
   if(rai::getParameter<bool>("real", false)){
-    robot = make_shared<FrankaThread>(0, franka_getJointIndices(C,'l'));
+    robot = make_shared<FrankaThread>(cmd, state, 0, ipAddress, franka_getJointIndices(C,'l'));
   }else{
-    robot = make_shared<BotThreadedSim>(C);
+    robot = make_shared<BotThreadedSim>(C, cmd, state );
   }
   robot->writeData = 2;
 
@@ -91,7 +95,8 @@ void test_withoutBotWrapper() {
   sp->report(ctrlTime);
 
   for(;;){
-    if(C.view(false, STRING("time: "<<robot->state.get()->ctrlTime <<" - hit 'q' to append more"))=='q') break;
+    int key = C.view(false, STRING("time: "<<robot->state.get()->ctrlTime <<" - hit 'q' to append more"));
+    if(key=='q') break;
     C.setJointState(robot->state.get()->q);
     rai::wait(.1);
   }
@@ -133,10 +138,10 @@ void test_mini() {
 #if 0
   bot.move(q1.reshape(-1, q0.N), {.5});
 #else
-  ActionObservation obs;
+  StepObservation obs;
   double tau_step = .05, lambda=.2;
   for(uint t=0;t<2./tau_step;t++){
-    obs = bot.getActionObservation();
+    obs = bot.stepObservation();
     arr delta = q1 - obs.qpos;
     cout <<obs.ctrlTime <<' ' <<q1(1) <<' ' <<obs.qpos(1) <<' ' <<obs.qref(1) <<' ' <<delta(1) <<endl;
     bot.stepAction(delta, obs, lambda, 1.);
@@ -187,7 +192,7 @@ void test_reactive_control(){
   }
 
   BotOp bot(C, rai::getParameter<bool>("real", false));
-  ActionObservation obs;
+  StepObservation obs;
 
   double tau_step = .05, lambda = .2;
   for(uint t=0;t<100;t++){
@@ -197,9 +202,9 @@ void test_reactive_control(){
 
     auto ret = mini_IK(C, pos, qHome);
     if(ret->feasible){
-//      bot.moveTo(ret->x, 5., true);
-       obs = bot.getActionObservation();
-       bot.stepAction(ret->x - obs.qpos, obs, lambda);
+      bot.moveTo(ret->x, 5., true);
+       // obs = bot.stepObservation();
+       // bot.stepAction(ret->x - obs.qpos, obs, lambda);
     }
   }
 

@@ -6,7 +6,7 @@
 //===========================================================================
 
 struct SecMPC_Stepper{
-  Metronome tic;
+  rai::Metronome tic;
   uint stepCount = 0;
   ofstream fil;
   FrameL logPoses;

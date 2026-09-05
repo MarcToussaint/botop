@@ -5,7 +5,7 @@ namespace trossen_arm{
 class TrossenArmDriver;
 }
 
-struct TrossenThread : rai::RobotAbstraction, Thread {
+struct TrossenThread : rai::RobotAbstraction, rai::Thread {
   std::shared_ptr<trossen_arm::TrossenArmDriver> driver;
   str ipAddress;
   arr Kp, Kd;
@@ -13,7 +13,7 @@ struct TrossenThread : rai::RobotAbstraction, Thread {
 
   ofstream fil;
 
-  TrossenThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state, const char* ipAddress="192.168.1.3");
+  TrossenThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state, const char* ipAddress="192.168.1.3");
   ~TrossenThread(){
     LOG(0) <<"shutting down Trossen -- " <<timer.report();
     threadClose();

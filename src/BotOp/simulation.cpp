@@ -7,7 +7,7 @@
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
 BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
-                               Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state,
+                               rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state,
                                const StringA& joints,
                                double _tau, double hyperSpeed)
   : RobotAbstraction(cmd, state),

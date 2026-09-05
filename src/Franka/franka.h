@@ -2,12 +2,11 @@
 
 #include <Core/array.h>
 #include <Core/thread.h>
-#include <Control/ctrlMsg.h>
 #include <Control/CtrlMsgs.h>
 
 
-struct FrankaThread : rai::RobotAbstraction, Thread{
-  FrankaThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state, uint robotID, const char* _ipAddress, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6})
+struct FrankaThread : rai::RobotAbstraction, rai::Thread{
+  FrankaThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state, uint robotID, const char* _ipAddress, const uintA& _qIndices={0, 1, 2, 3, 4, 5, 6})
       : RobotAbstraction(cmd, state), Thread("FrankaThread"){ init(robotID, _ipAddress, _qIndices); }
   ~FrankaThread();
 

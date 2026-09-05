@@ -26,8 +26,8 @@ struct StepObservation{
 //===========================================================================
 
 struct BotOp{
-  Var<rai::CtrlCmdMsg> cmd;
-  Var<rai::CtrlStateMsg> state;
+  rai::Var<rai::CtrlCmdMsg> cmd;
+  rai::Var<rai::CtrlStateMsg> state;
   //since each of the following interfaces is already pimpl, we don't have to hide them again
   std::shared_ptr<rai::RobotAbstraction> robotL;
   std::shared_ptr<rai::RobotAbstraction> robotR;
@@ -35,7 +35,6 @@ struct BotOp{
   std::shared_ptr<rai::GripperAbstraction> gripperR;
   std::shared_ptr<rai::RobotAbstraction> allegro;
   std::shared_ptr<rai::RobotAbstraction> trossen;
-  std::shared_ptr<rai::ReferenceFeed> ref;
   std::shared_ptr<rai::OptiTrack> optitrack;
   std::shared_ptr<rai::ViveController> vivecontroller;
   std::shared_ptr<rai::Sound> audio;
@@ -49,10 +48,10 @@ struct BotOp{
   arr qHome;
   int keypressed=0;
 
-  BotOp(rai::Configuration& C, bool useRealRobot);
+  BotOp(rai::Configuration& C, bool useRealRobot, bool auto_launch_config=true);
   ~BotOp();
 
-  void launch_robots(rai::Configuration& C, bool useRealRobot);
+  void launch_frankas(rai::Configuration& C, bool useRealRobot);
   void launch_allegro();
   void launch_trossen();
 
@@ -116,35 +115,9 @@ struct BotOp{
 
 private:
   std::shared_ptr<rai::CameraAbstraction>& getCamera(const char* sensor);
-  template<class T> BotOp& setReference();
   std::shared_ptr<rai::BSplineCtrlReference> getSplineRef();
   double startRealTime;
   bool forceRealCamera=false;
 };
 
 //===========================================================================
-
-struct ZeroReference : rai::ReferenceFeed {
-  Var<arr> position_ref; ///< if set, defines a non-zero velocity reference
-  Var<arr> velocity_ref; ///< if set, defines a non-zero velocity reference
-
-  ZeroReference& setVelocityReference(const arr& _velocity_ref){ velocity_ref.set() = _velocity_ref; return *this; }
-  ZeroReference& setPositionReference(const arr& _position_ref){ position_ref.set() = _position_ref; return *this; }
-
-  /// callback called by a robot control loop
-  virtual void getReference(arr& q_ref, arr& qDot_ref, arr& qDDot_ref, const arr& q_real, const arr& qDot_real, double ctrlTime);
-};
-
-//===========================================================================
-
-template<class T> BotOp& BotOp::setReference(){
-  //comment the next line to only get gravity compensation instead of 'zero reference following' (which includes damping)
-  ref = make_shared<T>();
-  cmd.set()->ref = ref;
-  //  ref->setPositionReference(q_now);
-  //ref->setVelocityReference({.0,.0,.2,0,0,0,0});
-  return *this;
-}
-
-//===========================================================================
-

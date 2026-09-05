@@ -31,7 +31,7 @@ int testDirect(){
       gl2.resize(colorGet->d1, colorGet->d0);
     }
 
-    CycleTimer tim;
+    rai::CycleTimer tim;
     for(;;){
       RS.image.waitForNextRevision();
 
@@ -72,7 +72,7 @@ int testTwoCameras(){
     RS0.image.waitForNextRevision();
     RS1.image.waitForNextRevision();
 
-    CycleTimer tim;
+    rai::CycleTimer tim;
     for(;;){
       RS0.image.waitForNextRevision();
 
@@ -118,8 +118,9 @@ void testBotop(){
     if(bot.keypressed=='q'){ LOG(0) <<"HERE"; break; }
 
     //bot.getImageDepthPcl(image, depth, points, "RealSense_0", false);
-    bot.getImageAndDepth(image, depth, "RealSense_0");
-    bot.getImageAndDepth(image1, depth, "RealSense_1");
+    bot.getImageAndDepth(image, depth, "cameraWrist");
+    // bot.getImageAndDepth(image, depth, "RealSense_0");
+    // bot.getImageAndDepth(image1, depth, "RealSense_1");
 
     int key=0;
     if(depth.N){

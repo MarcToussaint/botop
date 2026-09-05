@@ -32,7 +32,6 @@ BaslerThread::BaslerThread(uint nCams)
   threadLoop();
 }
 
-
 BaslerThread::~BaslerThread(){
   arr revs(color.N);
   for(uint i=0;i<color.N;i++) revs(i) = double(color(i).getRevision());

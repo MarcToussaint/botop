@@ -5,8 +5,8 @@
 #include <Control/ctrlMsg.h>
 #include <Control/CtrlMsgs.h>
 
-struct AllegroThread : rai::RobotAbstraction, Thread{
-  AllegroThread(Var<rai::CtrlCmdMsg>& cmd, Var<rai::CtrlStateMsg>& state);
+struct AllegroThread : rai::RobotAbstraction, rai::Thread{
+  AllegroThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state);
   ~AllegroThread();
 
 private:

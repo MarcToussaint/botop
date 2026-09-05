@@ -39,8 +39,8 @@ int direct(){
 
 
 void thread(){
-  Var<rai::CtrlCmdMsg> cmd;
-  Var<rai::CtrlStateMsg> state;
+  rai::Var<rai::CtrlCmdMsg> cmd;
+  rai::Var<rai::CtrlStateMsg> state;
 
   rai::Configuration C;
   C.addFile("scene.yml");
