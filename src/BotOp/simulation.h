@@ -27,6 +27,7 @@ private:
 
   //two options: trivial double integrator model, or physical simulation
 protected:
+  rai::Mutex stepMutex;
   std::shared_ptr<rai::Simulation> sim;
 
   void step();

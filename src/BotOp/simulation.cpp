@@ -78,6 +78,8 @@ void BotThreadedSim::pullDynamicStates(rai::Configuration& C){
 }
 
 void BotThreadedSim::step(){
+  stepMutex.lock(RAI_HERE);
+
   //-- get real time
   ctrlTime += tau;
   //  ctrlTime = rai::realTime();
@@ -169,6 +171,7 @@ void BotThreadedSim::step(){
     }
     dataFile <<endl;
   }
+  stepMutex.unlock();
 }
 
 void GripperSim::open(double width, double speed) {
