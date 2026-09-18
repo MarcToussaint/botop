@@ -10,7 +10,7 @@ struct BaslerThread : Thread {
 
   rai::Array<Var<byteA>> color;
 
-  BaslerThread(uint nCams);
+  BaslerThread(const strA& ids, const rai::Array<std::shared_ptr<Graph>>& ats = {});
   ~BaslerThread();
 
   void open();

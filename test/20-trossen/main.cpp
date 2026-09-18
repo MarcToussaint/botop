@@ -46,7 +46,7 @@ void thread(){
   rai::Configuration C;
   C.addFile("scene.yml");
 
-  TrossenThread trossen(cmd, state, "192.168.1.5");
+  TrossenThread trossen(cmd, state, {"192.168.1.5"});
 
   for(;;){
     rai::wait(.02);
@@ -65,14 +65,14 @@ void botop(){
 
   {
 
-    BotOp bot(C, true, false);
-
-    bot.launch_trossen("192.168.1.5");
-
-    bot.wait(C, true, false);
+    BotOp bot(C, true, true);
 
     bot.home(C);
 
+#if 0
+    bot.hold(false, true);
+    bot.wait(C, true, false);
+#else
     uint T=10;
     arr path(T, q0.N);
     for(uint t=0;t<T;t++){
@@ -82,17 +82,26 @@ void botop(){
     path[-1] = q0;
     bot.move(path, {.5*T});
     bot.wait(C);
+#endif
   }
 
-  gnuplot("plot 'trossen.dat' us 1:4 t 'REF', '' us 1:11 t 'REAL'", true);
+  gnuplot("plot 'trossen.dat' us 1:6 t 'REF', '' us 1:13 t 'REAL'", true);
 }
 
+void park(){
+  rai::Configuration C;
+  C.addFile("scene.yml");
+  BotOp bot(C, true, true);
+  bot.moveTo(zeros(7));
+  bot.wait(C);
+}
 
 int main(int argc, char** argv){
   rai::initCmdLine(argc, argv);
 
-    // direct();
-    // thread();
-    botop();
-    return 0;
+  // direct();
+  // thread();
+  // botop();
+  park();
+  return 0;
 }

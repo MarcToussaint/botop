@@ -26,6 +26,7 @@ struct StepObservation{
 //===========================================================================
 
 struct BotOp{
+  uint robotCount=0;
   rai::Var<rai::CtrlCmdMsg> cmd;
   rai::Var<rai::CtrlStateMsg> state;
   //since each of the following interfaces is already pimpl, we don't have to hide them again
@@ -48,12 +49,16 @@ struct BotOp{
   arr qHome;
   int keypressed=0;
 
-  BotOp(rai::Configuration& C, bool useRealRobot, bool auto_launch_config=true);
+  BotOp(rai::Configuration& C, bool useRealRobot, bool auto_launch_hardware=true);
   ~BotOp();
 
-  void launch_frankas(rai::Configuration& C, bool useRealRobot);
-  void launch_allegro();
-  void launch_trossen(const char* ipAddress);
+  void auto_launch_hardware(rai::Configuration& C);
+  void launch_frankas_obsolete(rai::Configuration& C, bool useRealRobot);
+  void launch_franka_arm(const char* id, rai::Frame* f=0);
+  void launch_allegro(const char* id, rai::Frame* f=0);
+  void launch_trossen(const strA& ids, const FrameL& F={});
+  void launch_optitrack(rai::Configuration& C);
+  void launch_basler(const strA& ids, const FrameL& F={});
 
   //-- state info
   arr get_q();
@@ -88,7 +93,6 @@ struct BotOp{
   void launch_camera(const char* sensor){ getCamera(sensor); }
   void launch_camera(rai::Frame *cam_frame); //might be obsolete, given that realsenses have to be launched en-block
   void launch_MultiRealSense(const FrameL& f_cams, bool captureColor, bool captureDepth);
-  void launch_Basler(uint nCams);
   void launch_arucos();
   void launch_arucoObjTracker(rai::Configuration& C, const char* obj_name);
   byteA getImage(const str& sensor);

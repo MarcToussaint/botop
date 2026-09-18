@@ -34,10 +34,11 @@ void init_BotOp(pybind11::module& m) {
 
   pybind11::class_<BotOp, shared_ptr<BotOp>>(m, "BotOp", "Robot Operation interface -- see https://marctoussaint.github.io/robotics-course/tutorials/1b-botop.html")
 
-  .def(pybind11::init<rai::Configuration&, bool>(),
+  .def(pybind11::init<rai::Configuration&, bool, bool>(),
        "constructor",
        pybind11::arg("C"),
-       pybind11::arg("useRealRobot")
+       pybind11::arg("useRealRobot"),
+       pybind11::arg("auto_launch_hardware")=true
        )
 
   .def("get_t", &BotOp::get_t,
@@ -132,10 +133,10 @@ void init_BotOp(pybind11::module& m) {
        "returns if gripper is done",
        pybind11::arg("leftRight"))
 
-  .def("launch_robots", &BotOp::launch_frankas, "", pybind11::arg("C"), pybind11::arg("useRealRobot"))
-  .def("launch_trossen", &BotOp::launch_trossen, "")
+  // .def("launch_robots", &BotOp::launch_frankas, "", pybind11::arg("C"), pybind11::arg("useRealRobot"))
+  // .def("launch_trossen", &BotOp::launch_trossen, "")
   .def("launch_camera", pybind11::overload_cast<const char*>(&BotOp::launch_camera), "start a camera thread referring to a frame that encodes all necessary specs", pybind11::arg("sensor"))
-  .def("launch_Basler", &BotOp::launch_Basler, "", pybind11::arg("nCams"))
+  // .def("launch_Basler", &BotOp::launch_Basler, "", pybind11::arg("nCams"))
   .def("launch_arucos", &BotOp::launch_arucos, "for each camera, start a thread that permanently analyzes for aruco markers in the images")
   .def("launch_arucoObjTracker", &BotOp::launch_arucoObjTracker, "")
 

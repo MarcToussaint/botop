@@ -6,15 +6,15 @@
 
 #include "libtrossen_arm/trossen_arm.hpp"
 
-TrossenThread::TrossenThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state, const char* ipAddress)
+TrossenThread::TrossenThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state, const strA& ids)
     : rai::RobotAbstraction(cmd, state),
     Thread("TrossenThread", .002), //HARD CODED step frequency of 100Hz
-    ipAddress(ipAddress), fil("trossen.dat") {
+    ipAddresses(ids), fil("trossen.dat") {
 
-  Kp = rai::getParameter<arr>("Trossen/Kp");
-  Kd = rai::getParameter<arr>("Trossen/Kd"); //FOR TROSSEN, this corresponds to the Kp of the velocity PID
+  Kp = rai::getParameter<arr>("Trossen/Kp", arr{});
+  Kd = rai::getParameter<arr>("Trossen/Kd", arr{}); //FOR TROSSEN, this corresponds to the Kp of the velocity PID
 
-  LOG(0) <<"launching Trossen at " <<ipAddress;
+  LOG(0) <<"launching Trossen at " <<ipAddresses;
 
   threadOpen(true);
   threadLoop();
@@ -22,7 +22,6 @@ TrossenThread::TrossenThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlS
 
 void print_motor_parameters(const std::vector<std::map<trossen_arm::Mode, trossen_arm::MotorParameter>>& motor_parameters)
 {
-  std::cout << "Motor parameters:" << std::endl;
   for (size_t i = 0; i < motor_parameters.size(); ++i) {
     const std::map<trossen_arm::Mode, trossen_arm::MotorParameter>& motor_parameter =
         motor_parameters.at(i);
@@ -46,25 +45,36 @@ void print_motor_parameters(const std::vector<std::map<trossen_arm::Mode, trosse
 void TrossenThread::open(){
   driver = make_shared<trossen_arm::TrossenArmDriver>();
 
+  CHECK_EQ(ipAddresses.N, 1, "only 1 trossen for now");
+
   driver->configure(
       trossen_arm::Model::wxai_v0,
       trossen_arm::StandardEndEffector::wxai_v0_follower,
-      ipAddress.p,
+      ipAddresses(0).p,
       true
       );
 
-  auto motor_parameters = driver->get_motor_parameters();
-  print_motor_parameters(motor_parameters);
-
-#if 0 //totally bad yet!!
-  for(uint i=0;i<Kp.N;i++){
-    motor_parameters.at(i).at(trossen_arm::Mode::position).position.kp = Kp(i);
-    motor_parameters.at(i).at(trossen_arm::Mode::position).velocity.kp = Kd(i);
-  }
-  driver->set_motor_parameters(motor_parameters);
-#else
+  //== change Kp, Kd?
   driver->set_motor_parameters(trossen_arm::StandardMotorParameters::wxai_v0_latest);
-#endif
+
+  auto motor_parameters = driver->get_motor_parameters();
+
+  arr Kp_default(7), Kd_default(7);
+  for(uint i=0;i<Kp.N;i++){
+    Kp_default(i) = motor_parameters.at(i).at(trossen_arm::Mode::position).position.kp;
+    Kd_default(i) = motor_parameters.at(i).at(trossen_arm::Mode::position).velocity.kp;
+  }
+  cout <<"Trossen/Kp: " <<Kp_default <<endl;
+  cout <<"Trossen/Kd: " <<Kd_default <<endl;
+  if(Kp.N==7 && Kd.N==7){
+    for(uint i=0;i<Kp.N;i++){
+      Kp_default(i) = motor_parameters.at(i).at(trossen_arm::Mode::position).position.kp = Kp(i);
+      Kd_default(i) = motor_parameters.at(i).at(trossen_arm::Mode::position).velocity.kp = Kd(i);
+    }
+    cout <<"Trossen/Kp: " <<Kp <<endl;
+    cout <<"Trossen/Kd: " <<Kd <<endl;
+    driver->set_motor_parameters(motor_parameters);
+  }
 
   //get initial state
   arr q_init = as_arr(driver->get_all_positions(), false);
@@ -86,7 +96,6 @@ void TrossenThread::open(){
   driver->set_all_modes(trossen_arm::Mode::external_effort);
   driver->set_all_external_efforts({0, 0, 0, 0, 0, 0, 0}, 0.0f, false);
 #else
-  //TODO, set motor params according to Kp Kd - for now just defaults
   mode = position_mode;
   driver->set_all_modes(trossen_arm::Mode::position);
 #endif
@@ -141,7 +150,7 @@ void TrossenThread::step(){
     if(err>.05){ //stall!
       state.set()->stall = 2; //no progress in reference time! for at least 2 iterations (to ensure continuous stall with multiple threads)
       isStalled=true;
-      cout <<"STALLING - err: " <<err <<endl;
+      cout <<"STALLING - err: " <<err <<' ' <<q_ref - q_real <<endl;
     }
   }
 

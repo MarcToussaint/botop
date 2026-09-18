@@ -30,32 +30,21 @@
 
 //===========================================================================
 
-BotOp::BotOp(rai::Configuration& C, bool useRealRobot, bool auto_launch_config){
+BotOp::BotOp(rai::Configuration& C, bool useRealRobot, bool auto_launch_hardware){
   C.ensure_indexedJoints();
   qHome = C.getJointState();
   state.set()->init(qHome);
   cmd.set()->setConst(qHome, false, true);
 
   ///THIS NEEDS MAJOR DEV: more systematically scaning the Configuration C to check which hardware to launch
-  if(auto_launch_config){
-    bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
+  if(auto_launch_hardware){
     bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
-
     if(useRealRobot && !blockRealRobot){
-      {
-        FrameL baslers;
-        for(rai::Frame *f:C.frames) if(f->ats && f->ats->findNode("basler")) baslers.append(f);
-        if(baslers.N) launch_Basler(baslers.N);
-      }
-      {
-        FrameL frankas;
-        for(rai::Frame *f:C.frames) if(f->ats && f->ats->findNode("franka_ip")) frankas.append(f);
-        if(frankas.N) launch_frankas(C, true);
-      }
+      this->auto_launch_hardware(C);
     }else{
       simthread = make_shared<BotThreadedSim>(C, cmd, state);
       robotL = simthread;
-      if(useGripper) gripperL = make_shared<GripperSim>(simthread, "l_gripper");
+      gripperL = make_shared<GripperSim>(simthread, "l_gripper");
     }
   }
 
@@ -103,7 +92,46 @@ BotOp::~BotOp(){
   allegro.reset();
 }
 
-void BotOp::launch_frankas(rai::Configuration& C, bool useRealRobot){
+auto getFramesAndIds(rai::Configuration& C, const char* key){
+  FrameL F;
+  strA ids;
+  str tmp;
+  for(rai::Frame *f:C.frames){
+    if(f->ats && f->ats->get<str>(tmp, key)){
+      F.append(f); ids.append(tmp);
+    }
+  }
+  return std::tuple(ids, F);
+}
+  
+void BotOp::auto_launch_hardware(rai::Configuration& C){
+
+  // baslers
+  {
+    auto [ids, F] = getFramesAndIds(C, "basler");
+    if(ids.N) launch_basler(ids, F);
+  }
+
+  // franka arms & grippers
+  {
+    auto [ids, F] = getFramesAndIds(C, "franka");
+    for(uint i=0;i<F.N;i++){
+      launch_franka_arm(ids(i), F(i));
+      // launch_franka_gripper(ids(i), F(i));
+    }
+  }
+
+  // trossen
+  {
+    auto [ids, F] = getFramesAndIds(C, "trossen");
+    if(ids.N) launch_trossen(ids, F);
+  }
+  
+  //-- initialize the control reference
+  hold(false, true);
+}
+
+void BotOp::launch_frankas_obsolete(rai::Configuration& C, bool useRealRobot){
   CHECK(useRealRobot, "refactored...");
   bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
   bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
@@ -191,13 +219,41 @@ void BotOp::launch_frankas(rai::Configuration& C, bool useRealRobot){
   hold(false, true);
 }
 
-void BotOp::launch_allegro(){
+void BotOp::launch_franka_arm(const char* id, rai::Frame* f){
+  //get joint indices:
+  uintA qIndices(7);
+  if(f){
+    CHECK(f->C._state_indexedJoints_areGood, "");
+    FrameL sub = f->getSubtree();
+    for(uint i=1;i<=7;i++){
+      str ending = STRING("panda_joint" <<i);
+      for(rai::Frame *f:sub) if(f->name.endsWith(ending)){
+          CHECK(f->joint, "");
+          qIndices.append(f->joint->qIndex);
+          break;
+        }
+    }
+    CHECK_EQ(qIndices.N, 7, "");
+  }else{
+    qIndices.setStraightPerm(7);
+  }
+  auto franka = make_shared<FrankaThread>(cmd, state, robotCount++, id, qIndices);
+}
+
+void BotOp::launch_allegro(const char* id, rai::Frame* f){
   allegro = make_shared<AllegroThread>(cmd, state);
   hold(false, true);
 }
 
-void BotOp::launch_trossen(const char* ipAddress){
-  trossen = make_shared<TrossenThread>(cmd, state, ipAddress);
+void BotOp::launch_trossen(const strA& ids, const FrameL& F){
+  trossen = make_shared<TrossenThread>(cmd, state, ids);
+}
+
+void BotOp::launch_optitrack(rai::Configuration& C){
+  LOG(0) <<"OPENING OPTITRACK";
+  if(!robotCount) LOG(-1) <<"useOptitrack with real:false -- that's usually wrong!";
+  optitrack = make_shared<rai::OptiTrack>();
+  optitrack->pull(C);
 }
 
 double BotOp::get_t(){
@@ -544,8 +600,10 @@ void BotOp::launch_MultiRealSense(const FrameL& f_cams, bool captureColor, bool 
   realsenses = make_shared<rai::MultiRealSenseThread>(serialNumbers, true, false);
 }
 
-void BotOp::launch_Basler(uint nCams){
-  basler = make_shared<rai::BaslerThread>(nCams);
+void BotOp::launch_basler(const strA& ids, const FrameL& F){
+  rai::Array<std::shared_ptr<rai::Graph>> ats(F.N);
+  for(uint i=0;i<F.N;i++) ats(i) = F(i)->ats;
+  basler = make_shared<rai::BaslerThread>(ids);
 }
 
 void BotOp::launch_arucos(){

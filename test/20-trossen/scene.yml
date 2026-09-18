@@ -1,5 +1,7 @@
 # Include: <../../../../26-robot-models/models/wxai_arm.g>
 Include: </home/mtoussai/git/rai-robotModels/trossen/trossen.yml>
 
+Edit(trossen_base): { trossen: "192.168.1.5" }
+
 # Edit gripper: { joint: none }
 Edit(left_carriage_joint): { joint: none }
