@@ -53,7 +53,7 @@ struct BotOp{
 
   void launch_frankas(rai::Configuration& C, bool useRealRobot);
   void launch_allegro();
-  void launch_trossen();
+  void launch_trossen(const char* ipAddress);
 
   //-- state info
   arr get_q();

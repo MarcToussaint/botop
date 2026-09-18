@@ -72,8 +72,13 @@ void BaslerThread::close(){
 }
 
 void BaslerThread::step() {
+  try {
     s->cameras->RetrieveResult( 5000, s->ptrGrabResult, Pylon::TimeoutHandling_ThrowException );
-    double data_time = rai::realTime();
+  } catch (const Pylon::GenericException& err) {
+    LOG(-1) <<"Can't get frames from Basler: " <<err.GetDescription();
+    return;
+  }
+  double data_time = rai::realTime();
     timer.tic(1);
     if (s->ptrGrabResult->GrabSucceeded()) {
         int camera_id = s->ptrGrabResult->GetCameraContext();

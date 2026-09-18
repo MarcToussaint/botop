@@ -1,3 +1,5 @@
-Include: <../../../../26-robot-models/models/vx300s.g>
+# Include: <../../../../26-robot-models/models/wxai_arm.g>
+Include: </home/mtoussai/git/rai-robotModels/trossen/trossen.yml>
 
-Edit(gripper): { joint: none }
+# Edit gripper: { joint: none }
+Edit(left_carriage_joint): { joint: none }

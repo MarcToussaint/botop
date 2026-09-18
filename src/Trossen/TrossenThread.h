@@ -10,6 +10,7 @@ struct TrossenThread : rai::RobotAbstraction, rai::Thread {
   str ipAddress;
   arr Kp, Kd;
   double ctrlTime=0.;
+  enum { torque_mode, position_mode } mode;
 
   ofstream fil;
 

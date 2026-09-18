@@ -48,7 +48,7 @@ void TrossenThread::open(){
 
   driver->configure(
       trossen_arm::Model::wxai_v0,
-      trossen_arm::StandardEndEffector::wxai_v0_leader,
+      trossen_arm::StandardEndEffector::wxai_v0_follower,
       ipAddress.p,
       true
       );
@@ -75,6 +75,7 @@ void TrossenThread::open(){
     stateSet->tauExternalIntegral.resize(q_init.N).setZero();
     stateSet->tauExternalCount=0;
   }
+  //set initial position reference
   {
     auto cmd_set = cmd.set();
     cmd_set->setConst(q_init, false, true);
@@ -86,6 +87,7 @@ void TrossenThread::open(){
   driver->set_all_external_efforts({0, 0, 0, 0, 0, 0, 0}, 0.0f, false);
 #else
   //TODO, set motor params according to Kp Kd - for now just defaults
+  mode = position_mode;
   driver->set_all_modes(trossen_arm::Mode::position);
 #endif
 }
@@ -93,6 +95,7 @@ void TrossenThread::open(){
 void TrossenThread::close(){
   driver->set_all_modes(trossen_arm::Mode::idle);
   rai::wait(.1);
+  driver->cleanup(false);
   driver.reset();
 }
 
@@ -129,6 +132,7 @@ void TrossenThread::step(){
 
   //write into log file, need to be made optional
   fil <<ctrlTime <<' ' <<q_ref.modRaw() <<' ' <<q_real.modRaw() <<endl;
+  // cout <<"q_ref: " <<q_ref <<endl;
 
   //-- check reference error
   bool isStalled = false;
@@ -152,9 +156,20 @@ void TrossenThread::step(){
   driver->set_all_external_efforts(as_vector(u), 0.0f, false);
 #else
   if(q_ref.N){
+    if(mode!=position_mode){
+      driver->set_all_modes(trossen_arm::Mode::position);
+      mode=position_mode;
+    }
     if(!isStalled){
       driver->set_all_positions(as_vector(q_ref), 0.0f, false, as_vector(qDot_ref));
     }
+  }else{
+    if(mode!=torque_mode){
+      driver->set_all_modes(trossen_arm::Mode::external_effort);
+      mode=torque_mode;
+    }
+    arr u = zeros(q_real.N);
+    driver->set_all_external_efforts(as_vector(u), 0.0f, false);
   }
 #endif
 }

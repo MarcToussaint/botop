@@ -21,8 +21,8 @@ int direct(){
   // Configure the driver
   driver.configure(
       trossen_arm::Model::wxai_v0,
-      trossen_arm::StandardEndEffector::wxai_v0_leader,
-      "192.168.1.3",
+      trossen_arm::StandardEndEffector::wxai_v0_follower,
+      "192.168.1.5",
       true
       );
 
@@ -31,6 +31,7 @@ int direct(){
   driver.set_all_external_efforts({0, 0, 0, 0, 0, 0, 0}, 0.0f, false);
 
   rai::wait();
+  driver.cleanup(false);
 
   return 0;
 }
@@ -45,7 +46,7 @@ void thread(){
   rai::Configuration C;
   C.addFile("scene.yml");
 
-  TrossenThread trossen(cmd, state);
+  TrossenThread trossen(cmd, state, "192.168.1.5");
 
   for(;;){
     rai::wait(.02);
@@ -62,15 +63,15 @@ void botop(){
   C.addFile("scene.yml");
   arr q0 = C.getJointState();
 
-  q0 = {0.124552, 0.630388, 0.830282, -0.140574, -0.621233, 0.422866, 0.02};
-
   {
 
-    BotOp bot(C, false);
+    BotOp bot(C, true, false);
 
-    bot.launch_trossen();
+    bot.launch_trossen("192.168.1.5");
 
     bot.wait(C, true, false);
+
+    bot.home(C);
 
     uint T=10;
     arr path(T, q0.N);

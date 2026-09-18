@@ -196,8 +196,8 @@ void BotOp::launch_allegro(){
   hold(false, true);
 }
 
-void BotOp::launch_trossen(){
-  trossen = make_shared<TrossenThread>(cmd, state);
+void BotOp::launch_trossen(const char* ipAddress){
+  trossen = make_shared<TrossenThread>(cmd, state, ipAddress);
 }
 
 double BotOp::get_t(){
