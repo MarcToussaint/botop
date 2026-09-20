@@ -12,7 +12,7 @@ struct TrossenThread : rai::RobotAbstraction, rai::Thread {
   double ctrlTime=0.;
   enum { torque_mode, position_mode } mode;
 
-  ofstream fil;
+  ofstream dataFile;
 
   TrossenThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state, const strA& ids);
   ~TrossenThread(){

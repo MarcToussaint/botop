@@ -49,10 +49,11 @@ struct BotOp{
   arr qHome;
   int keypressed=0;
 
-  BotOp(rai::Configuration& C, bool useRealRobot, bool auto_launch_hardware=true);
+  BotOp(rai::Configuration& C, bool useRealRobot, bool auto_launch=true);
   ~BotOp();
 
   void auto_launch_hardware(rai::Configuration& C);
+  void launch_simulation(rai::Configuration& C);
   void launch_frankas_obsolete(rai::Configuration& C, bool useRealRobot);
   void launch_franka_arm(const char* id, rai::Frame* f=0);
   void launch_allegro(const char* id, rai::Frame* f=0);

@@ -30,21 +30,18 @@
 
 //===========================================================================
 
-BotOp::BotOp(rai::Configuration& C, bool useRealRobot, bool auto_launch_hardware){
+BotOp::BotOp(rai::Configuration& C, bool useRealRobot, bool auto_launch){
   C.ensure_indexedJoints();
   qHome = C.getJointState();
   state.set()->init(qHome);
   cmd.set()->setConst(qHome, false, true);
 
-  ///THIS NEEDS MAJOR DEV: more systematically scaning the Configuration C to check which hardware to launch
-  if(auto_launch_hardware){
+  if(auto_launch){
     bool blockRealRobot = rai::getParameter<bool>("bot/blockRealRobot", false);
     if(useRealRobot && !blockRealRobot){
-      this->auto_launch_hardware(C);
+      auto_launch_hardware(C);
     }else{
-      simthread = make_shared<BotThreadedSim>(C, cmd, state);
-      robotL = simthread;
-      gripperL = make_shared<GripperSim>(simthread, "l_gripper");
+      launch_simulation(C);
     }
   }
 
@@ -90,6 +87,12 @@ BotOp::~BotOp(){
   robotL.reset();
   robotR.reset();
   allegro.reset();
+}
+
+void BotOp::launch_simulation(rai::Configuration& C){
+  simthread = make_shared<BotThreadedSim>(C, cmd, state);
+  robotL = simthread;
+  gripperL = make_shared<GripperSim>(simthread, "l_gripper");
 }
 
 auto getFramesAndIds(rai::Configuration& C, const char* key){
@@ -224,16 +227,17 @@ void BotOp::launch_franka_arm(const char* id, rai::Frame* f){
   uintA qIndices(7);
   if(f){
     CHECK(f->C._state_indexedJoints_areGood, "");
-    FrameL sub = f->getSubtree();
-    for(uint i=1;i<=7;i++){
-      str ending = STRING("panda_joint" <<i);
-      for(rai::Frame *f:sub) if(f->name.endsWith(ending)){
-          CHECK(f->joint, "");
-          qIndices.append(f->joint->qIndex);
-          break;
-        }
+    FrameL sub = f->getSubJoints();
+    CHECK_GE(sub.N, 7, "a franka arm should have at least 7 joints (and more from the gripper)");
+
+    for(uint i=0;i<7;i++){
+      //lots of checks..
+      str ending = STRING("panda_joint" <<i+1);
+      CHECK(f->name.endsWith(ending), "joint name not as expected: " <<ending <<' ' <<f->name);
+      CHECK(f->joint->dim==1, "");
+      qIndices(i) = f->joint->qIndex;
+      if(i) CHECK_EQ(qIndices(i), qIndices(i-1)+1, "joints not sorted in franka subtree");
     }
-    CHECK_EQ(qIndices.N, 7, "");
   }else{
     qIndices.setStraightPerm(7);
   }
@@ -524,6 +528,8 @@ void BotOp::stepAction(const arr& delta, const StepObservation& obs, double lamb
 void BotOp::setControllerWriteData(int _writeData){
   if(robotL) robotL->writeData=_writeData;
   if(robotR) robotR->writeData=_writeData;
+  if(trossen) trossen->writeData=_writeData;
+  if(simthread) simthread->writeData=_writeData;
 }
 
 void BotOp::setCompliance(const arr& J, double compliance){

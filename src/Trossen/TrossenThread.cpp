@@ -9,7 +9,7 @@
 TrossenThread::TrossenThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state, const strA& ids)
     : rai::RobotAbstraction(cmd, state),
     Thread("TrossenThread", .002), //HARD CODED step frequency of 100Hz
-    ipAddresses(ids), fil("trossen.dat") {
+    ipAddresses(ids) {
 
   Kp = rai::getParameter<arr>("Trossen/Kp", arr{});
   Kd = rai::getParameter<arr>("Trossen/Kd", arr{}); //FOR TROSSEN, this corresponds to the Kp of the velocity PID
@@ -139,10 +139,6 @@ void TrossenThread::step(){
     }
   }
 
-  //write into log file, need to be made optional
-  fil <<ctrlTime <<' ' <<q_ref.modRaw() <<' ' <<q_real.modRaw() <<endl;
-  // cout <<"q_ref: " <<q_ref <<endl;
-
   //-- check reference error
   bool isStalled = false;
   if(q_ref.N){
@@ -152,6 +148,12 @@ void TrossenThread::step(){
       isStalled=true;
       cout <<"STALLING - err: " <<err <<' ' <<q_ref - q_real <<endl;
     }
+  }
+
+  //-- data log?
+  if(writeData>0 && !(step_count%5)){
+    if(!dataFile.is_open()) dataFile.open(STRING("z.trossen.dat"));
+    dataFile <<ctrlTime <<' ' <<q_real.modRaw() <<' ' <<q_ref.modRaw() <<endl;
   }
 
 #if 0 //own PD
@@ -185,10 +187,10 @@ void TrossenThread::step(){
 
 #else
 
-TrossenThread::TrossenThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state, const char* ipAddress)
+TrossenThread::TrossenThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlStateMsg>& state, const strA& ids)
     : rai::RobotAbstraction(cmd, state),
     Thread("TrossenThread", .002), //HARD CODED step frequency of 100Hz
-    ipAddress(ipAddress), fil("trossen.dat") { NICO }
+    ipAddresses(ids) { NICO }
 void TrossenThread::open(){ NICO }
 void TrossenThread::step(){ NICO }
 void TrossenThread::close(){ NICO }

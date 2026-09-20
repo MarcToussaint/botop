@@ -14,6 +14,7 @@
 
 #include "bot.h"
 
+#include <Kin/frame.h>
 #include <KOMO/pathTools.h>
 
 //PYBIND11_MODULE(libpybot, m) {
@@ -35,10 +36,10 @@ void init_BotOp(pybind11::module& m) {
   pybind11::class_<BotOp, shared_ptr<BotOp>>(m, "BotOp", "Robot Operation interface -- see https://marctoussaint.github.io/robotics-course/tutorials/1b-botop.html")
 
   .def(pybind11::init<rai::Configuration&, bool, bool>(),
-       "constructor",
+       "creates a roBotOperation interface; auto_launch parses the given configuration and, depending on frames and their atts, launches all hardware (via the launch_* methods); if useRealRobot=False, everything is launched in simulation only",
        pybind11::arg("C"),
        pybind11::arg("useRealRobot"),
-       pybind11::arg("auto_launch_hardware")=true
+       pybind11::arg("auto_launch")=true
        )
 
   .def("get_t", &BotOp::get_t,
@@ -134,7 +135,8 @@ void init_BotOp(pybind11::module& m) {
        pybind11::arg("leftRight"))
 
   // .def("launch_robots", &BotOp::launch_frankas, "", pybind11::arg("C"), pybind11::arg("useRealRobot"))
-  // .def("launch_trossen", &BotOp::launch_trossen, "")
+  .def("launch_simulation", &BotOp::launch_simulation, "", pybind11::arg("C"))
+  .def("launch_trossen", &BotOp::launch_trossen, "", pybind11::arg("ipAddresses"), pybind11::arg("root_frames"))
   .def("launch_camera", pybind11::overload_cast<const char*>(&BotOp::launch_camera), "start a camera thread referring to a frame that encodes all necessary specs", pybind11::arg("sensor"))
   // .def("launch_Basler", &BotOp::launch_Basler, "", pybind11::arg("nCams"))
   .def("launch_arucos", &BotOp::launch_arucos, "for each camera, start a thread that permanently analyzes for aruco markers in the images")

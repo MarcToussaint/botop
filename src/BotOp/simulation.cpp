@@ -16,7 +16,7 @@ BotThreadedSim::BotThreadedSim(const rai::Configuration& C,
     tau(_tau){
 
   //create a rai Simulator!
-  int verbose = rai::getParameter<int>("botsim/verbose", 2);
+  int verbose = rai::getParameter<int>("botsim/verbose", 1);
   if(tau<0.) tau = rai::getParameter<double>("botsim/tau", .01);
   if(hyperSpeed<0.) hyperSpeed = rai::getParameter<double>("botsim/hyperSpeed", 1.);
   if(hyperSpeed>0.){
@@ -157,17 +157,11 @@ void BotThreadedSim::step(){
 
   //-- data log?
   if(writeData>0 && !(step_count%1)){
-    if(!dataFile.is_open()) dataFile.open("z.panda.dat");
-    dataFile <<ctrlTime <<' '; //single number
-    q_real.modRaw().write(dataFile); //7
-    cmd_q_ref.modRaw().write(dataFile); //7
+    if(!dataFile.is_open()) dataFile.open("z.sim.dat");
+    dataFile <<ctrlTime <<' ' <<q_real.modRaw() <<' ' <<cmd_q_ref.modRaw();
     if(writeData>1){
-      qDot_real.modRaw().write(dataFile); //7
-      cmd_qDot_ref.modRaw().write(dataFile); //7
-      //qDDot_des.modRaw().write(dataFile); //7
-      //cmd_qDDot_ref.modRaw().write(dataFile);
-    }
-    if(writeData>2){
+      dataFile <<' ' <<qDot_real.modRaw() <<' ' <<cmd_qDot_ref.modRaw();
+      // dataFile <<' ' <<qDDot_des.modRaw() <<' ' <<cmd_qDDot_ref.modRaw();
     }
     dataFile <<endl;
   }

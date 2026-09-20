@@ -61,19 +61,19 @@ void thread(){
 void botop(){
   rai::Configuration C;
   C.addFile("scene.yml");
-  arr q0 = C.getJointState();
 
   {
-
-    BotOp bot(C, true, true);
+    BotOp bot(C, false, true);
+    bot.setControllerWriteData(1);
 
     bot.home(C);
 
 #if 0
-    bot.hold(false, true);
-    bot.wait(C, true, false);
+    // bot.hold(false, true);
+    // bot.wait(C, true, false);
 #else
     uint T=10;
+    arr q0 = bot.get_qHome();
     arr path(T, q0.N);
     for(uint t=0;t<T;t++){
       path[t] = q0;
@@ -85,7 +85,7 @@ void botop(){
 #endif
   }
 
-  gnuplot("plot 'trossen.dat' us 1:6 t 'REF', '' us 1:13 t 'REAL'", true);
+  gnuplot("plot 'z.sim.dat' us 1:6 t 'REAL', '' us 1:13 t 'REF'", true);
 }
 
 void park(){
@@ -101,7 +101,7 @@ int main(int argc, char** argv){
 
   // direct();
   // thread();
-  // botop();
-  park();
+  botop();
+  // park();
   return 0;
 }
