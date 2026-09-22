@@ -81,18 +81,21 @@ BotOp::~BotOp(){
   realsenses.reset();
   basler.reset();
   for(auto& cam:cameras) cam.reset();
+  if(simgripper) simgripper.reset();
   if(simthread) simthread.reset();
-  gripperL.reset();
-  gripperR.reset();
-  robotL.reset();
-  robotR.reset();
+  // gripperL.reset();
+  // gripperR.reset();
+  for(auto& gripper:frankaGrippers) gripper.reset();
+  for(auto& franka:frankas) franka.reset();
+  // robotL.reset();
+  // robotR.reset();
   allegro.reset();
 }
 
 void BotOp::launch_simulation(rai::Configuration& C){
   simthread = make_shared<BotThreadedSim>(C, cmd, state);
-  robotL = simthread;
-  gripperL = make_shared<GripperSim>(simthread, "l_gripper");
+  // robotL = simthread;
+  simgripper = make_shared<GripperSim>(simthread, "l_gripper");
 }
 
 auto getFramesAndIds(rai::Configuration& C, const char* key){
@@ -119,8 +122,7 @@ void BotOp::auto_launch_hardware(rai::Configuration& C){
   {
     auto [ids, F] = getFramesAndIds(C, "franka");
     for(uint i=0;i<F.N;i++){
-      launch_franka_arm(ids(i), F(i));
-      // launch_franka_gripper(ids(i), F(i));
+      launch_franka(ids(i), F(i), true);
     }
   }
 
@@ -131,9 +133,10 @@ void BotOp::auto_launch_hardware(rai::Configuration& C){
   }
   
   //-- initialize the control reference
-  hold(false, true);
+  hold();
 }
 
+#if 0
 void BotOp::launch_frankas_obsolete(rai::Configuration& C, bool useRealRobot){
   CHECK(useRealRobot, "refactored...");
   bool useGripper = rai::getParameter<bool>("bot/useGripper", true);
@@ -158,12 +161,12 @@ void BotOp::launch_frankas_obsolete(rai::Configuration& C, bool useRealRobot){
     LOG(0) <<"CONNECTING TO GRIPPERS";
     try{
       if(l_ip.N && r_ip.N){
-        gripperL = make_shared<FrankaGripper>(l_ip);
-        gripperR = make_shared<FrankaGripper>(r_ip);
+        gripperL = make_shared<rai::FrankaGripper>(l_ip);
+        gripperR = make_shared<rai::FrankaGripper>(r_ip);
       }else if(l_ip.N){
-        gripperL = make_shared<FrankaGripper>(l_ip);
+        gripperL = make_shared<rai::FrankaGripper>(l_ip);
       }else if(r_ip.N){
-        gripperR = make_shared<FrankaGripper>(r_ip);
+        gripperR = make_shared<rai::FrankaGripper>(r_ip);
 
       }else if(C.getFrame("l_robotiq_base", false) && C.getFrame("r_robotiq_base", false)){
         gripperL = make_shared<RobotiqGripper>(0);
@@ -187,12 +190,12 @@ void BotOp::launch_frankas_obsolete(rai::Configuration& C, bool useRealRobot){
     LOG(0) <<"CONNECTING TO FRANKAS";
     try{
       if(l_ip.N && r_ip.N){
-        robotL = make_shared<FrankaThread>(cmd, state, robotID++, l_ip, franka_getJointIndices(C,'l'));
-        robotR = make_shared<FrankaThread>(cmd, state, robotID++, r_ip, franka_getJointIndices(C,'r'));
+        robotL = make_shared<rai::FrankaThread>(cmd, state, robotID++, l_ip, franka_getJointIndices(C,'l')(0));
+        robotR = make_shared<rai::FrankaThread>(cmd, state, robotID++, r_ip, franka_getJointIndices(C,'r')(0));
       } else if(l_ip.N){
-        robotL = make_shared<FrankaThread>(cmd, state, robotID++, l_ip, franka_getJointIndices(C,'l'));
+        robotL = make_shared<rai::FrankaThread>(cmd, state, robotID++, l_ip, franka_getJointIndices(C,'l')(0));
       } else if(r_ip.N){
-        robotR = make_shared<FrankaThread>(cmd, state, robotID++, r_ip, franka_getJointIndices(C,'r'));
+        robotR = make_shared<rai::FrankaThread>(cmd, state, robotID++, r_ip, franka_getJointIndices(C,'r')(0));
       }else{
         LOG(0) <<"starting botop without franka robots (no frames l_panda_base or r_panda_base defined)";
       }
@@ -219,10 +222,16 @@ void BotOp::launch_frankas_obsolete(rai::Configuration& C, bool useRealRobot){
   }
 
   //-- initialize the control reference
-  hold(false, true);
+  hold();
 }
+#endif
 
-void BotOp::launch_franka_arm(const char* id, rai::Frame* f){
+void BotOp::launch_franka(const char* id, rai::Frame* f, bool alsoGripper){
+    str ipAddress = id;
+    if(ipAddress=="none"){
+      ipAddress.clear() <<"172." <<16+robotCount <<".0.2";
+      LOG(0) <<"WARNING! no ipAddress for Franka provided (in config file) -- using default " <<ipAddress;
+    }
   //get joint indices:
   uintA qIndices(7);
   if(f){
@@ -231,22 +240,30 @@ void BotOp::launch_franka_arm(const char* id, rai::Frame* f){
     CHECK_GE(sub.N, 7, "a franka arm should have at least 7 joints (and more from the gripper)");
 
     for(uint i=0;i<7;i++){
+      rai::Frame *j = sub(i);
       //lots of checks..
       str ending = STRING("panda_joint" <<i+1);
-      CHECK(f->name.endsWith(ending), "joint name not as expected: " <<ending <<' ' <<f->name);
-      CHECK(f->joint->dim==1, "");
-      qIndices(i) = f->joint->qIndex;
+      CHECK(j->name.endsWith(ending), "joint name not as expected: " <<ending <<' ' <<j->name);
+      CHECK(j->joint->dim==1, "");
+      qIndices(i) = j->joint->qIndex;
       if(i) CHECK_EQ(qIndices(i), qIndices(i-1)+1, "joints not sorted in franka subtree");
     }
   }else{
     qIndices.setStraightPerm(7);
   }
-  auto franka = make_shared<FrankaThread>(cmd, state, robotCount++, id, qIndices);
+
+  if(alsoGripper){
+    frankaGrippers.append( make_shared<rai::FrankaGripper>(ipAddress) );
+  }
+  frankas.append( make_shared<rai::FrankaThread>(cmd, state, robotCount++, ipAddress, qIndices(0)) );
+
+  //-- initialize the control reference
+  hold();
 }
 
 void BotOp::launch_allegro(const char* id, rai::Frame* f){
   allegro = make_shared<AllegroThread>(cmd, state);
-  hold(false, true);
+  hold();
 }
 
 void BotOp::launch_trossen(const strA& ids, const FrameL& F){
@@ -526,8 +543,7 @@ void BotOp::stepAction(const arr& delta, const StepObservation& obs, double lamb
 }
 
 void BotOp::setControllerWriteData(int _writeData){
-  if(robotL) robotL->writeData=_writeData;
-  if(robotR) robotR->writeData=_writeData;
+  for(auto f:frankas) f->writeData=_writeData;
   if(trossen) trossen->writeData=_writeData;
   if(simthread) simthread->writeData=_writeData;
 }
@@ -553,31 +569,29 @@ void BotOp::setCompliance(const arr& J, double compliance){
   cmd.set()->P_compliance = P;
 }
 
-void BotOp::gripperMove(rai::ArgWord leftRight, double width, double speed){
-  if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->open(width, speed); }
-  if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->open(width, speed); }
+void BotOp::gripperMove(int id, double width, double speed){
+  CHECK_LE(id, int(frankaGrippers.N)-1, "gripper " <<id <<" was not launched");
+  frankaGrippers(id)->open(width, speed);
 }
 
-void BotOp::gripperClose(rai::ArgWord leftRight, double force, double width, double speed){
-  if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->close(force, width, speed); }
-  if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->close(force, width, speed); }
+void BotOp::gripperClose(int id, double force, double width, double speed){
+  CHECK_LE(id, int(frankaGrippers.N)-1, "gripper " <<id <<" was not launched");
+  return frankaGrippers(id)->close(force, width, speed);
 }
 
-void BotOp::gripperCloseGrasp(rai::ArgWord leftRight, const char* objName, double force, double width, double speed){
-  if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else gripperL->closeGrasp(objName, force, width, speed); }
-  if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else gripperR->closeGrasp(objName, force, width, speed); }
+void BotOp::gripperCloseGrasp(int id, const char* objName, double force, double width, double speed){
+  CHECK_LE(id, int(frankaGrippers.N)-1, "gripper " <<id <<" was not launched");
+  return frankaGrippers(id)->closeGrasp(objName, force, width, speed);
 }
 
-double BotOp::getGripperPos(rai::ArgWord leftRight){
-  if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else return gripperL->pos(); }
-  if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else return gripperR->pos(); }
-  return 0;
+double BotOp::getGripperPos(int id){
+  CHECK_LE(id, int(frankaGrippers.N)-1, "gripper " <<id <<" was not launched");
+  return frankaGrippers(id)->pos();
 }
 
-bool BotOp::gripperDone(rai::ArgWord leftRight){
-  if(leftRight==rai::_left){ if(!gripperL) LOG(-1) <<"gripper disabled"; else return gripperL->isDone(); }
-  if(leftRight==rai::_right){ if(!gripperR) LOG(-1) <<"gripper disabled"; else return gripperR->isDone(); }
-  return true;
+bool BotOp::gripperDone(int id){
+  CHECK_LE(id, int(frankaGrippers.N)-1, "gripper " <<id <<" was not launched");
+  return frankaGrippers(id)->isDone();
 }
 
 void BotOp::launch_camera(rai::Frame* f_cam){
@@ -702,9 +716,14 @@ void BotOp::stop(rai::Configuration& C){
   wait(C);
 }
 
-void BotOp::hold(bool floating, bool damping){
+void BotOp::hold(){
   arr q = state.get()->q;
-  cmd.set()->setConst(q, floating, damping);
+  cmd.set()->setConst(q, false, true);
+}
+
+void BotOp::floating(){
+    arr q = state.get()->q;
+    cmd.set()->setConst(q, true, false);
 }
 
 void BotOp::sound(int noteRelToC, float a, float decay){

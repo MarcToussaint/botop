@@ -107,20 +107,20 @@ void init_BotOp(pybind11::module& m) {
 
   .def("gripperMove", &BotOp::gripperMove,
        "move the gripper to width (default: open)",
-      pybind11::arg("leftRight"),
+      pybind11::arg("id"),
       pybind11::arg("width") = .075,
       pybind11::arg("speed") = .2)
 
   .def("gripperClose", &BotOp::gripperClose,
        "close gripper",
-       pybind11::arg("leftRight"),
+       pybind11::arg("id"),
        pybind11::arg("force") = 10.,
        pybind11::arg("width") = .05,
        pybind11::arg("speed") = .1)
 
   .def("gripperCloseGrasp", &BotOp::gripperCloseGrasp,
         "close gripper and indicate what should be grasped -- makes no difference in real, but helps simulation to mimic grasping more reliably",
-        pybind11::arg("leftRight"),
+        pybind11::arg("id"),
         pybind11::arg("objName"),
         pybind11::arg("force") = 10.,
         pybind11::arg("width") = .05,
@@ -128,14 +128,15 @@ void init_BotOp(pybind11::module& m) {
 
   .def("getGripperPos", &BotOp::getGripperPos,
        "returns the gripper pos",
-       pybind11::arg("leftRight"))
+       pybind11::arg("id"))
 
   .def("gripperDone", &BotOp::gripperDone,
        "returns if gripper is done",
-       pybind11::arg("leftRight"))
+       pybind11::arg("id"))
 
   // .def("launch_robots", &BotOp::launch_frankas, "", pybind11::arg("C"), pybind11::arg("useRealRobot"))
   .def("launch_simulation", &BotOp::launch_simulation, "", pybind11::arg("C"))
+  .def("launch_franka", &BotOp::launch_franka, "", pybind11::arg("ipAddress"), pybind11::arg("root_frame")=nullptr, pybind11::arg("also_gripper")=true)
   .def("launch_trossen", &BotOp::launch_trossen, "", pybind11::arg("ipAddresses"), pybind11::arg("root_frames"))
   .def("launch_camera", pybind11::overload_cast<const char*>(&BotOp::launch_camera), "start a camera thread referring to a frame that encodes all necessary specs", pybind11::arg("sensor"))
   // .def("launch_Basler", &BotOp::launch_Basler, "", pybind11::arg("nCams"))
@@ -192,9 +193,10 @@ void init_BotOp(pybind11::module& m) {
        pybind11::arg("C"))
 
   .def("hold", &BotOp::hold,
-       "hold the robot with a trivial PD controller, floating means reference = real, without damping the robot is free floating",
-       pybind11::arg("floating") = false,
-       pybind11::arg("damping") = true)
+       "hold the robot with a trivial PD controller")
+
+  .def("floating", &BotOp::floating,
+       "float robot with a trivial zero-gains PD controller")
 
   .def("attach", &BotOp::attach, "cheating: attach two objects kinematically", pybind11::arg("from"), pybind11::arg("to"))
   .def("detach", &BotOp::detach, "cheating: detach two previously attached objects", pybind11::arg("from"), pybind11::arg("to"))

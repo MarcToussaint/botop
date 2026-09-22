@@ -17,7 +17,7 @@ const char *USAGE =
 void test_bot() {
   //-- setup a configuration
   rai::Configuration C;
-  C.addFile("$RAI_PATH/scenarios/pandaSingle.g");
+  C.addFile("$RAI_PATH/panda/panda.g");
   C.view(true);
 
   //-- start a robot thread
@@ -72,7 +72,7 @@ void test_withoutBotWrapper() {
   C.ensure_indexedJoints();
   std::shared_ptr<rai::RobotAbstraction> robot;
   if(rai::getParameter<bool>("real", false)){
-    robot = make_shared<FrankaThread>(cmd, state, 0, ipAddress, franka_getJointIndices(C,'l'));
+      robot = make_shared<rai::FrankaThread>(cmd, state, 0, ipAddress, franka_getJointIndices(C,'l')(0));
   }else{
     robot = make_shared<BotThreadedSim>(C, cmd, state );
   }
@@ -123,9 +123,12 @@ void test_withoutBotWrapper() {
 
 void test_mini() {
   rai::Configuration C;
-  C.addFile("$RAI_PATH/scenarios/pandaSingle.g");
+  // C.addFile("$RAI_PATH/scenarios/pandaSingle.g");
+  C.addFile("$RAI_PATH/scenarios/pandasTable.g");
   C.view(false);
-  BotOp bot(C, rai::getParameter<bool>("real", false));
+  BotOp bot(C, false, false); //rai::getParameter<bool>("real", false));
+  bot.launch_franka_arm("172.16.0.2", C.getFrame("l_panda_base"));
+  bot.launch_franka_arm("172.17.0.2", C.getFrame("r_panda_base"));
 
   bot.setControllerWriteData(1);
 
@@ -133,10 +136,14 @@ void test_mini() {
   arr q0 = bot.get_qHome();
   arr q1 = q0;
   q1(1) += .1;
+  q1(8) += .1;
   cout <<q0(1) <<' ' <<q1(1) <<endl;
 
-#if 0
+#if 1
   bot.move(q1.reshape(-1, q0.N), {.5});
+  bot.wait(C);
+  bot.home(C);
+  bot.wait(C);
 #else
   StepObservation obs;
   double tau_step = .05, lambda=.2;
@@ -149,7 +156,6 @@ void test_mini() {
   }
 #endif
 
-  // bot.wait(C);
 }
 
 //===========================================================================
@@ -221,9 +227,9 @@ int main(int argc, char * argv[]){
   cout <<USAGE <<endl;
 
   // test_mini();
-  // test_bot();
+  test_bot();
   // test_withoutBotWrapper();
-  test_reactive_control();
+  // test_reactive_control();
 
   LOG(0) <<" === bye bye ===\n used parameters:\n" <<rai::params() <<'\n';
 

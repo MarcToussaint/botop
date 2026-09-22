@@ -9,12 +9,15 @@ struct GripperAbstraction;
 struct OptiTrack;
 struct ViveController;
 struct Sound;
+struct FrankaThread;
+struct FrankaGripper;
 struct MultiRealSenseThread;
 struct BaslerThread;
 struct ArucoThread;
 struct KomoArucoTracker_Thread;
 }
 struct BotThreadedSim;
+struct GripperSim;
 
 struct StepObservation{
   double ctrlTime;
@@ -29,17 +32,19 @@ struct BotOp{
   uint robotCount=0;
   rai::Var<rai::CtrlCmdMsg> cmd;
   rai::Var<rai::CtrlStateMsg> state;
-  //since each of the following interfaces is already pimpl, we don't have to hide them again
-  std::shared_ptr<rai::RobotAbstraction> robotL;
-  std::shared_ptr<rai::RobotAbstraction> robotR;
-  std::shared_ptr<rai::GripperAbstraction> gripperL;
-  std::shared_ptr<rai::GripperAbstraction> gripperR;
+  rai::Array<std::shared_ptr<rai::FrankaThread>> frankas;
+  rai::Array<std::shared_ptr<rai::FrankaGripper>> frankaGrippers;
+  // std::shared_ptr<rai::RobotAbstraction> robotL;
+  // std::shared_ptr<rai::RobotAbstraction> robotR;
+  // std::shared_ptr<rai::GripperAbstraction> gripperL;
+  // std::shared_ptr<rai::GripperAbstraction> gripperR;
   std::shared_ptr<rai::RobotAbstraction> allegro;
   std::shared_ptr<rai::RobotAbstraction> trossen;
   std::shared_ptr<rai::OptiTrack> optitrack;
   std::shared_ptr<rai::ViveController> vivecontroller;
   std::shared_ptr<rai::Sound> audio;
   std::shared_ptr<BotThreadedSim> simthread;
+  std::shared_ptr<GripperSim> simgripper;
   rai::Array<std::shared_ptr<rai::CameraAbstraction>> cameras;
   std::shared_ptr<rai::MultiRealSenseThread> realsenses;
   std::shared_ptr<rai::BaslerThread> basler;
@@ -55,7 +60,7 @@ struct BotOp{
   void auto_launch_hardware(rai::Configuration& C);
   void launch_simulation(rai::Configuration& C);
   void launch_frankas_obsolete(rai::Configuration& C, bool useRealRobot);
-  void launch_franka_arm(const char* id, rai::Frame* f=0);
+  void launch_franka(const char* id, rai::Frame* f=0, bool alsoGripper=true);
   void launch_allegro(const char* id, rai::Frame* f=0);
   void launch_trossen(const strA& ids, const FrameL& F={});
   void launch_optitrack(rai::Configuration& C);
@@ -84,11 +89,11 @@ struct BotOp{
   void setCompliance(const arr& J, double compliance=.5);
 
   //-- gripper commands - directly calling the gripper abstraction
-  void gripperMove(rai::ArgWord leftRight, double width=.075, double speed=.2);
-  void gripperClose(rai::ArgWord leftRight, double force=10, double width=.05, double speed=.1);
-  void gripperCloseGrasp(rai::ArgWord leftRight, const char* objName, double force=10, double width=.05, double speed=.1);
-  double getGripperPos(rai::ArgWord leftRight);
-  bool gripperDone(rai::ArgWord leftRight);
+  void gripperMove(int id, double width=.075, double speed=.2);
+  void gripperClose(int id, double force=10, double width=.05, double speed=.1);
+  void gripperCloseGrasp(int id, const char* objName, double force=10, double width=.05, double speed=.1);
+  double getGripperPos(int id);
+  bool gripperDone(int id);
 
   //-- camera commands
   void launch_camera(const char* sensor){ getCamera(sensor); }
@@ -108,7 +113,8 @@ struct BotOp{
   //-- motion macros
   void home(rai::Configuration& C);
   void stop(rai::Configuration& C);
-  void hold(bool floating=true, bool damping=true);
+  void hold();
+  void floating();
 
   //-- audio
   void sound(int noteRelToC=0, float a=.5, float decay=0.0007);

@@ -1,5 +1,6 @@
 #include <BotOp/bot.h>
 #include <BotOp/motionHelpers.h>
+#include <Franka/FrankaGripper.h>
 
 //===========================================================================
 
@@ -22,33 +23,24 @@ int main(int argc, char * argv[]){
   BotOp bot(C, !rai::checkParameter<bool>("sim"));
 
   if(rai::checkParameter<bool>("close")){
-    bot.hold(false, true);
-    if(bot.gripperL) bot.gripperL->close();
-    if(bot.gripperR) bot.gripperR->close();
-    if(bot.gripperL) while(!bot.gripperL->isDone()) rai::wait(.1);
-    if(bot.gripperR) while(!bot.gripperR->isDone()) rai::wait(.1);
+    bot.hold();
+    for(auto g:bot.frankaGrippers) g->close();
+    for(auto g:bot.frankaGrippers){ while(!g->isDone()) rai::wait(.1); }
   }
 
   if(rai::checkParameter<bool>("open")){
-    bot.hold(false, true);
-    if(bot.gripperL) bot.gripperL->open();
-    if(bot.gripperR) bot.gripperR->open();
-    if(bot.gripperL) while(!bot.gripperL->isDone()) rai::wait(.1);
-    if(bot.gripperR) while(!bot.gripperR->isDone()) rai::wait(.1);
+    bot.hold();
+    for(auto g:bot.frankaGrippers) g->open();
+    for(auto g:bot.frankaGrippers){ while(!g->isDone()) rai::wait(.1); }
   }
 
   if(rai::checkParameter<bool>("float")){
-    bot.hold(true, false);
-    bot.wait(C, true, false);
-  }
-
-  if(rai::checkParameter<bool>("damp")){
-    bot.hold(true, true);
+    bot.floating();
     bot.wait(C, true, false);
   }
 
   if(rai::checkParameter<bool>("hold")){
-    bot.hold(false, true);
+    bot.hold();
     bot.wait(C, true, false);
   }
 

@@ -14,10 +14,10 @@ void testDirect(){
 
   {
     std::shared_ptr<rai::GripperAbstraction> G_ri;
-    if(rai::getParameter<bool>("bot/useRobotiq", true)){
+    if(rai::getParameter<bool>("bot/useRobotiq", false)){
       G_ri = make_shared<RobotiqGripper>(0);
     }else{
-      G_ri = make_shared<FrankaGripper>(0);
+      G_ri = make_shared<rai::FrankaGripper>("172.16.0.2");
     }
 
     std::cout <<"=========== standard close ..." <<std::endl;
@@ -112,7 +112,7 @@ void testBotop(){
 int main(int argc,char **argv){
   rai::initCmdLine(argc, argv);
 
-//  testDirect();
+  // testDirect();
   testBotop();
 
   return 0;

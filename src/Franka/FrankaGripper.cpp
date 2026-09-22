@@ -6,6 +6,8 @@
 
 // const char *gripperIpAddresses[2] = {"172.17.0.2", "172.16.0.2"};
 
+namespace rai {
+
 FrankaGripper::FrankaGripper(const char* ipAddress)
   : Thread(STRING("FrankaGripper_"<<ipAddress)) {
   LOG(0) <<"launching FrankaGripper " <<ipAddress;
@@ -109,3 +111,5 @@ bool FrankaGripper::isGrasped(){ NICO }
 void FrankaGripper::step() { NICO }
 
 #endif
+
+} //namespace

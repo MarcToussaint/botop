@@ -28,8 +28,8 @@ arr getLoopPath(rai::Configuration& C){
 
   //compute a path
   KOMO komo;
-  komo.setConfig(C, false);
   komo.setTiming(5, 10, 2., 2);
+  komo.setConfig(C, false);
   komo.addControlObjective({}, 2, 1.);
 
   komo.addObjective({1.}, FS_positionDiff, {"l_gripper", "target1"}, OT_eq, {1e2});

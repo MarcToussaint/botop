@@ -8,6 +8,8 @@ namespace franka{
   class Gripper;
 }
 
+namespace rai {
+
 //The control message send to the robot
 struct GripperCmdMsg {
     enum Command { _open, _close, _home, _done };
@@ -44,3 +46,5 @@ struct FrankaGripper : rai::GripperAbstraction, rai::Thread {
 private:
   std::shared_ptr<franka::Gripper> frankaGripper;
 };
+
+} //

@@ -6,55 +6,44 @@
 #include <franka/robot.h>
 #include <franka/exception.h>
 
+namespace rai {
+
 void naturalGains(double& Kp, double& Kd, double decayTime, double dampingRatio);
 
-// const char *frankaIpAddresses[2] = {"172.17.0.2", "172.16.0.2"};
+FrankaThread::FrankaThread(Var<CtrlCmdMsg>& cmd, Var<CtrlStateMsg>& state, uint _robotID, const char* _ipAddress, uint _qIndex)
+    : RobotAbstraction(cmd, state), Thread("FrankaThread"), robotID(_robotID), ipAddress(_ipAddress), qIndex(_qIndex){
+
+    //-- basic Kp Kd settings for reference control mode
+    Kp_freq = getParameter<arr>("Franka/Kp_freq", arr{20., 20., 20., 20., 10., 15., 10.}); //18., 18., 18., 13., 8., 8., 6.));
+    Kd_ratio = getParameter<arr>("Franka/Kd_ratio", arr{.6, .6, .4, .4, .1, .5, .1}); //.8, .8, .7, .7, .1, .1, .1));
+    friction = getParameter<arr>("Franka/friction", zeros(7));  //Franka/friction: arr{0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4}
+    //friction = getParameter<arr>("Franka/friction", arr{0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4});
+    LOG(0) <<"launching Franka [" <<robotID <<"] at " <<ipAddress <<" qIndex: " <<qIndex <<" with Kp_freq:" << Kp_freq << " Kd_ratio:" << Kd_ratio <<" friction:" <<friction;
+
+    //-- choose robot/ipAddress
+    CHECK_LE(robotID, 1, "");
+
+    //-- start thread and wait for first state signal
+    threadStep();  //this is not looping! The step method passes a callback to robot.control, which is blocking! (that's why we use a thread) until stop becomes true
+
+    for(uint i=0;i<200;i++){
+        if(!requiresInitialization) break;
+        wait(.01);
+    }
+    if(requiresInitialization){
+        threadCancel();
+        THROW("lauching Franka timeout!");
+    }
+}
 
 FrankaThread::~FrankaThread(){
-  LOG(0) <<"shutting down Franka " <<robotID <<" - " <<timer.report();
+  LOG(0) <<"shutting down Franka [" <<robotID <<"] - " <<timer.report();
   stop = true;
   waitForIdle();
   threadClose();
 }
 
 long c = 0;
-
-void FrankaThread::init(uint _robotID, const char* _ipAddress, const uintA& _qIndices) {
-  robotID=_robotID;
-  qIndices=_qIndices;
-
-  CHECK_EQ(qIndices.N, 7, "");
-  qIndices_max = rai::max(qIndices);
-
-  //-- basic Kp Kd settings for reference control mode
-  Kp_freq = rai::getParameter<arr>("Franka/Kp_freq", arr{20., 20., 20., 20., 10., 15., 10.}); //18., 18., 18., 13., 8., 8., 6.));
-  Kd_ratio = rai::getParameter<arr>("Franka/Kd_ratio", arr{.6, .6, .4, .4, .1, .5, .1}); //.8, .8, .7, .7, .1, .1, .1));
-  friction = rai::getParameter<arr>("Franka/friction", zeros(7));  //Franka/friction: arr{0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4}
-  //friction = rai::getParameter<arr>("Franka/friction", arr{0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4});
-  LOG(0) << "FRANKA: Kp_freq:" << Kp_freq << " Kd_ratio:" << Kd_ratio <<" friction:" <<friction;
-
-  /* hand tuning result of friction calib:
-     Franka/friction: [0.8, 1.0, 0.8, 1.0, 0.9, 0.5, 0.4]
-     Franka/Kd_ratio: [0.6, 0.6, 0.3, 0.3, 0.3, 0.3, 0.4]
-  */
-
-  //-- choose robot/ipAddress
-  CHECK_LE(robotID, 1, "");
-  ipAddress = _ipAddress;
-
-  //-- start thread and wait for first state signal
-  LOG(0) <<"launching Franka " <<robotID <<" at " <<ipAddress;
-  threadStep();  //this is not looping! The step method passes a callback to robot.control, which is blocking! (that's why we use a thread) until stop becomes true
-
-  for(uint i=0;i<200;i++){
-    if(!requiresInitialization) break;
-    rai::wait(.01);
-  }
-  if(requiresInitialization){
-    threadCancel();
-    THROW("lauching Franka timeout!");
-  }
-}
 
 void FrankaThread::step(){
   // connect to robot
@@ -84,14 +73,14 @@ void FrankaThread::step(){
     auto cmdSet = cmd.set();
 
     //ensure state variables have sufficient size
-    while(stateSet->q.N<=qIndices_max) stateSet->q.append(0.);
-    while(stateSet->qDot.N<=qIndices_max) stateSet->qDot.append(0.);
-    while(stateSet->tauExternalIntegral.N<=qIndices_max) stateSet->tauExternalIntegral.append(0.);
+    while(stateSet->q.N<qIndex+7) stateSet->q.append(0.);
+    while(stateSet->qDot.N<qIndex+7) stateSet->qDot.append(0.);
+    while(stateSet->tauExternalIntegral.N<qIndex+7) stateSet->tauExternalIntegral.append(0.);
 
     for(uint i=0; i<7; i++){
-      stateSet->q.elem(qIndices(i)) = q_real(i);
-      stateSet->qDot.elem(qIndices(i)) = qDot_real(i);
-      stateSet->tauExternalIntegral.elem(qIndices(i)) = 0.;
+        stateSet->q(qIndex+i) = q_real(i);
+      stateSet->qDot.elem(qIndex+i) = qDot_real(i);
+      stateSet->tauExternalIntegral.elem(qIndex+i) = 0.;
       stateSet->tauExternalCount=0;
     }
   }
@@ -117,7 +106,7 @@ void FrankaThread::step(){
 
     //-- get real time
     //ctrlTime += .001; //HARD CODED: 1kHz
-    //ctrlTime = rai::realTime();
+    //ctrlTime = realTime();
 
     //-- publish state & INCREMENT CTRL TIME
     arr state_q_real, state_qDot_real;
@@ -129,9 +118,9 @@ void FrankaThread::step(){
       }
       ctrlTime = stateSet->ctrlTime;
       for(uint i=0;i<7;i++){
-        stateSet->q.elem(qIndices(i)) = q_real.elem(i);
-        stateSet->qDot.elem(qIndices(i)) = qDot_real.elem(i);
-        stateSet->tauExternalIntegral.elem(qIndices(i)) += torquesExternal_real.elem(i);
+        stateSet->q.elem(qIndex+i) = q_real.elem(i);
+        stateSet->qDot.elem(qIndex+i) = qDot_real.elem(i);
+        stateSet->tauExternalIntegral.elem(qIndex+i) += torquesExternal_real.elem(i);
       }
       stateSet->tauExternalCount++;
       state_q_real = stateSet->q;
@@ -140,7 +129,7 @@ void FrankaThread::step(){
 
     //-- get current ctrl command
     arr q_ref, qDot_ref, qDDot_ref, Kp_ref, Kd_ref, P_compliance; // TODO Kp, Kd and also read out the correct indices
-    rai::ControlType controlType;
+    ControlType controlType;
     {
       auto cmdGet = cmd.get();
 
@@ -150,35 +139,35 @@ void FrankaThread::step(){
       arr cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref;
       if(cmdGet->ref){
         cmdGet->ref->getReference(cmd_q_ref, cmd_qDot_ref, cmd_qDDot_ref, state_q_real, state_qDot_real, ctrlTime);
-        CHECK(!cmd_q_ref.N || cmd_q_ref.N > qIndices_max, "");
-        CHECK(!cmd_qDot_ref.N || cmd_qDot_ref.N > qIndices_max, "");
-        CHECK(!cmd_qDDot_ref.N || cmd_qDDot_ref.N > qIndices_max, "");
+        CHECK(!cmd_q_ref.N || cmd_q_ref.N >= qIndex+7, "");
+        CHECK(!cmd_qDot_ref.N || cmd_qDot_ref.N >= qIndex+7, "");
+        CHECK(!cmd_qDDot_ref.N || cmd_qDDot_ref.N >= qIndex+7, "");
       }
 
       //pick qIndices for this particular robot
       if(cmd_q_ref.N){
         q_ref.resize(7);
-        for(uint i=0; i<7; i++) q_ref.elem(i) = cmd_q_ref.elem(qIndices(i));
+        for(uint i=0; i<7; i++) q_ref.elem(i) = cmd_q_ref.elem(qIndex+i);
       }
       if(cmd_qDot_ref.N){
         qDot_ref.resize(7);
-        for(uint i=0; i<7; i++) qDot_ref.elem(i) = cmd_qDot_ref.elem(qIndices(i));
+        for(uint i=0; i<7; i++) qDot_ref.elem(i) = cmd_qDot_ref.elem(qIndex+i);
       }
       if(cmd_qDDot_ref.N){
         qDDot_ref.resize(7);
-        for(uint i=0; i<7; i++) qDDot_ref.elem(i) = cmd_qDDot_ref.elem(qIndices(i));
+        for(uint i=0; i<7; i++) qDDot_ref.elem(i) = cmd_qDDot_ref.elem(qIndex+i);
       }
       if(cmdGet->Kp.d0 >= 7 && cmdGet->Kp.d1 >=7 && cmdGet->Kp.d0 == cmdGet->Kp.d1){
         Kp_ref.resize(7, 7);
-        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) Kp_ref(i, j) = cmdGet->Kp(qIndices(i), qIndices(j));
+        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) Kp_ref(i, j) = cmdGet->Kp(qIndex+i, qIndex+j);
       }
       if(cmdGet->Kd.d0 >= 7 && cmdGet->Kd.d1 >=7 && cmdGet->Kd.d0 == cmdGet->Kd.d1){
         Kd_ref.resize(7, 7);
-        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) Kd_ref(i, j) = cmdGet->Kd(qIndices(i), qIndices(j));
+        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) Kd_ref(i, j) = cmdGet->Kd(qIndex+i, qIndex+j);
       }
       if(cmdGet->P_compliance.N) {
         P_compliance.resize(7,7);
-        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) P_compliance(i,j) = cmdGet->P_compliance(qIndices(i), qIndices(j));
+        for(uint i=0; i<7; i++) for(uint j=0; j<7; j++) P_compliance(i,j) = cmdGet->P_compliance(qIndex+i, qIndex+j);
       }
 
     }
@@ -207,7 +196,7 @@ void FrankaThread::step(){
     //-- compute torques from control message depending on the control type
     arr u;
 
-    if(controlType == rai::ControlType::configRefs) { //default: PD for given references
+    if(controlType == ControlType::configRefs) { //default: PD for given references
       //check for compliance objective
       if(P_compliance.N){
         if(!(P_compliance.nd==2 && P_compliance.d0==7 && P_compliance.d1==7)){
@@ -265,7 +254,7 @@ void FrankaThread::step(){
       //-- project with compliance
       if(P_compliance.N) u = P_compliance * u;
 
-    } else if(controlType == rai::ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
+    } else if(controlType == ControlType::projectedAcc) { // projected Kp, Kd and u_b term for projected operational space control
       CHECK_EQ(Kp_ref.nd, 2, "")
       CHECK_EQ(Kp_ref.d0, 7, "")
       CHECK_EQ(Kp_ref.d1, 7, "")
@@ -363,3 +352,5 @@ void FrankaThread::init(uint _robotID, const char* ipAddress, const uintA& _qInd
 void FrankaThread::step(){ NICO }
 
 #endif
+
+} //namespace
