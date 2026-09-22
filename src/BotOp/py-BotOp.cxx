@@ -139,7 +139,7 @@ void init_BotOp(pybind11::module& m) {
   .def("launch_franka", &BotOp::launch_franka, "", pybind11::arg("ipAddress"), pybind11::arg("root_frame")=nullptr, pybind11::arg("also_gripper")=true)
   .def("launch_trossen", &BotOp::launch_trossen, "", pybind11::arg("ipAddresses"), pybind11::arg("root_frames"))
   .def("launch_camera", pybind11::overload_cast<const char*>(&BotOp::launch_camera), "start a camera thread referring to a frame that encodes all necessary specs", pybind11::arg("sensor"))
-  // .def("launch_Basler", &BotOp::launch_Basler, "", pybind11::arg("nCams"))
+  .def("launch_baslers", &BotOp::launch_baslers, "", pybind11::arg("ipAddresses"), pybind11::arg("root_frames"))
   .def("launch_arucos", &BotOp::launch_arucos, "for each camera, start a thread that permanently analyzes for aruco markers in the images")
   .def("launch_arucoObjTracker", &BotOp::launch_arucoObjTracker, "")
 

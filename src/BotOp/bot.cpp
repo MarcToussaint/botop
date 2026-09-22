@@ -115,7 +115,7 @@ void BotOp::auto_launch_hardware(rai::Configuration& C){
   // baslers
   {
     auto [ids, F] = getFramesAndIds(C, "basler");
-    if(ids.N) launch_basler(ids, F);
+    if(ids.N) launch_baslers(ids, F);
   }
 
   // franka arms & grippers
@@ -620,7 +620,7 @@ void BotOp::launch_MultiRealSense(const FrameL& f_cams, bool captureColor, bool 
   realsenses = make_shared<rai::MultiRealSenseThread>(serialNumbers, true, false);
 }
 
-void BotOp::launch_basler(const strA& ids, const FrameL& F){
+void BotOp::launch_baslers(const strA& ids, const FrameL& F){
   rai::Array<std::shared_ptr<rai::Graph>> ats(F.N);
   for(uint i=0;i<F.N;i++) ats(i) = F(i)->ats;
   basler = make_shared<rai::BaslerThread>(ids);

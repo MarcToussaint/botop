@@ -345,12 +345,18 @@ void FrankaThread::step(){
   LOG(0) <<"EXIT FRANKA CONTROL LOOP";
 }
 
+} //namespace
+
 #else //RAI_FRANKA
 
+namespace rai {
+
+FrankaThread::FrankaThread(Var<CtrlCmdMsg>& cmd, Var<CtrlStateMsg>& state, uint _robotID, const char* _ipAddress, uint _qIndex)
+  : RobotAbstraction(cmd, state), Thread("FrankaThread"), robotID(_robotID), ipAddress(_ipAddress), qIndex(_qIndex){ NICO }
 FrankaThread::~FrankaThread(){ NICO }
-void FrankaThread::init(uint _robotID, const char* ipAddress, const uintA& _qIndices) { NICO }
 void FrankaThread::step(){ NICO }
+
+} //namespace
 
 #endif
 
-} //namespace

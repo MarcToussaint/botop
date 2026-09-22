@@ -100,6 +100,8 @@ void FrankaGripper::step() {
 
 #else //RAI_FRANKA
 
+namespace rai {
+    
 FrankaGripper::FrankaGripper(const char* ipAddress)
   : Thread(STRING("FrankaGripper_"<<ipAddress)) { NICO }
 FrankaGripper::~FrankaGripper(){ threadClose(); }

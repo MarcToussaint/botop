@@ -9,7 +9,7 @@ def run():
     ry.set_params({"botsim/verbose": 0})
     bot = ry.BotOp(C, False)
 
-    bot.launch_Basler(3)
+    bot.launch_baslers(["0","1","2"], [])
     V = ry.ImageViewer()
 
     while True:

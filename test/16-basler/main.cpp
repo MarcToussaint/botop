@@ -20,7 +20,7 @@ int direct(){
     shared_ptr<CInstantCameraArray> cameras;
     CGrabResultPtr ptrGrabResult;
 
-    CycleTimer tim;
+    rai::CycleTimer tim;
 
     //-- open
     uint n=0;
@@ -97,12 +97,12 @@ int direct(){
 void thread(){
 
     uint n=3;
-    rai::BaslerThread basler(n);
+    rai::BaslerThread basler({"0","1","2"}, {});
     rai::Array<OpenGL> gl(n);
 
     rai::wait(.5);
 
-    CycleTimer tim;
+    rai::CycleTimer tim;
     byteA buffer;
     double startTime = rai::clockTime();
     for(uint t=0;t<200;t++){
@@ -150,7 +150,7 @@ void botop(){
     rai::setParameter("botsim/verbose", 0);
     BotOp bot(C, false);
 
-    bot.launch_Basler(3);
+    bot.launch_baslers({"0","1","2"}, {});
     bot.launch_arucos();
 
     // CycleTimer tim;

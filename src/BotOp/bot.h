@@ -64,7 +64,7 @@ struct BotOp{
   void launch_allegro(const char* id, rai::Frame* f=0);
   void launch_trossen(const strA& ids, const FrameL& F={});
   void launch_optitrack(rai::Configuration& C);
-  void launch_basler(const strA& ids, const FrameL& F={});
+  void launch_baslers(const strA& ids, const FrameL& F={});
 
   //-- state info
   arr get_q();
@@ -81,10 +81,14 @@ struct BotOp{
   //-- motion commands
   void move(const arr& path, const arr& times, bool overwrite=false, double overwriteCtrlTime=-1.);
   void move_oldCubic(const arr& path, const arr& times, bool overwrite=false, double overwriteCtrlTime=-1.);
-  void moveAutoTimed(const arr& path, double maxVel=1., double maxAcc=1.); //double timeCost);
+  void moveAutoTimed(const arr& path, double maxVel=1., double maxAcc=1.);
+
   void moveTo(const arr& q_target, double timeCost=1., bool overwrite=false);
   StepObservation stepObservation();
   void stepAction(const arr& delta, const StepObservation& obs, double lambda, double maxAccel=5., double xi=1.);
+  //StepObservation step_getObservation();
+  //StepObservation step_real_world(const arr& delta_action, const StepObservation& obs, double lambda, double maxAccel=5., double xi=1.);
+
   void setControllerWriteData(int _writeData);
   void setCompliance(const arr& J, double compliance=.5);
 
