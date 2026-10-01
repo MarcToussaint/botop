@@ -648,16 +648,22 @@ void BotOp::launch_arucoObjTracker(rai::Configuration& C, const char* obj_name){
 }
 
 byteA BotOp::getImage(const str& sensor){
-  if(sensor.startsWith("camera_")){
-    CHECK(basler, "basler cameras were not launched")
-    int cameraID;
-    sensor.sub(7,0) >>cameraID;
-    CHECK_LE(cameraID, (int)basler->color.N-1, "only have " <<basler->color.N <<" basler cameras");
-    byteA img = basler->color(cameraID).get();
-    return img;
+  if(simthread && !forceRealCamera){
+    auto cam = getCamera(sensor);
+    byteA image = cam->image.get();
+    return image;
+  }else{
+    if(sensor.startsWith("camera_")){
+      CHECK(basler, "basler cameras were not launched")
+      int cameraID;
+      sensor.sub(7,0) >>cameraID;
+      CHECK_LE(cameraID, (int)basler->color.N-1, "only have " <<basler->color.N <<" basler cameras");
+      byteA img = basler->color(cameraID).get();
+      return img;
+    }
+    HALT("image sensor needs to start with camera_");
+    return byteA();
   }
-  HALT("image sensor needs to start with camera_");
-  return byteA();
 }
 
 std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){

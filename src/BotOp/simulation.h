@@ -75,7 +75,7 @@ struct CameraSimThread : rai::CameraAbstraction, rai::Thread {
   std::shared_ptr<BotThreadedSim> simthread;
 
   CameraSimThread(const std::shared_ptr<BotThreadedSim>& _sim, rai::Frame *f_cam)
-      : Thread(f_cam->name, .05), simthread(_sim) {
+      : Thread(f_cam->name, .5), simthread(_sim) {
     {
       auto mux = simthread->stepMutex(RAI_HERE);
       camera_name = f_cam->name;
