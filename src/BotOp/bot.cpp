@@ -69,9 +69,6 @@ BotOp::BotOp(rai::Configuration& C, bool useRealRobot, bool auto_launch){
     LOG(0) <<"OPENING SOUND";
     audio = make_shared<rai::Sound>();
   }
-
-  // C.view(false, STRING("time: 0"));
-  // C.gl().setTitle("BotOp associated Configuration");
 }
 
 BotOp::~BotOp(){
@@ -81,21 +78,20 @@ BotOp::~BotOp(){
   realsenses.reset();
   basler.reset();
   for(auto& cam:cameras) cam.reset();
-  if(simgripper) simgripper.reset();
-  if(simthread) simthread.reset();
-  // gripperL.reset();
-  // gripperR.reset();
   for(auto& gripper:frankaGrippers) gripper.reset();
   for(auto& franka:frankas) franka.reset();
-  // robotL.reset();
-  // robotR.reset();
   allegro.reset();
+  if(simthread) simthread.reset();
 }
 
 void BotOp::launch_simulation(rai::Configuration& C){
   simthread = make_shared<BotThreadedSim>(C, cmd, state);
-  // robotL = simthread;
-  simgripper = make_shared<GripperSim>(simthread, "l_gripper");
+  if(C.getFrame("l_gripper")){
+    frankaGrippers.append( make_shared<GripperSim>(simthread, "l_gripper") );
+  }
+  if(C.getFrame("r_gripper")){
+    frankaGrippers.append( make_shared<GripperSim>(simthread, "r_gripper") );
+  }
 }
 
 auto getFramesAndIds(rai::Configuration& C, const char* key){

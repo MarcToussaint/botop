@@ -33,7 +33,7 @@ struct BotOp{
   rai::Var<rai::CtrlCmdMsg> cmd;
   rai::Var<rai::CtrlStateMsg> state;
   rai::Array<std::shared_ptr<rai::FrankaThread>> frankas;
-  rai::Array<std::shared_ptr<rai::FrankaGripper>> frankaGrippers;
+  rai::Array<std::shared_ptr<rai::GripperAbstraction>> frankaGrippers;
   // std::shared_ptr<rai::RobotAbstraction> robotL;
   // std::shared_ptr<rai::RobotAbstraction> robotR;
   // std::shared_ptr<rai::GripperAbstraction> gripperL;
@@ -44,7 +44,6 @@ struct BotOp{
   std::shared_ptr<rai::ViveController> vivecontroller;
   std::shared_ptr<rai::Sound> audio;
   std::shared_ptr<BotThreadedSim> simthread;
-  std::shared_ptr<GripperSim> simgripper;
   rai::Array<std::shared_ptr<rai::CameraAbstraction>> cameras;
   std::shared_ptr<rai::MultiRealSenseThread> realsenses;
   std::shared_ptr<rai::BaslerThread> basler;

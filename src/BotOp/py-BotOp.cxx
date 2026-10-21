@@ -153,8 +153,7 @@ void init_BotOp(pybind11::module& m) {
       byteA img;
       floatA depth;
       self->getImageAndDepth(img, depth, sensorName);
-      return pybind11::make_tuple(Array2numpy<byte>(img),
-                                  Array2numpy<float>(depth)); },
+      return pybind11::make_tuple(Array2numpy<byte>(img), Array2numpy<float>(depth)); },
        "returns image and depth from a camera sensor",
        pybind11::arg("sensorName"))
 

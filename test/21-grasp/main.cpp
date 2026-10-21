@@ -32,15 +32,15 @@ void testGrasp() {
   arr path; //2 waypoint path
   {
     KOMO komo;
-    komo.setConfig(C, true);
     komo.setTiming(2., 1, 5., 0);
+    komo.setConfig(C, true);
     komo.addControlObjective({}, 0, 1e-0);
     komo.addObjective({}, FS_accumulatedCollisions, {}, OT_eq);
     komo.addObjective({}, FS_jointLimits, {}, OT_ineq);
     komo.addObjective({1.}, FS_poseDiff, {"l_gripper", "way0"}, OT_eq, {1e1});
     komo.addObjective({2.}, FS_poseDiff, {"l_gripper", "way1"}, OT_eq, {1e1});
 
-    auto ret = NLP_Solver()
+    auto ret = rai::NLP_Solver()
                .setProblem(komo.nlp())
                .setOptions( rai::OptOptions().set_stopTolerance(1e-2).set_verbose(4) )
                .solve();
