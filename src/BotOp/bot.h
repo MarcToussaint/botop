@@ -63,7 +63,7 @@ struct BotOp{
   void launch_allegro(const char* id, rai::Frame* f=0);
   void launch_trossen(const strA& ids, const FrameL& F={});
   void launch_optitrack(rai::Configuration& C);
-  void launch_baslers(const strA& ids, const FrameL& F={});
+  void launch_baslers(const FrameL& f_cams);
 
   //-- state info
   arr get_q();

@@ -26,7 +26,7 @@ struct sBaslerThread{
 };
 
 
-BaslerThread::BaslerThread(const strA& ids, const rai::Array<std::shared_ptr<Graph>>& ats)
+BaslerThread::BaslerThread(const strA& ids)
     : Thread("BaslerThread"), color(ids.N) {
   threadOpen(true);
   threadLoop();
@@ -108,7 +108,7 @@ void BaslerThread::step() {
 
   namespace rai{
 
-    BaslerThread::BaslerThread(const strA& ids, const rai::Array<std::shared_ptr<Graph>>& ats)
+    BaslerThread::BaslerThread(const strA& ids)
       : Thread("BaslerThread"), color(ids.N) { NICO }
     BaslerThread::~BaslerThread(){ NICO }
     void BaslerThread::open(){ NICO }

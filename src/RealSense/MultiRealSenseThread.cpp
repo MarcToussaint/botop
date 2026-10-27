@@ -86,15 +86,15 @@ RealSenseCamera::RealSenseCamera(String serialNumber, bool captureColor, bool ca
 
   double wRGB = rai::getParameter<double>(STRING("RealSense/" << "wRGB"), 1920);
   double hRGB = rai::getParameter<double>(STRING("RealSense/" << "hRGB"), 1080);
-  double wDepth = rai::getParameter<double>(STRING("RealSense/" << "wDepth"), 424);
-  double hDepth = rai::getParameter<double>(STRING("RealSense/" << "hDepth"), 240);
+  double wDepth = rai::getParameter<double>(STRING("RealSense/" << "wDepth"), 848);
+  double hDepth = rai::getParameter<double>(STRING("RealSense/" << "hDepth"), 480);
   if(captureColor) cfg->enable_stream(RS2_STREAM_COLOR, -1, wRGB, hRGB, rs2_format::RS2_FORMAT_RGB8, 30);
   if(captureDepth) cfg->enable_stream(RS2_STREAM_DEPTH, -1, wDepth, hDepth, rs2_format::RS2_FORMAT_Z16, 30);
 
   pipe = std::make_shared<rs2::pipeline>();
   pipe->start(*cfg);
 
-  bool alignToDepth = rai::getParameter<bool>(STRING("RealSense/" << "alignToDepth"), false);
+  bool alignToDepth = rai::getParameter<bool>(STRING("RealSense/" << "alignToDepth"), true);
   bool autoExposure = rai::getParameter<bool>(STRING("RealSense/" << "autoExposure"), false);
   double exposure = rai::getParameter<double>(STRING("RealSense/" << "exposure"), 500);
   double white = rai::getParameter<double>(STRING("RealSense/" << "white"), 4000);

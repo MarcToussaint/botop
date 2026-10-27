@@ -111,7 +111,7 @@ void BotOp::auto_launch_hardware(rai::Configuration& C){
   // baslers
   {
     auto [ids, F] = getFramesAndIds(C, "basler");
-    if(ids.N) launch_baslers(ids, F);
+    if(ids.N) launch_baslers(F);
   }
 
   // franka arms & grippers
@@ -603,23 +603,24 @@ void BotOp::launch_camera(rai::Frame* f_cam){
 }
 
 void BotOp::launch_MultiRealSense(const FrameL& f_cams, bool captureColor, bool captureDepth){
-  //  StringA serialNumbers;
-  //  for(auto* f:f_cams){
-  //    str sn = f->ats->get<str>("realsense");
-  //    if(sn.startsWith("sn")) sn = sn.sub(2,-1);
-  //    serialNumbers.append(sn);
-  //  }
-  //  LOG(0) <<"== LAUNCHING realsenses:" <<serialNumbers;
-  //  realsenses = make_shared<rai::MultiRealSenseThread>(serialNumbers, captureColor, captureDepth);
-
-  StringA serialNumbers = {"102422075114", "102422071099", "825312070938"};
-  realsenses = make_shared<rai::MultiRealSenseThread>(serialNumbers, true, false);
+  StringA serialNumbers;
+  for(auto* f:f_cams){
+    str sn = f->ats->get<str>("realsense");
+    if(sn.startsWith("sn")) sn = sn.sub(2,-1);
+    serialNumbers.append(sn);
+  }
+  LOG(0) <<"== LAUNCHING realsenses:" <<serialNumbers;
+  realsenses = make_shared<rai::MultiRealSenseThread>(serialNumbers, captureColor, captureDepth);
 }
 
-void BotOp::launch_baslers(const strA& ids, const FrameL& F){
-  rai::Array<std::shared_ptr<rai::Graph>> ats(F.N);
-  for(uint i=0;i<F.N;i++) ats(i) = F(i)->ats;
-  basler = make_shared<rai::BaslerThread>(ids);
+void BotOp::launch_baslers(const FrameL& f_cams){
+  StringA serialNumbers;
+  for(auto* f:f_cams){
+    str sn = f->ats->get<str>("basler");
+    serialNumbers.append(sn);
+  }
+  LOG(0) <<"== LAUNCHING baslers:" <<serialNumbers;
+  basler = make_shared<rai::BaslerThread>(serialNumbers);
 }
 
 void BotOp::launch_arucos(){
@@ -650,12 +651,20 @@ byteA BotOp::getImage(const str& sensor){
     return image;
   }else{
     if(sensor.startsWith("camera_")){
-      CHECK(basler, "basler cameras were not launched")
       int cameraID;
       sensor.sub(7,0) >>cameraID;
-      CHECK_LE(cameraID, (int)basler->color.N-1, "only have " <<basler->color.N <<" basler cameras");
-      byteA img = basler->color(cameraID).get();
-      return img;
+
+      if (basler){
+        CHECK_LE(cameraID, (int)basler->color.N-1, "only have " <<basler->color.N <<" basler cameras");
+        byteA img = basler->color(cameraID).get();
+        return img;
+      } else if (realsenses) {
+        CHECK_LE(cameraID, (int)realsenses->color.N-1, "only have " <<realsenses->color.N <<" realsense cameras");
+        byteA img = realsenses->color(cameraID).get();
+        return img;
+      }
+      HALT("no camera hardware specified!");
+      return byteA();
     }
     HALT("image sensor needs to start with camera_");
     return byteA();
