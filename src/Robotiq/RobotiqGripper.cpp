@@ -69,7 +69,6 @@ RobotiqGripper::RobotiqGripper(uint whichRobot) {
   //-- choose robot/ipAddress
   CHECK_LE(whichRobot, 1, "");
 
-  boost::asio::io_service io;
   serialPort = std::make_shared<boost::asio::serial_port>(io);
 
   serialPort->open(robotiqSerialPorts[whichRobot]);

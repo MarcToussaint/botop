@@ -45,7 +45,11 @@ AllegroThread::AllegroThread(rai::Var<rai::CtrlCmdMsg>& cmd, rai::Var<rai::CtrlS
 
   LOG(0) <<"Launching Allegro";
   CreateBHandAlgorithm();
-  OpenCAN(canName); //calls threadLoop()
+  if(!OpenCAN(canName)){ //calls threadLoop()
+    threadClose(); //OpenCAN may already have started the loop before failing
+    DestroyBHandAlgorithm();
+    HALT("Allegro: OpenCAN(" <<canName <<") failed - the hand is not initialized");
+  }
   rai::wait(.5);
   pBHand->SetMotionType(eMotionType_JOINT_PD);
   pBHand->SetGainsEx(Kp.p, Kd.p);
@@ -219,7 +223,7 @@ void AllegroThread::CloseCAN()
 
 void AllegroThread::ioThreadProc(){
   int id, len;
-  unsigned char data[8];
+  unsigned char data[8] = {0}; //can_read_message only fills the first 'len' bytes
   unsigned char data_return = 0;
 
   // printf("[I/O Thread] Start: waiting for CAN messages...\n");
@@ -260,6 +264,7 @@ void AllegroThread::ioThreadProc(){
 	case ID_RTR_FINGER_POSE_3:
 	case ID_RTR_FINGER_POSE_4: {
 	  int findex = id & 0x07; // Finger index
+	  CHECK_GE(len, 8, "short frame");
 	  // Read encoder counts for this finger
 	  for (int j = 0; j < 4; ++j)
 	  {

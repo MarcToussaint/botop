@@ -24,6 +24,7 @@ struct RobotiqGripper : rai::GripperAbstraction {
 
 private:
 #ifdef RAI_ROBOTIQ
+  boost::asio::io_service io; //has to be declared before (=outlive) the serial port that is bound to it
   std::shared_ptr<boost::asio::serial_port> serialPort;
 #endif
 
