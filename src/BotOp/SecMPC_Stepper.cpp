@@ -1,7 +1,9 @@
 #include "SecMPC_Stepper.h"
 
+#ifdef RAI_GL
 #include <GL/glew.h>
 #include <GL/glut.h>
+#endif
 
 #include <OptiTrack/optitrack.h>
 #include <Gui/opengl.h>
