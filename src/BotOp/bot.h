@@ -105,7 +105,7 @@ struct BotOp{
   void launch_arucos();
   void launch_arucoObjTracker(rai::Configuration& C, const char* obj_name);
   byteA getImage(const str& sensor);
-  void getImageAndDepth(byteA& image, floatA& depth, const char* sensor);
+  void getImageAndDepth(byteA& image, floatA& depth, const str& sensor);
   void getImageDepthPcl(byteA& image, floatA& depth, arr& points, const char* sensor, bool globalCoordinates=false);
   arr  getCameraFxycxy(const char* sensor);
 

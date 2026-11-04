@@ -690,11 +690,27 @@ std::shared_ptr<rai::CameraAbstraction>& BotOp::getCamera(const char* sensor){
   return cameras(-1);
 }
 
-void BotOp::getImageAndDepth(byteA& image, floatA& depth, const char* sensor){
-  CHECK(sensor, "you need to specify a frame, nullptr not allowed");
-  auto cam = getCamera(sensor);
-  image = cam->image.get();
-  depth = cam->depth.get(); //getImageAndDepth(image, depth);
+void BotOp::getImageAndDepth(byteA& image, floatA& depth, const str& sensor){
+  if(simthread && !forceRealCamera){
+    CHECK(sensor, "you need to specify a frame, nullptr not allowed");
+    auto cam = getCamera(sensor);
+    image = cam->image.get();
+    depth = cam->depth.get(); //getImageAndDepth(image, depth);
+  }else{
+    if(sensor.startsWith("camera_")){
+      int cameraID;
+      sensor.sub(7,0) >>cameraID;
+      if (realsenses) {
+        CHECK_LE(cameraID, (int)realsenses->color.N-1, "only have " <<realsenses->color.N <<" realsense cameras");
+        image = realsenses->color(cameraID).get();
+        depth = realsenses->depth(cameraID).get();
+      }
+      else
+      {
+        HALT("no camera hardware specified!");
+      }
+    }
+  }
 }
 
 arr BotOp::getCameraFxycxy(const char* sensor){
@@ -763,6 +779,7 @@ void BotOp::cheat_setFramePose(str name, const arr& pose){
   if(!simthread){
     LOG(-1) <<"cheat only works in sim";
   }else{
+    auto mux = simthread->stepMutex(RAI_HERE);
     rai::Frame *f = simthread->simConfig.getFrame(name);
     if(pose.N) f->setPose(pose);
     simthread->sim->pushConfigToSim();

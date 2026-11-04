@@ -150,10 +150,10 @@ void init_BotOp(pybind11::module& m) {
 
   .def("getImage",  &BotOp::getImage, "", pybind11::arg("sensorName"))
 
-  .def("getImageAndDepth",  [](std::shared_ptr<BotOp>& self, const char* sensorName) {
+.def("getImageAndDepth",  [](std::shared_ptr<BotOp>& self, const str& sensor) {
       byteA img;
       floatA depth;
-      self->getImageAndDepth(img, depth, sensorName);
+      self->getImageAndDepth(img, depth, sensor);
       return pybind11::make_tuple(Array2numpy<byte>(img), Array2numpy<float>(depth)); },
        "returns image and depth from a camera sensor",
        pybind11::arg("sensorName"))
