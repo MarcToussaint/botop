@@ -16,6 +16,7 @@
 #include <Robotiq/RobotiqGripper.h>
 #include <Allegro/allegro.h>
 #include <Trossen/TrossenThread.h>
+#include <Z1/Z1Thread.h>
 #include <OptiTrack/optitrack.h>
 #include <RealSense/RealSenseThread.h>
 #include <RealSense/MultiRealSenseThread.h>
@@ -127,7 +128,13 @@ void BotOp::auto_launch_hardware(rai::Configuration& C){
     auto [ids, F] = getFramesAndIds(C, "trossen");
     if(ids.N) launch_trossen(ids, F);
   }
-  
+
+  // z1
+  {
+    auto [ids, F] = getFramesAndIds(C, "z1");
+    if(ids.N) launch_z1(ids, F);
+  }
+
   //-- initialize the control reference
   hold();
 }
@@ -264,6 +271,10 @@ void BotOp::launch_allegro(const char* id, rai::Frame* f){
 
 void BotOp::launch_trossen(const strA& ids, const FrameL& F){
   trossen = make_shared<TrossenThread>(cmd, state, ids);
+}
+
+void BotOp::launch_z1(const strA& ids, const FrameL& F){
+  z1 = make_shared<Z1Thread>(cmd, state, ids);
 }
 
 void BotOp::launch_optitrack(rai::Configuration& C){
@@ -541,6 +552,7 @@ void BotOp::stepAction(const arr& delta, const StepObservation& obs, double lamb
 void BotOp::setControllerWriteData(int _writeData){
   for(auto f:frankas) f->writeData=_writeData;
   if(trossen) trossen->writeData=_writeData;
+  if(z1) z1->writeData=_writeData;
   if(simthread) simthread->writeData=_writeData;
 }
 

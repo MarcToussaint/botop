@@ -40,6 +40,7 @@ struct BotOp{
   // std::shared_ptr<rai::GripperAbstraction> gripperR;
   std::shared_ptr<rai::RobotAbstraction> allegro;
   std::shared_ptr<rai::RobotAbstraction> trossen;
+  std::shared_ptr<rai::RobotAbstraction> z1;
   std::shared_ptr<rai::OptiTrack> optitrack;
   std::shared_ptr<rai::ViveController> vivecontroller;
   std::shared_ptr<rai::Sound> audio;
@@ -62,6 +63,7 @@ struct BotOp{
   void launch_franka(const char* id, rai::Frame* f=0, bool alsoGripper=true);
   void launch_allegro(const char* id, rai::Frame* f=0);
   void launch_trossen(const strA& ids, const FrameL& F={});
+  void launch_z1(const strA& ids, const FrameL& F={});
   void launch_optitrack(rai::Configuration& C);
   void launch_baslers(const FrameL& f_cams);
 
